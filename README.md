@@ -11,6 +11,87 @@ Une librairie légère pour gérer des processus métier (BPM) avec différents 
 - **WaitForSignalNode** : Arrête le processus en attente d'un signal spécifique
 - **SubProcessNode** : Exécute un sous-processus complet avec gestion d'état
 
+## Définition de processus
+
+Deux méthodes sont disponibles pour définir un processus:
+
+### Fluent Builder (recommandé)
+
+API fluide avec IntelliSense et validation à la compilation.
+
+```csharp
+var process = ProcessBuilder.Create("OrderProcess")
+    .Business("ValidateOrder", "Valider la commande")
+    .Query("CheckInventory", "Vérifier le stock")
+    .Decision("DecideApproval", "Décision", routes => routes
+        .When("approved", "ProcessApproved")
+        .When("rejected", "ProcessRejected"))
+    .Business("ProcessApproved", "Traiter approuvé")
+        .Then("WaitPayment")
+    .Business("ProcessRejected", "Traiter rejeté")
+    .WaitForSignal("WaitPayment", "Attente paiement")
+    .Interactive("ManualReview", "Revue manuelle")
+    .Build();
+```
+
+#### Avec sous-processus inline
+
+```csharp
+var process = ProcessBuilder.Create("MainProcess")
+    .Business("Start", "Démarrage")
+    .SubProcess("Validation", sub => sub
+        .Business("ValidateData", "Valider données")
+        .Interactive("Approve", "Approbation"))
+    .Business("Complete", "Fin")
+    .Build();
+```
+
+### JSON
+
+Définition déclarative, idéale pour la configuration externe.
+
+```json
+{
+    "name": "OrderProcess",
+    "startNode": "ValidateOrder",
+    "nodes": [
+        {
+            "name": "ValidateOrder",
+            "type": "Business",
+            "command": "ValidateOrder",
+            "next": ["CheckInventory"]
+        },
+        {
+            "name": "CheckInventory",
+            "type": "Business",
+            "command": "CheckInventory",
+            "isQuery": true,
+            "next": ["DecideApproval"]
+        },
+        {
+            "name": "DecideApproval",
+            "type": "Decision",
+            "query": "DecideApproval",
+            "routes": {
+                "approved": "ProcessApproved",
+                "rejected": "ProcessRejected"
+            }
+        }
+    ]
+}
+```
+
+```csharp
+// Charger depuis JSON
+var process = ProcessJsonLoader.FromJson(json);
+var process = ProcessJsonLoader.FromJsonFile("process.json");
+
+// Exporter en JSON
+var json = ProcessJsonLoader.ToJson(process);
+```
+
+Voir `ExampleWithBuilder.cs` pour un exemple complet.
+
 ## Sous-processus
 
 Les sous-processus permettent de décomposer des processus complexes en sous-unités réutilisables.
