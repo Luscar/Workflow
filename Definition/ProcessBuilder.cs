@@ -1,6 +1,6 @@
 using SimpleBPM.Nodes;
 
-namespace SimpleBPM;
+namespace SimpleBPM.Definition;
 
 public class ProcessBuilder
 {

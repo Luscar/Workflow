@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SimpleBPM.Nodes;
 
-namespace SimpleBPM;
+namespace SimpleBPM.Definition;
 
 /// <summary>
 /// Charge une définition de processus depuis JSON

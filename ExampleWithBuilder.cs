@@ -1,4 +1,5 @@
 using SimpleBPM;
+using SimpleBPM.Definition;
 
 ProcessEngine.ConfigureExecutor(new SampleExecutor());
 

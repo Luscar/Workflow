@@ -20,6 +20,8 @@ Deux méthodes sont disponibles pour définir un processus:
 API fluide avec IntelliSense et validation à la compilation.
 
 ```csharp
+using SimpleBPM.Definition;
+
 var process = ProcessBuilder.Create("OrderProcess")
     .Business("ValidateOrder", "Valider la commande")
     .Query("CheckInventory", "Vérifier le stock")
@@ -82,6 +84,8 @@ Définition déclarative, idéale pour la configuration externe.
 ```
 
 ```csharp
+using SimpleBPM.Definition;
+
 // Charger depuis JSON
 var process = ProcessJsonLoader.FromJson(json);
 var process = ProcessJsonLoader.FromJsonFile("process.json");
