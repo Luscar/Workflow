@@ -33,8 +33,7 @@ var subProcessDef = new ProcessDefinition("ValidationProcess");
 var subProcessNode = new SubProcessNode(subProcessDef)
 {
     Name = "Validation complète",
-    InheritAggregateId = true,
-    SaveSubProcessState = true
+    InheritAggregateId = true
 };
 ```
 

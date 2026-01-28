@@ -31,8 +31,7 @@ var startNode = new BusinessNode("StartOrder") { Name = "Démarrer la commande" 
 var validationSubProcessNode = new SubProcessNode(subProcessDefinition)
 {
     Name = "Validation complète",
-    InheritAggregateId = true,  // Le sous-processus hérite de l'ID d'agrégat
-    SaveSubProcessState = true   // Sauvegarder l'état du sous-processus
+    InheritAggregateId = true  // Le sous-processus hérite de l'ID d'agrégat
 };
 
 var processPaymentNode = new BusinessNode("ProcessPayment") { Name = "Traiter le paiement" };
