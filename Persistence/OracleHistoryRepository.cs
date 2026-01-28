@@ -6,19 +6,46 @@ namespace SimpleBPM.Persistence;
 public class OracleHistoryRepository
 {
     private readonly OracleConfiguration _config;
-    private readonly IConnexionBDFactory _connexionFactory;
+    private readonly IConnexionBDFactory? _connexionFactory;
+    private readonly IDbConnection? _externalConnection;
     private readonly string _historyTable;
 
+    /// <summary>
+    /// Constructeur avec factory - crée une nouvelle connexion à chaque opération.
+    /// </summary>
     public OracleHistoryRepository(OracleConfiguration config, IConnexionBDFactory connexionFactory)
     {
         _config = config;
         _connexionFactory = connexionFactory;
+        _externalConnection = null;
         _historyTable = _config.GetTableName("HISTORIQUE_EXECUTION_NOEUD");
+    }
+
+    /// <summary>
+    /// Constructeur avec connexion externe - réutilise la connexion fournie par le client.
+    /// La connexion n'est PAS fermée par ce repository.
+    /// </summary>
+    public OracleHistoryRepository(OracleConfiguration config, IDbConnection connection)
+    {
+        _config = config;
+        _connexionFactory = null;
+        _externalConnection = connection ?? throw new ArgumentNullException(nameof(connection));
+        _historyTable = _config.GetTableName("HISTORIQUE_EXECUTION_NOEUD");
+    }
+
+    private IConnexionBD GetConnexion()
+    {
+        if (_externalConnection != null)
+        {
+            return new ExternalConnexionBD(_externalConnection);
+        }
+
+        return _connexionFactory!.CreateConnexion();
     }
 
     public async Task InitializeDatabaseAsync()
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
+        using var connexionBD = GetConnexion();
         var connection = connexionBD.Connexion;
 
         var createTableSql = $@"
@@ -91,13 +118,11 @@ public class OracleHistoryRepository
         await connection.ExecuteAsync(createIndex01Sql);
         await connection.ExecuteAsync(createIndex02Sql);
         await connection.ExecuteAsync(createIndex03Sql);
-        
-        connexionBD.Close();
     }
 
     public async Task SaveHistoryAsync(string processId, NodeExecutionHistory history)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
+        using var connexionBD = GetConnexion();
         var connection = connexionBD.Connexion;
 
         var sql = $@"
@@ -122,14 +147,13 @@ public class OracleHistoryRepository
         };
 
         await connection.ExecuteAsync(sql, parameters);
-        connexionBD.Close();
     }
 
     public async Task SaveHistoryBatchAsync(string processId, List<NodeExecutionHistory> histories)
     {
         if (histories.Count == 0) return;
 
-        using var connexionBD = _connexionFactory.CreateConnexion();
+        using var connexionBD = GetConnexion();
         var connection = connexionBD.Connexion;
 
         var sql = $@"
@@ -154,12 +178,11 @@ public class OracleHistoryRepository
         }).ToList();
 
         await connection.ExecuteAsync(sql, parametersList);
-        connexionBD.Close();
     }
 
     public async Task<List<NodeExecutionHistory>> GetHistoryAsync(string processId)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
+        using var connexionBD = GetConnexion();
         var connection = connexionBD.Connexion;
 
         var sql = $@"
@@ -190,7 +213,6 @@ public class OracleHistoryRepository
             histories.Add(history);
         }
 
-        connexionBD.Close();
         return histories;
     }
 

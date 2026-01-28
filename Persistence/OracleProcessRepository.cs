@@ -6,21 +6,50 @@ namespace SimpleBPM.Persistence;
 public class OracleProcessRepository : IProcessRepository
 {
     private readonly OracleConfiguration _config;
-    private readonly IConnexionBDFactory _connexionFactory;
+    private readonly IConnexionBDFactory? _connexionFactory;
+    private readonly IDbConnection? _externalConnection;
     private readonly string _processContextTable;
     private readonly OracleHistoryRepository _historyRepository;
 
+    /// <summary>
+    /// Constructeur avec factory - crée une nouvelle connexion à chaque opération.
+    /// </summary>
     public OracleProcessRepository(OracleConfiguration config, IConnexionBDFactory connexionFactory)
     {
         _config = config;
         _connexionFactory = connexionFactory;
+        _externalConnection = null;
         _processContextTable = _config.GetTableName("PROCESS_CONTEXT");
         _historyRepository = new OracleHistoryRepository(config, connexionFactory);
     }
 
+    /// <summary>
+    /// Constructeur avec connexion externe - réutilise la connexion fournie par le client.
+    /// La connexion n'est PAS fermée par ce repository.
+    /// Utile pour partager une connexion/transaction avec d'autres opérations du client.
+    /// </summary>
+    public OracleProcessRepository(OracleConfiguration config, IDbConnection connection)
+    {
+        _config = config;
+        _connexionFactory = null;
+        _externalConnection = connection ?? throw new ArgumentNullException(nameof(connection));
+        _processContextTable = _config.GetTableName("PROCESS_CONTEXT");
+        _historyRepository = new OracleHistoryRepository(config, connection);
+    }
+
+    private IConnexionBD GetConnexion()
+    {
+        if (_externalConnection != null)
+        {
+            return new ExternalConnexionBD(_externalConnection);
+        }
+
+        return _connexionFactory!.CreateConnexion();
+    }
+
     public async Task InitializeDatabaseAsync()
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
+        using var connexionBD = GetConnexion();
         var connection = connexionBD.Connexion;
 
         var createTableSql = $@"
@@ -88,15 +117,13 @@ public class OracleProcessRepository : IProcessRepository
         await connection.ExecuteAsync(createIndex02Sql);
         await connection.ExecuteAsync(createIndex03Sql);
 
-        connexionBD.Close();
-
         // Initialiser la table d'historique
         await _historyRepository.InitializeDatabaseAsync();
     }
 
     public async Task SaveProcessContextAsync(ProcessContext context)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
+        using var connexionBD = GetConnexion();
         var connection = connexionBD.Connexion;
 
         var sql = $@"
@@ -118,12 +145,11 @@ public class OracleProcessRepository : IProcessRepository
         };
 
         await connection.ExecuteAsync(sql, parameters);
-        connexionBD.Close();
     }
 
     public async Task<ProcessContext?> GetProcessContextAsync(string processId)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
+        using var connexionBD = GetConnexion();
         var connection = connexionBD.Connexion;
 
         var sql = $@"
@@ -135,7 +161,6 @@ public class OracleProcessRepository : IProcessRepository
         
         if (result == null)
         {
-            connexionBD.Close();
             return null;
         }
 
@@ -152,8 +177,6 @@ public class OracleProcessRepository : IProcessRepository
             Status = (ProcessStatus)result.STATUT
         };
 
-        connexionBD.Close();
-
         // Charger l'historique d'exécution
         context.ExecutionHistory = await _historyRepository.GetHistoryAsync(processId);
 
@@ -162,7 +185,7 @@ public class OracleProcessRepository : IProcessRepository
 
     public async Task UpdateProcessContextAsync(ProcessContext context)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
+        using var connexionBD = GetConnexion();
         var connection = connexionBD.Connexion;
 
         var sql = $@"
@@ -187,7 +210,6 @@ public class OracleProcessRepository : IProcessRepository
         };
 
         await connection.ExecuteAsync(sql, parameters);
-        connexionBD.Close();
 
         // Sauvegarder les nouvelles entrées d'historique
         var existingHistory = await _historyRepository.GetHistoryAsync(context.ProcessId);
@@ -201,13 +223,12 @@ public class OracleProcessRepository : IProcessRepository
 
     public async Task DeleteProcessContextAsync(string processId)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
+        using var connexionBD = GetConnexion();
         var connection = connexionBD.Connexion;
 
         var sql = $@"DELETE FROM {_processContextTable} WHERE ID_PROCESSUS = :IdProcessus";
 
         await connection.ExecuteAsync(sql, new { IdProcessus = processId });
-        connexionBD.Close();
     }
 
     private class ProcessContextDto

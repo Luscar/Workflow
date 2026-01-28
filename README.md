@@ -44,7 +44,9 @@ Voir `ExampleWithSubProcess.cs` pour un exemple complet.
 
 La librairie supporte la persistance dans Oracle avec préfixe de tables personnalisable.
 
-### Configuration
+### Configuration avec Factory (par défaut)
+
+Crée une nouvelle connexion à chaque opération (recommandé pour la plupart des cas).
 
 ```csharp
 var oracleConfig = new OracleConfiguration(
@@ -56,6 +58,30 @@ var connexionFactory = new OracleConnexionBDFactory(oracleConfig.ConnectionStrin
 var repository = new OracleProcessRepository(oracleConfig, connexionFactory);
 await repository.InitializeDatabaseAsync();
 ```
+
+### Configuration avec connexion externe (injection)
+
+Réutilise une connexion existante fournie par le client. Utile pour :
+- Partager une connexion/transaction avec d'autres opérations
+- Intégration avec un container DI qui gère le cycle de vie des connexions
+- Utiliser une connexion dans un scope de transaction existant
+
+```csharp
+// Connexion gérée par le client (ex: depuis un DI container)
+using var connection = new OracleConnection(connectionString);
+connection.Open();
+
+// Le repository réutilise cette connexion sans la fermer
+var repository = new OracleProcessRepository(oracleConfig, connection);
+
+// La connexion reste ouverte après les opérations du repository
+await repository.SaveProcessContextAsync(context);
+
+// Le client est responsable de fermer la connexion
+connection.Close();
+```
+
+**Note** : Avec l'injection de connexion, le repository ne ferme jamais la connexion. C'est la responsabilité du client de gérer son cycle de vie.
 
 ### Préfixe de tables
 
