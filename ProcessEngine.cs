@@ -3,7 +3,6 @@ namespace SimpleBPM;
 public class ProcessEngine
 {
     private static ICommandQueryExecutor? _commandQueryExecutor;
-    private static ISubProcessManager? _subProcessManager = new InMemorySubProcessManager();
     private readonly ProcessDefinition _definition;
     private readonly Persistence.IProcessRepository? _repository;
 
@@ -13,24 +12,19 @@ public class ProcessEngine
         _repository = repository;
     }
 
+    /// <summary>
+    /// Repository utilisé pour la persistance. Accessible pour les sous-processus.
+    /// </summary>
+    internal Persistence.IProcessRepository? Repository => _repository;
+
     public static void ConfigureExecutor(ICommandQueryExecutor executor)
     {
         _commandQueryExecutor = executor;
     }
 
-    public static void ConfigureSubProcessManager(ISubProcessManager manager)
-    {
-        _subProcessManager = manager;
-    }
-
     internal static ICommandQueryExecutor? GetCommandQueryExecutor()
     {
         return _commandQueryExecutor;
-    }
-
-    internal static ISubProcessManager? GetSubProcessManager()
-    {
-        return _subProcessManager;
     }
 
     public async Task<ProcessContext> ExecuteAsync(ProcessContext context)
@@ -51,7 +45,7 @@ public class ProcessEngine
         while (!string.IsNullOrEmpty(currentNodeId))
         {
             var node = _definition.GetNode(currentNodeId);
-            
+
             if (node == null)
             {
                 context.Status = ProcessStatus.Failed;
@@ -64,8 +58,8 @@ public class ProcessEngine
 
             // Créer l'entrée d'historique
             var historyEntry = new NodeExecutionHistory(node.Id, node.Name, node.Type);
-            
-            var result = await node.ExecuteAsync(context);
+
+            var result = await node.ExecuteAsync(context, _repository);
 
             // Compléter l'entrée d'historique
             historyEntry.Complete(result.IsCompleted, result.ErrorMessage, result.NextNodeId);
@@ -122,7 +116,7 @@ public class ProcessEngine
         }
 
         context.Status = ProcessStatus.Running;
-        
+
         var currentNode = _definition.GetNode(context.CurrentNodeId);
         if (currentNode == null || currentNode.NextNodeIds.Count == 0)
         {
@@ -149,7 +143,7 @@ public class ProcessEngine
             return context;
         }
 
-        if (context.Data.TryGetValue("WaitingForSignal", out var waitingSignal) && 
+        if (context.Data.TryGetValue("WaitingForSignal", out var waitingSignal) &&
             waitingSignal?.ToString() == signalName)
         {
             return await ContinueAsync(context);

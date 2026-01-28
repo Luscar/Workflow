@@ -33,8 +33,7 @@ var subProcessDef = new ProcessDefinition("ValidationProcess");
 var subProcessNode = new SubProcessNode(subProcessDef)
 {
     Name = "Validation complète",
-    InheritAggregateId = true,
-    SaveSubProcessState = true
+    InheritAggregateId = true
 };
 ```
 
@@ -46,16 +45,37 @@ La librairie supporte la persistance dans Oracle avec préfixe de tables personn
 
 ### Configuration
 
+Le repository accepte une `IDbConnection` injectée par le client, compatible avec les containers DI.
+
 ```csharp
 var oracleConfig = new OracleConfiguration(
     connectionString: "User Id=myuser;Password=mypass;Data Source=localhost:1521/XEPDB1",
     tablePrefix: "ABC" // Préfixe de 3 à 10 lettres
 );
 
-var connexionFactory = new OracleConnexionBDFactory(oracleConfig.ConnectionString);
-var repository = new OracleProcessRepository(oracleConfig, connexionFactory);
+// Connexion gérée par le client
+using var connection = new OracleConnection(oracleConfig.ConnectionString);
+connection.Open();
+
+var repository = new OracleProcessRepository(oracleConfig, connection);
 await repository.InitializeDatabaseAsync();
 ```
+
+### Avec Dependency Injection
+
+```csharp
+// Program.cs / Startup.cs
+services.AddScoped<IDbConnection>(sp =>
+{
+    var conn = new OracleConnection(connectionString);
+    conn.Open();
+    return conn;
+});
+services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(connectionString, "BPM"));
+services.AddScoped<IProcessRepository, OracleProcessRepository>();
+```
+
+**Note** : Le repository ne gère pas le cycle de vie de la connexion. C'est la responsabilité du client (ou du container DI) de l'ouvrir et la fermer.
 
 ### Préfixe de tables
 

@@ -6,7 +6,7 @@ public class InteractiveNode : ProcessNode
     {
     }
 
-    public override Task<NodeExecutionResult> ExecuteAsync(ProcessContext context)
+    public override Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
     {
         context.Status = ProcessStatus.WaitingInteraction;
         context.CurrentNodeId = Id;

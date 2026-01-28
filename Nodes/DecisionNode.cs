@@ -10,7 +10,7 @@ public class DecisionNode : ProcessNode
         QueryName = queryName;
     }
 
-    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessContext context)
+    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
     {
         try
         {

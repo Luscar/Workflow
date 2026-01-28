@@ -1,3 +1,4 @@
+using Oracle.ManagedDataAccess.Client;
 using SimpleBPM;
 using SimpleBPM.Nodes;
 using SimpleBPM.Persistence;
@@ -8,8 +9,10 @@ var oracleConfig = new OracleConfiguration(
     tablePrefix: "ABC"
 );
 
-var connexionFactory = new OracleConnexionBDFactory(oracleConfig.ConnectionString);
-var repository = new OracleProcessRepository(oracleConfig, connexionFactory);
+using var connection = new OracleConnection(oracleConfig.ConnectionString);
+connection.Open();
+
+var repository = new OracleProcessRepository(oracleConfig, connection);
 await repository.InitializeDatabaseAsync();
 
 ProcessEngine.ConfigureExecutor(new SampleExecutor());

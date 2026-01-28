@@ -6,23 +6,20 @@ namespace SimpleBPM.Persistence;
 public class OracleProcessRepository : IProcessRepository
 {
     private readonly OracleConfiguration _config;
-    private readonly IConnexionBDFactory _connexionFactory;
+    private readonly IDbConnection _connection;
     private readonly string _processContextTable;
     private readonly OracleHistoryRepository _historyRepository;
 
-    public OracleProcessRepository(OracleConfiguration config, IConnexionBDFactory connexionFactory)
+    public OracleProcessRepository(OracleConfiguration config, IDbConnection connection)
     {
         _config = config;
-        _connexionFactory = connexionFactory;
+        _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         _processContextTable = _config.GetTableName("PROCESS_CONTEXT");
-        _historyRepository = new OracleHistoryRepository(config, connexionFactory);
+        _historyRepository = new OracleHistoryRepository(config, connection);
     }
 
     public async Task InitializeDatabaseAsync()
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
-        var connection = connexionBD.Connexion;
-
         var createTableSql = $@"
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE TABLE {_processContextTable} (
@@ -45,9 +42,8 @@ public class OracleProcessRepository : IProcessRepository
                     END IF;
             END;";
 
-        await connection.ExecuteAsync(createTableSql);
+        await _connection.ExecuteAsync(createTableSql);
 
-        // Créer les index avec la nouvelle nomenclature
         var createIndex01Sql = $@"
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE INDEX IX_{_config.TablePrefix}_01_PROCESS_CONTEXT ON {_processContextTable}(ID_AGREGAT)';
@@ -84,25 +80,19 @@ public class OracleProcessRepository : IProcessRepository
                     END IF;
             END;";
 
-        await connection.ExecuteAsync(createIndex01Sql);
-        await connection.ExecuteAsync(createIndex02Sql);
-        await connection.ExecuteAsync(createIndex03Sql);
+        await _connection.ExecuteAsync(createIndex01Sql);
+        await _connection.ExecuteAsync(createIndex02Sql);
+        await _connection.ExecuteAsync(createIndex03Sql);
 
-        connexionBD.Close();
-
-        // Initialiser la table d'historique
         await _historyRepository.InitializeDatabaseAsync();
     }
 
     public async Task SaveProcessContextAsync(ProcessContext context)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
-        var connection = connexionBD.Connexion;
-
         var sql = $@"
-            INSERT INTO {_processContextTable} 
+            INSERT INTO {_processContextTable}
             (ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, STATUT)
-            VALUES 
+            VALUES
             (:IdProcessus, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :Statut)";
 
         var parameters = new
@@ -117,33 +107,28 @@ public class OracleProcessRepository : IProcessRepository
             Statut = (int)context.Status
         };
 
-        await connection.ExecuteAsync(sql, parameters);
-        connexionBD.Close();
+        await _connection.ExecuteAsync(sql, parameters);
     }
 
     public async Task<ProcessContext?> GetProcessContextAsync(string processId)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
-        var connection = connexionBD.Connexion;
-
         var sql = $@"
             SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS = :IdProcessus";
 
-        var result = await connection.QueryFirstOrDefaultAsync<ProcessContextDto>(sql, new { IdProcessus = processId });
-        
+        var result = await _connection.QueryFirstOrDefaultAsync<ProcessContextDto>(sql, new { IdProcessus = processId });
+
         if (result == null)
         {
-            connexionBD.Close();
             return null;
         }
 
         var context = new ProcessContext(result.ID_PROCESSUS)
         {
             AggregateId = result.ID_AGREGAT,
-            Data = string.IsNullOrEmpty(result.DONNEES) 
-                ? new Dictionary<string, object>() 
+            Data = string.IsNullOrEmpty(result.DONNEES)
+                ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>(),
             StartedAt = result.DATE_DEBUT,
             LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
@@ -152,9 +137,6 @@ public class OracleProcessRepository : IProcessRepository
             Status = (ProcessStatus)result.STATUT
         };
 
-        connexionBD.Close();
-
-        // Charger l'historique d'exécution
         context.ExecutionHistory = await _historyRepository.GetHistoryAsync(processId);
 
         return context;
@@ -162,9 +144,6 @@ public class OracleProcessRepository : IProcessRepository
 
     public async Task UpdateProcessContextAsync(ProcessContext context)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
-        var connection = connexionBD.Connexion;
-
         var sql = $@"
             UPDATE {_processContextTable}
             SET ID_AGREGAT = :IdAgregat,
@@ -186,13 +165,11 @@ public class OracleProcessRepository : IProcessRepository
             IdProcessus = context.ProcessId
         };
 
-        await connection.ExecuteAsync(sql, parameters);
-        connexionBD.Close();
+        await _connection.ExecuteAsync(sql, parameters);
 
-        // Sauvegarder les nouvelles entrées d'historique
         var existingHistory = await _historyRepository.GetHistoryAsync(context.ProcessId);
         var newHistories = context.ExecutionHistory.Skip(existingHistory.Count).ToList();
-        
+
         if (newHistories.Count > 0)
         {
             await _historyRepository.SaveHistoryBatchAsync(context.ProcessId, newHistories);
@@ -201,13 +178,8 @@ public class OracleProcessRepository : IProcessRepository
 
     public async Task DeleteProcessContextAsync(string processId)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
-        var connection = connexionBD.Connexion;
-
         var sql = $@"DELETE FROM {_processContextTable} WHERE ID_PROCESSUS = :IdProcessus";
-
-        await connection.ExecuteAsync(sql, new { IdProcessus = processId });
-        connexionBD.Close();
+        await _connection.ExecuteAsync(sql, new { IdProcessus = processId });
     }
 
     private class ProcessContextDto

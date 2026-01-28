@@ -4,34 +4,30 @@ public class SubProcessNode : ProcessNode
 {
     public ProcessDefinition SubProcessDefinition { get; set; }
     public bool InheritAggregateId { get; set; } = true;
-    public bool SaveSubProcessState { get; set; } = true;
 
     public SubProcessNode(ProcessDefinition subProcessDefinition) : base(NodeType.SubProcess)
     {
         SubProcessDefinition = subProcessDefinition;
     }
 
-    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessContext context)
+    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
     {
         try
         {
-            var subProcessManager = ProcessEngine.GetSubProcessManager();
-            
             // Vérifier si un sous-processus existe déjà (reprise après arrêt)
-            var existingSubProcessId = context.Data.ContainsKey($"SUB_PROCESS_{Id}") 
-                ? context.Data[$"SUB_PROCESS_{Id}"]?.ToString() 
+            var existingSubProcessId = context.Data.ContainsKey($"SUB_PROCESS_{Id}")
+                ? context.Data[$"SUB_PROCESS_{Id}"]?.ToString()
                 : null;
 
             ProcessContext subContext;
             string subProcessId;
 
-            if (!string.IsNullOrEmpty(existingSubProcessId) && subProcessManager != null)
+            if (!string.IsNullOrEmpty(existingSubProcessId) && repository != null)
             {
                 // Reprendre un sous-processus existant
-                subContext = await subProcessManager.GetSubProcessContextAsync(context.ProcessId, existingSubProcessId);
-                subProcessId = existingSubProcessId;
+                var loadedContext = await repository.GetProcessContextAsync(existingSubProcessId);
 
-                if (subContext == null)
+                if (loadedContext == null)
                 {
                     return new NodeExecutionResult
                     {
@@ -39,13 +35,16 @@ public class SubProcessNode : ProcessNode
                         ErrorMessage = $"Sub-process {existingSubProcessId} not found"
                     };
                 }
+
+                subContext = loadedContext;
+                subProcessId = existingSubProcessId;
             }
             else
             {
                 // Créer un nouveau sous-processus
                 subProcessId = $"{context.ProcessId}_SUB_{Id}_{Guid.NewGuid():N}";
                 subContext = new ProcessContext(
-                    subProcessId, 
+                    subProcessId,
                     InheritAggregateId ? context.AggregateId : null
                 );
 
@@ -60,8 +59,8 @@ public class SubProcessNode : ProcessNode
                 }
             }
 
-            // Créer un moteur pour le sous-processus
-            var subEngine = new ProcessEngine(SubProcessDefinition);
+            // Créer un moteur pour le sous-processus avec le même repository
+            var subEngine = new ProcessEngine(SubProcessDefinition, repository);
 
             // Exécuter ou continuer le sous-processus
             if (string.IsNullOrEmpty(existingSubProcessId))
@@ -88,14 +87,9 @@ public class SubProcessNode : ProcessNode
                 subContext.Status == ProcessStatus.WaitingDate ||
                 subContext.Status == ProcessStatus.WaitingSignal)
             {
-                // Sauvegarder l'ID et le contexte du sous-processus
+                // Sauvegarder l'ID du sous-processus dans le contexte parent
                 context.Data[$"SUB_PROCESS_{Id}"] = subProcessId;
-                
-                if (SaveSubProcessState && subProcessManager != null)
-                {
-                    await subProcessManager.SaveSubProcessContextAsync(context.ProcessId, subProcessId, subContext);
-                }
-                
+
                 return new NodeExecutionResult
                 {
                     IsCompleted = true,
@@ -117,10 +111,11 @@ public class SubProcessNode : ProcessNode
 
             // Nettoyer les données du sous-processus
             context.Data.Remove($"SUB_PROCESS_{Id}");
-            
-            if (subProcessManager != null && !string.IsNullOrEmpty(existingSubProcessId))
+
+            // Supprimer le contexte du sous-processus de la base de données
+            if (repository != null && !string.IsNullOrEmpty(existingSubProcessId))
             {
-                await subProcessManager.DeleteSubProcessContextAsync(context.ProcessId, existingSubProcessId);
+                await repository.DeleteProcessContextAsync(existingSubProcessId);
             }
 
             return new NodeExecutionResult

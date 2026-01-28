@@ -6,21 +6,18 @@ namespace SimpleBPM.Persistence;
 public class OracleHistoryRepository
 {
     private readonly OracleConfiguration _config;
-    private readonly IConnexionBDFactory _connexionFactory;
+    private readonly IDbConnection _connection;
     private readonly string _historyTable;
 
-    public OracleHistoryRepository(OracleConfiguration config, IConnexionBDFactory connexionFactory)
+    public OracleHistoryRepository(OracleConfiguration config, IDbConnection connection)
     {
         _config = config;
-        _connexionFactory = connexionFactory;
+        _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         _historyTable = _config.GetTableName("HISTORIQUE_EXECUTION_NOEUD");
     }
 
     public async Task InitializeDatabaseAsync()
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
-        var connection = connexionBD.Connexion;
-
         var createTableSql = $@"
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE TABLE {_historyTable} (
@@ -35,9 +32,9 @@ public class OracleHistoryRepository
                     SUCCES NUMBER(1) NOT NULL,
                     MESSAGE_ERREUR VARCHAR2(4000),
                     ID_NOEUD_SUIVANT VARCHAR2(255),
-                    CONSTRAINT FK_{_config.TablePrefix}_HIST_PROC 
-                        FOREIGN KEY (ID_PROCESSUS) 
-                        REFERENCES {_config.GetTableName("PROCESS_CONTEXT")}(ID_PROCESSUS) 
+                    CONSTRAINT FK_{_config.TablePrefix}_HIST_PROC
+                        FOREIGN KEY (ID_PROCESSUS)
+                        REFERENCES {_config.GetTableName("PROCESS_CONTEXT")}(ID_PROCESSUS)
                         ON DELETE CASCADE
                 )';
             EXCEPTION
@@ -49,9 +46,8 @@ public class OracleHistoryRepository
                     END IF;
             END;";
 
-        await connection.ExecuteAsync(createTableSql);
+        await _connection.ExecuteAsync(createTableSql);
 
-        // Créer les index avec la nouvelle nomenclature
         var createIndex01Sql = $@"
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE INDEX IX_{_config.TablePrefix}_01_HISTORIQUE_EXECUTION_NOEUD ON {_historyTable}(ID_PROCESSUS)';
@@ -88,22 +84,17 @@ public class OracleHistoryRepository
                     END IF;
             END;";
 
-        await connection.ExecuteAsync(createIndex01Sql);
-        await connection.ExecuteAsync(createIndex02Sql);
-        await connection.ExecuteAsync(createIndex03Sql);
-        
-        connexionBD.Close();
+        await _connection.ExecuteAsync(createIndex01Sql);
+        await _connection.ExecuteAsync(createIndex02Sql);
+        await _connection.ExecuteAsync(createIndex03Sql);
     }
 
     public async Task SaveHistoryAsync(string processId, NodeExecutionHistory history)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
-        var connection = connexionBD.Connexion;
-
         var sql = $@"
-            INSERT INTO {_historyTable} 
+            INSERT INTO {_historyTable}
             (ID_HISTORIQUE, ID_PROCESSUS, ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DATE_DEBUT, DATE_FIN, DUREE_MS, SUCCES, MESSAGE_ERREUR, ID_NOEUD_SUIVANT)
-            VALUES 
+            VALUES
             (:IdHistorique, :IdProcessus, :IdNoeud, :NomNoeud, :TypeNoeud, :DateDebut, :DateFin, :DureeMs, :Succes, :MessageErreur, :IdNoeudSuivant)";
 
         var parameters = new
@@ -121,21 +112,17 @@ public class OracleHistoryRepository
             IdNoeudSuivant = history.NextNodeId
         };
 
-        await connection.ExecuteAsync(sql, parameters);
-        connexionBD.Close();
+        await _connection.ExecuteAsync(sql, parameters);
     }
 
     public async Task SaveHistoryBatchAsync(string processId, List<NodeExecutionHistory> histories)
     {
         if (histories.Count == 0) return;
 
-        using var connexionBD = _connexionFactory.CreateConnexion();
-        var connection = connexionBD.Connexion;
-
         var sql = $@"
-            INSERT INTO {_historyTable} 
+            INSERT INTO {_historyTable}
             (ID_HISTORIQUE, ID_PROCESSUS, ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DATE_DEBUT, DATE_FIN, DUREE_MS, SUCCES, MESSAGE_ERREUR, ID_NOEUD_SUIVANT)
-            VALUES 
+            VALUES
             (:IdHistorique, :IdProcessus, :IdNoeud, :NomNoeud, :TypeNoeud, :DateDebut, :DateFin, :DureeMs, :Succes, :MessageErreur, :IdNoeudSuivant)";
 
         var parametersList = histories.Select(history => new
@@ -153,23 +140,19 @@ public class OracleHistoryRepository
             IdNoeudSuivant = history.NextNodeId
         }).ToList();
 
-        await connection.ExecuteAsync(sql, parametersList);
-        connexionBD.Close();
+        await _connection.ExecuteAsync(sql, parametersList);
     }
 
     public async Task<List<NodeExecutionHistory>> GetHistoryAsync(string processId)
     {
-        using var connexionBD = _connexionFactory.CreateConnexion();
-        var connection = connexionBD.Connexion;
-
         var sql = $@"
             SELECT ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DATE_DEBUT, DATE_FIN, SUCCES, MESSAGE_ERREUR, ID_NOEUD_SUIVANT
             FROM {_historyTable}
             WHERE ID_PROCESSUS = :IdProcessus
             ORDER BY DATE_DEBUT";
 
-        var results = await connection.QueryAsync<NodeExecutionHistoryDto>(sql, new { IdProcessus = processId });
-        
+        var results = await _connection.QueryAsync<NodeExecutionHistoryDto>(sql, new { IdProcessus = processId });
+
         var histories = new List<NodeExecutionHistory>();
         foreach (var result in results)
         {
@@ -190,7 +173,6 @@ public class OracleHistoryRepository
             histories.Add(history);
         }
 
-        connexionBD.Close();
         return histories;
     }
 

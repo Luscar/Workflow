@@ -19,7 +19,7 @@ public class WaitUntilDateNode : ProcessNode
         DateProvider = dateProvider;
     }
 
-    public override Task<NodeExecutionResult> ExecuteAsync(ProcessContext context)
+    public override Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
     {
         var targetDate = TargetDate ?? DateProvider?.Invoke(context);
 

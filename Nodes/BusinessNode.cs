@@ -11,7 +11,7 @@ public class BusinessNode : ProcessNode
         IsQuery = isQuery;
     }
 
-    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessContext context)
+    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
     {
         try
         {
