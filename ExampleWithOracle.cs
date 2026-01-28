@@ -1,3 +1,4 @@
+using Oracle.ManagedDataAccess.Client;
 using SimpleBPM;
 using SimpleBPM.Nodes;
 using SimpleBPM.Persistence;
@@ -8,11 +9,12 @@ var oracleConfig = new OracleConfiguration(
     tablePrefix: "ABC" // Préfixe de 3 à 10 lettres
 );
 
-// Créer la factory de connexion
-var connexionFactory = new OracleConnexionBDFactory(oracleConfig.ConnectionString);
+// Connexion gérée par le client
+using var connection = new OracleConnection(oracleConfig.ConnectionString);
+connection.Open();
 
-// Créer le repository avec la factory
-var repository = new OracleProcessRepository(oracleConfig, connexionFactory);
+// Créer le repository avec la connexion
+var repository = new OracleProcessRepository(oracleConfig, connection);
 
 // Initialiser la base de données (créer les tables si nécessaire)
 await repository.InitializeDatabaseAsync();

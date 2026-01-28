@@ -44,9 +44,9 @@ Voir `ExampleWithSubProcess.cs` pour un exemple complet.
 
 La librairie supporte la persistance dans Oracle avec préfixe de tables personnalisable.
 
-### Configuration avec Factory (par défaut)
+### Configuration
 
-Crée une nouvelle connexion à chaque opération (recommandé pour la plupart des cas).
+Le repository accepte une `IDbConnection` injectée par le client, compatible avec les containers DI.
 
 ```csharp
 var oracleConfig = new OracleConfiguration(
@@ -54,34 +54,29 @@ var oracleConfig = new OracleConfiguration(
     tablePrefix: "ABC" // Préfixe de 3 à 10 lettres
 );
 
-var connexionFactory = new OracleConnexionBDFactory(oracleConfig.ConnectionString);
-var repository = new OracleProcessRepository(oracleConfig, connexionFactory);
+// Connexion gérée par le client
+using var connection = new OracleConnection(oracleConfig.ConnectionString);
+connection.Open();
+
+var repository = new OracleProcessRepository(oracleConfig, connection);
 await repository.InitializeDatabaseAsync();
 ```
 
-### Configuration avec connexion externe (injection)
-
-Réutilise une connexion existante fournie par le client. Utile pour :
-- Partager une connexion/transaction avec d'autres opérations
-- Intégration avec un container DI qui gère le cycle de vie des connexions
-- Utiliser une connexion dans un scope de transaction existant
+### Avec Dependency Injection
 
 ```csharp
-// Connexion gérée par le client (ex: depuis un DI container)
-using var connection = new OracleConnection(connectionString);
-connection.Open();
-
-// Le repository réutilise cette connexion sans la fermer
-var repository = new OracleProcessRepository(oracleConfig, connection);
-
-// La connexion reste ouverte après les opérations du repository
-await repository.SaveProcessContextAsync(context);
-
-// Le client est responsable de fermer la connexion
-connection.Close();
+// Program.cs / Startup.cs
+services.AddScoped<IDbConnection>(sp =>
+{
+    var conn = new OracleConnection(connectionString);
+    conn.Open();
+    return conn;
+});
+services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(connectionString, "BPM"));
+services.AddScoped<IProcessRepository, OracleProcessRepository>();
 ```
 
-**Note** : Avec l'injection de connexion, le repository ne ferme jamais la connexion. C'est la responsabilité du client de gérer son cycle de vie.
+**Note** : Le repository ne gère pas le cycle de vie de la connexion. C'est la responsabilité du client (ou du container DI) de l'ouvrir et la fermer.
 
 ### Préfixe de tables
 
