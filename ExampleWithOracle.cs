@@ -56,24 +56,24 @@ processDefinition
 var engine = new ProcessEngine(processDefinition, repository);
 
 // Démarrer un nouveau processus
-var context = new ProcessContext("order-123", "aggregate-456");
-context = await engine.ExecuteAsync(context);
-Console.WriteLine($"Status: {context.Status}, Current Node: {context.CurrentNodeId}");
-// Le contexte est automatiquement sauvegardé dans Oracle avec le préfixe ABC_PROCESS_CONTEXT
+var instance = new ProcessInstance("order-123", "aggregate-456");
+instance = await engine.ExecuteAsync(instance);
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
+// L'instance est automatiquement sauvegardée dans Oracle avec le préfixe ABC_PROCESS_CONTEXT
 
 // Plus tard, charger le processus depuis la base de données
-var loadedContext = await engine.LoadProcessAsync("order-123");
-if (loadedContext != null)
+var loadedInstance = await engine.LoadProcessAsync("order-123");
+if (loadedInstance != null)
 {
-    Console.WriteLine($"Loaded process - Status: {loadedContext.Status}");
-    
+    Console.WriteLine($"Loaded process - Status: {loadedInstance.Status}");
+
     // Envoyer un signal
-    loadedContext = await engine.SignalAsync(loadedContext, "PaymentReceived");
-    Console.WriteLine($"After signal - Status: {loadedContext.Status}");
-    
+    loadedInstance = await engine.SignalAsync(loadedInstance, "PaymentReceived");
+    Console.WriteLine($"After signal - Status: {loadedInstance.Status}");
+
     // Continuer l'exécution
-    loadedContext = await engine.ContinueAsync(loadedContext);
-    Console.WriteLine($"Final - Status: {loadedContext.Status}");
+    loadedInstance = await engine.ContinueAsync(loadedInstance);
+    Console.WriteLine($"Final - Status: {loadedInstance.Status}");
 }
 
 // Exemple d'implémentation d'un exécuteur

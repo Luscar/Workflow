@@ -55,16 +55,16 @@ processDefinition
 
 // Exécution
 var engine = new ProcessEngine(processDefinition);
-var context = new ProcessContext("order-123", "aggregate-456");
+var instance = new ProcessInstance("order-123", "aggregate-456");
 
 // Première exécution - s'arrêtera au premier nœud d'attente/interactif
-context = await engine.ExecuteAsync(context);
-Console.WriteLine($"Status: {context.Status}, Current Node: {context.CurrentNodeId}");
+instance = await engine.ExecuteAsync(instance);
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
 
 // Simuler la réception d'un signal
-context = await engine.SignalAsync(context, "PaymentReceived");
-Console.WriteLine($"Status: {context.Status}, Current Node: {context.CurrentNodeId}");
+instance = await engine.SignalAsync(instance, "PaymentReceived");
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
 
 // Continuer après interaction utilisateur
-context = await engine.ContinueAsync(context);
-Console.WriteLine($"Status: {context.Status}, Current Node: {context.CurrentNodeId}");
+instance = await engine.ContinueAsync(instance);
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");

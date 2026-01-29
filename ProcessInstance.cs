@@ -1,6 +1,6 @@
 namespace SimpleBPM;
 
-public class ProcessContext
+public class ProcessInstance
 {
     public string ProcessId { get; set; }
     public string? AggregateId { get; set; }
@@ -12,7 +12,7 @@ public class ProcessContext
     public ProcessStatus Status { get; set; }
     public List<NodeExecutionHistory> ExecutionHistory { get; set; } = new();
 
-    public ProcessContext(string processId, string? aggregateId = null)
+    public ProcessInstance(string processId, string? aggregateId = null)
     {
         ProcessId = processId;
         AggregateId = aggregateId;
@@ -21,11 +21,11 @@ public class ProcessContext
     }
 
     public TimeSpan? TotalDuration => CompletedAt.HasValue ? CompletedAt.Value - StartedAt : null;
-    
+
     public TimeSpan CurrentDuration => DateTime.UtcNow - StartedAt;
 
     public int CompletedStepsCount => ExecutionHistory.Count(h => h.Success);
-    
+
     public int FailedStepsCount => ExecutionHistory.Count(h => !h.Success);
 }
 

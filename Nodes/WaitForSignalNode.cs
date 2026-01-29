@@ -9,11 +9,11 @@ public class WaitForSignalNode : ProcessNode
         SignalName = signalName;
     }
 
-    public override Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
+    public override Task<NodeExecutionResult> ExecuteAsync(ProcessInstance instance, Persistence.IProcessRepository? repository = null)
     {
-        context.Status = ProcessStatus.WaitingSignal;
-        context.CurrentNodeId = Id;
-        context.Data["WaitingForSignal"] = SignalName;
+        instance.Status = ProcessStatus.WaitingSignal;
+        instance.CurrentNodeId = Id;
+        instance.Data["WaitingForSignal"] = SignalName;
 
         return Task.FromResult(new NodeExecutionResult
         {

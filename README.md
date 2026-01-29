@@ -171,7 +171,7 @@ services.AddScoped<IProcessRepository, OracleProcessRepository>();
 
 ### Tables créées
 
-- `{PREFIX}_PROCESS_CONTEXT` : Stocke les contextes d'exécution des processus
+- `{PREFIX}_PROCESS_CONTEXT` : Stocke les instances d'exécution des processus
 - `{PREFIX}_HISTORIQUE_EXECUTION_NOEUD` : Historique détaillé de chaque étape
 
 ## Utilisation
@@ -189,13 +189,13 @@ Voir `ExampleWithOracle.cs` pour un exemple complet avec Oracle.
 var engine = new ProcessEngine(processDefinition, repository);
 
 // Exécuter un processus (sauvegardé automatiquement)
-var context = await engine.ExecuteAsync(new ProcessContext("order-123"));
+var instance = await engine.ExecuteAsync(new ProcessInstance("order-123"));
 
 // Charger un processus existant
-var loadedContext = await engine.LoadProcessAsync("order-123");
+var loadedInstance = await engine.LoadProcessAsync("order-123");
 
 // Continuer l'exécution
-await engine.ContinueAsync(loadedContext);
+await engine.ContinueAsync(loadedInstance);
 ```
 
 ### Avec historique
@@ -207,7 +207,7 @@ Voir `ExampleWithHistory.cs` pour voir comment analyser l'historique d'exécutio
 - Le processus s'exécute nœud par nœud jusqu'à rencontrer un nœud d'arrêt ou la fin naturelle
 - Les nœuds métier et décisionnels appellent des commandes/queries via leur nom et l'ID du processus/agrégat
 - L'application cliente implémente `ICommandQueryExecutor` pour définir comment exécuter les commandes/queries
-- Le contexte est automatiquement sauvegardé/mis à jour dans Oracle après chaque exécution
+- L'instance est automatiquement sauvegardée/mise à jour dans Oracle après chaque exécution
 - Les sous-processus peuvent être imbriqués et sont gérés de manière transparente
 
 ## Script SQL

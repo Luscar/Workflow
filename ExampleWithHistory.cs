@@ -41,17 +41,17 @@ processDefinition
 var engine = new ProcessEngine(processDefinition, repository);
 
 // Exécuter le processus
-var context = new ProcessContext("order-123", "aggregate-456");
-context = await engine.ExecuteAsync(context);
+var instance = new ProcessInstance("order-123", "aggregate-456");
+instance = await engine.ExecuteAsync(instance);
 
 Console.WriteLine("=== État du processus ===");
-Console.WriteLine($"Status: {context.Status}");
-Console.WriteLine($"Durée actuelle: {context.CurrentDuration}");
-Console.WriteLine($"Étapes complétées: {context.CompletedStepsCount}");
-Console.WriteLine($"Étapes échouées: {context.FailedStepsCount}");
+Console.WriteLine($"Status: {instance.Status}");
+Console.WriteLine($"Durée actuelle: {instance.CurrentDuration}");
+Console.WriteLine($"Étapes complétées: {instance.CompletedStepsCount}");
+Console.WriteLine($"Étapes échouées: {instance.FailedStepsCount}");
 
 Console.WriteLine("\n=== Historique d'exécution ===");
-foreach (var history in context.ExecutionHistory)
+foreach (var history in instance.ExecutionHistory)
 {
     Console.WriteLine($"Nœud: {history.NodeName} ({history.NodeType})");
     Console.WriteLine($"  Début: {history.StartedAt:yyyy-MM-dd HH:mm:ss.fff}");
@@ -68,30 +68,30 @@ foreach (var history in context.ExecutionHistory)
 
 // Simuler l'attente et continuer
 await Task.Delay(1000);
-context = await engine.SignalAsync(context, "PaymentReceived");
+instance = await engine.SignalAsync(instance, "PaymentReceived");
 
 Console.WriteLine("\n=== Après signal ===");
-Console.WriteLine($"Status: {context.Status}");
-Console.WriteLine($"Nouvelles étapes exécutées: {context.ExecutionHistory.Count}");
+Console.WriteLine($"Status: {instance.Status}");
+Console.WriteLine($"Nouvelles étapes exécutées: {instance.ExecutionHistory.Count}");
 
 // Charger depuis la base de données plus tard
-var loadedContext = await engine.LoadProcessAsync("order-123");
-if (loadedContext != null)
+var loadedInstance = await engine.LoadProcessAsync("order-123");
+if (loadedInstance != null)
 {
-    Console.WriteLine("\n=== Contexte rechargé depuis Oracle ===");
-    Console.WriteLine($"Process ID: {loadedContext.ProcessId}");
-    Console.WriteLine($"Démarré le: {loadedContext.StartedAt}");
-    Console.WriteLine($"Dernière exécution: {loadedContext.LastExecutedAt}");
-    if (loadedContext.CompletedAt.HasValue)
+    Console.WriteLine("\n=== Instance rechargée depuis Oracle ===");
+    Console.WriteLine($"Process ID: {loadedInstance.ProcessId}");
+    Console.WriteLine($"Démarré le: {loadedInstance.StartedAt}");
+    Console.WriteLine($"Dernière exécution: {loadedInstance.LastExecutedAt}");
+    if (loadedInstance.CompletedAt.HasValue)
     {
-        Console.WriteLine($"Complété le: {loadedContext.CompletedAt}");
-        Console.WriteLine($"Durée totale: {loadedContext.TotalDuration?.TotalSeconds:F2} secondes");
+        Console.WriteLine($"Complété le: {loadedInstance.CompletedAt}");
+        Console.WriteLine($"Durée totale: {loadedInstance.TotalDuration?.TotalSeconds:F2} secondes");
     }
-    
-    Console.WriteLine($"\nNombre total d'étapes: {loadedContext.ExecutionHistory.Count}");
-    
+
+    Console.WriteLine($"\nNombre total d'étapes: {loadedInstance.ExecutionHistory.Count}");
+
     // Afficher un résumé par type de nœud
-    var summary = loadedContext.ExecutionHistory
+    var summary = loadedInstance.ExecutionHistory
         .GroupBy(h => h.NodeType)
         .Select(g => new
         {

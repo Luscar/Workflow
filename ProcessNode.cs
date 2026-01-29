@@ -23,7 +23,7 @@ public abstract class ProcessNode
         Id = Guid.NewGuid().ToString();
     }
 
-    public abstract Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null);
+    public abstract Task<NodeExecutionResult> ExecuteAsync(ProcessInstance context, Persistence.IProcessRepository? repository = null);
 }
 
 public class NodeExecutionResult

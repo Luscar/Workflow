@@ -10,12 +10,12 @@ public class DecisionNode : ProcessNode
         QueryName = queryName;
     }
 
-    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
+    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessInstance instance, Persistence.IProcessRepository? repository = null)
     {
         try
         {
             var executor = ProcessEngine.GetCommandQueryExecutor();
-            
+
             if (executor == null)
             {
                 return new NodeExecutionResult
@@ -25,7 +25,7 @@ public class DecisionNode : ProcessNode
                 };
             }
 
-            var decisionResult = await executor.ExecuteDecisionAsync(QueryName, context.ProcessId, context.AggregateId);
+            var decisionResult = await executor.ExecuteDecisionAsync(QueryName, instance.ProcessId, instance.AggregateId);
 
             if (ConditionToNodeId.TryGetValue(decisionResult, out var nextNodeId))
             {

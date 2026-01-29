@@ -27,16 +27,16 @@ public class ProcessEngine
         return _commandQueryExecutor;
     }
 
-    public async Task<ProcessContext> ExecuteAsync(ProcessContext context)
+    public async Task<ProcessInstance> ExecuteAsync(ProcessInstance context)
     {
         context.LastExecutedAt = DateTime.UtcNow;
 
         if (_repository != null)
         {
-            var existingContext = await _repository.GetProcessContextAsync(context.ProcessId);
+            var existingContext = await _repository.GetProcessInstanceAsync(context.ProcessId);
             if (existingContext == null)
             {
-                await _repository.SaveProcessContextAsync(context);
+                await _repository.SaveProcessInstanceAsync(context);
             }
         }
 
@@ -51,7 +51,7 @@ public class ProcessEngine
                 context.Status = ProcessStatus.Failed;
                 if (_repository != null)
                 {
-                    await _repository.UpdateProcessContextAsync(context);
+                    await _repository.UpdateProcessInstanceAsync(context);
                 }
                 return context;
             }
@@ -70,7 +70,7 @@ public class ProcessEngine
                 context.Status = ProcessStatus.Failed;
                 if (_repository != null)
                 {
-                    await _repository.UpdateProcessContextAsync(context);
+                    await _repository.UpdateProcessInstanceAsync(context);
                 }
                 return context;
             }
@@ -80,7 +80,7 @@ public class ProcessEngine
                 context.CurrentNodeId = result.NextNodeId;
                 if (_repository != null)
                 {
-                    await _repository.UpdateProcessContextAsync(context);
+                    await _repository.UpdateProcessInstanceAsync(context);
                 }
                 return context;
             }
@@ -93,12 +93,12 @@ public class ProcessEngine
         context.CompletedAt = DateTime.UtcNow;
         if (_repository != null)
         {
-            await _repository.UpdateProcessContextAsync(context);
+            await _repository.UpdateProcessInstanceAsync(context);
         }
         return context;
     }
 
-    public async Task<ProcessContext> ContinueAsync(ProcessContext context)
+    public async Task<ProcessInstance> ContinueAsync(ProcessInstance context)
     {
         if (context.Status == ProcessStatus.Completed || context.Status == ProcessStatus.Failed)
         {
@@ -110,7 +110,7 @@ public class ProcessEngine
             context.Status = ProcessStatus.Failed;
             if (_repository != null)
             {
-                await _repository.UpdateProcessContextAsync(context);
+                await _repository.UpdateProcessInstanceAsync(context);
             }
             return context;
         }
@@ -125,7 +125,7 @@ public class ProcessEngine
             context.CompletedAt = DateTime.UtcNow;
             if (_repository != null)
             {
-                await _repository.UpdateProcessContextAsync(context);
+                await _repository.UpdateProcessInstanceAsync(context);
             }
             return context;
         }
@@ -136,7 +136,7 @@ public class ProcessEngine
         return await ExecuteAsync(context);
     }
 
-    public async Task<ProcessContext> SignalAsync(ProcessContext context, string signalName)
+    public async Task<ProcessInstance> SignalAsync(ProcessInstance context, string signalName)
     {
         if (context.Status != ProcessStatus.WaitingSignal)
         {
@@ -152,13 +152,13 @@ public class ProcessEngine
         return context;
     }
 
-    public async Task<ProcessContext?> LoadProcessAsync(string processId)
+    public async Task<ProcessInstance?> LoadProcessAsync(string processId)
     {
         if (_repository == null)
         {
             throw new InvalidOperationException("No repository configured");
         }
 
-        return await _repository.GetProcessContextAsync(processId);
+        return await _repository.GetProcessInstanceAsync(processId);
     }
 }

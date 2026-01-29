@@ -110,15 +110,15 @@ Console.WriteLine();
 Console.WriteLine("=== Exécution du processus ===\n");
 
 var engine = new ProcessEngine(processFromBuilder);
-var context = new ProcessContext("order-789", "aggregate-123");
+var instance = new ProcessInstance("order-789", "aggregate-123");
 
-context = await engine.ExecuteAsync(context);
+instance = await engine.ExecuteAsync(instance);
 
-Console.WriteLine($"Statut: {context.Status}");
-Console.WriteLine($"Nœud courant: {context.CurrentNodeId}");
-Console.WriteLine($"Étapes exécutées: {context.ExecutionHistory.Count}");
+Console.WriteLine($"Statut: {instance.Status}");
+Console.WriteLine($"Nœud courant: {instance.CurrentNodeId}");
+Console.WriteLine($"Étapes exécutées: {instance.ExecutionHistory.Count}");
 
-foreach (var history in context.ExecutionHistory)
+foreach (var history in instance.ExecutionHistory)
 {
     Console.WriteLine($"  - {history.NodeName}: {(history.Success ? "OK" : "ERREUR")}");
 }

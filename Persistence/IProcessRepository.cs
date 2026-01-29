@@ -2,8 +2,8 @@ namespace SimpleBPM.Persistence;
 
 public interface IProcessRepository
 {
-    Task SaveProcessContextAsync(ProcessContext context);
-    Task<ProcessContext?> GetProcessContextAsync(string processId);
-    Task UpdateProcessContextAsync(ProcessContext context);
-    Task DeleteProcessContextAsync(string processId);
+    Task SaveProcessInstanceAsync(ProcessInstance instance);
+    Task<ProcessInstance?> GetProcessInstanceAsync(string processId);
+    Task UpdateProcessInstanceAsync(ProcessInstance instance);
+    Task DeleteProcessInstanceAsync(string processId);
 }

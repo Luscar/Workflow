@@ -52,43 +52,43 @@ mainProcessDefinition
 // ========================================
 var engine = new ProcessEngine(mainProcessDefinition);
 
-var context = new ProcessContext("order-456", "aggregate-789");
+var instance = new ProcessInstance("order-456", "aggregate-789");
 
 // Ajouter des données d'entrée pour le sous-processus
-context.Data["SUB_INPUT_OrderAmount"] = 1500.00;
-context.Data["SUB_INPUT_CustomerType"] = "Premium";
+instance.Data["SUB_INPUT_OrderAmount"] = 1500.00;
+instance.Data["SUB_INPUT_CustomerType"] = "Premium";
 
 Console.WriteLine("=== Démarrage du processus principal ===");
-context = await engine.ExecuteAsync(context);
+instance = await engine.ExecuteAsync(instance);
 
-Console.WriteLine($"Statut: {context.Status}");
-Console.WriteLine($"Nœud courant: {context.CurrentNodeId}");
-Console.WriteLine($"Nombre d'étapes exécutées: {context.ExecutionHistory.Count}");
+Console.WriteLine($"Statut: {instance.Status}");
+Console.WriteLine($"Nœud courant: {instance.CurrentNodeId}");
+Console.WriteLine($"Nombre d'étapes exécutées: {instance.ExecutionHistory.Count}");
 
 // Afficher l'historique
 Console.WriteLine("\n=== Historique d'exécution ===");
-foreach (var history in context.ExecutionHistory)
+foreach (var history in instance.ExecutionHistory)
 {
     Console.WriteLine($"- {history.NodeName} ({history.NodeType}): {history.Duration.TotalMilliseconds:F0}ms - Succès: {history.Success}");
 }
 
 // Si le processus est en attente (à cause de l'approbation manuelle dans le sous-processus)
-if (context.Status == ProcessStatus.WaitingInteraction)
+if (instance.Status == ProcessStatus.WaitingInteraction)
 {
     Console.WriteLine("\n=== Le processus attend une interaction (approbation manuelle) ===");
     Console.WriteLine("Simulation de l'approbation...");
-    
+
     // Continuer le processus
     await Task.Delay(1000);
-    context = await engine.ContinueAsync(context);
-    
-    Console.WriteLine($"Nouveau statut: {context.Status}");
-    Console.WriteLine($"Nombre total d'étapes: {context.ExecutionHistory.Count}");
+    instance = await engine.ContinueAsync(instance);
+
+    Console.WriteLine($"Nouveau statut: {instance.Status}");
+    Console.WriteLine($"Nombre total d'étapes: {instance.ExecutionHistory.Count}");
 }
 
 // Afficher les données de sortie du sous-processus
 Console.WriteLine("\n=== Données de sortie ===");
-foreach (var kvp in context.Data)
+foreach (var kvp in instance.Data)
 {
     if (kvp.Key.StartsWith("SUB_OUTPUT_"))
     {
@@ -97,10 +97,10 @@ foreach (var kvp in context.Data)
 }
 
 Console.WriteLine("\n=== Résumé final ===");
-Console.WriteLine($"Statut final: {context.Status}");
-if (context.CompletedAt.HasValue)
+Console.WriteLine($"Statut final: {instance.Status}");
+if (instance.CompletedAt.HasValue)
 {
-    Console.WriteLine($"Durée totale: {context.TotalDuration?.TotalSeconds:F2} secondes");
+    Console.WriteLine($"Durée totale: {instance.TotalDuration?.TotalSeconds:F2} secondes");
 }
 
 public class SampleExecutor : ICommandQueryExecutor

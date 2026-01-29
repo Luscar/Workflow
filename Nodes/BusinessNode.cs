@@ -11,12 +11,12 @@ public class BusinessNode : ProcessNode
         IsQuery = isQuery;
     }
 
-    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
+    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessInstance instance, Persistence.IProcessRepository? repository = null)
     {
         try
         {
             var executor = ProcessEngine.GetCommandQueryExecutor();
-            
+
             if (executor == null)
             {
                 return new NodeExecutionResult
@@ -26,7 +26,7 @@ public class BusinessNode : ProcessNode
                 };
             }
 
-            await executor.ExecuteAsync(CommandOrQueryName, context.ProcessId, context.AggregateId, IsQuery);
+            await executor.ExecuteAsync(CommandOrQueryName, instance.ProcessId, instance.AggregateId, IsQuery);
 
             return new NodeExecutionResult
             {

@@ -87,7 +87,7 @@ public class OracleProcessRepository : IProcessRepository
         await _historyRepository.InitializeDatabaseAsync();
     }
 
-    public async Task SaveProcessContextAsync(ProcessContext context)
+    public async Task SaveProcessInstanceAsync(ProcessInstance instance)
     {
         var sql = $@"
             INSERT INTO {_processContextTable}
@@ -97,34 +97,34 @@ public class OracleProcessRepository : IProcessRepository
 
         var parameters = new
         {
-            IdProcessus = context.ProcessId,
-            IdAgregat = context.AggregateId,
-            Donnees = System.Text.Json.JsonSerializer.Serialize(context.Data),
-            DateDebut = context.StartedAt,
-            DateDerniereExecution = context.LastExecutedAt,
-            DateCompletion = context.CompletedAt,
-            IdNoeudCourant = context.CurrentNodeId,
-            Statut = (int)context.Status
+            IdProcessus = instance.ProcessId,
+            IdAgregat = instance.AggregateId,
+            Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Data),
+            DateDebut = instance.StartedAt,
+            DateDerniereExecution = instance.LastExecutedAt,
+            DateCompletion = instance.CompletedAt,
+            IdNoeudCourant = instance.CurrentNodeId,
+            Statut = (int)instance.Status
         };
 
         await _connection.ExecuteAsync(sql, parameters);
     }
 
-    public async Task<ProcessContext?> GetProcessContextAsync(string processId)
+    public async Task<ProcessInstance?> GetProcessInstanceAsync(string processId)
     {
         var sql = $@"
             SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS = :IdProcessus";
 
-        var result = await _connection.QueryFirstOrDefaultAsync<ProcessContextDto>(sql, new { IdProcessus = processId });
+        var result = await _connection.QueryFirstOrDefaultAsync<ProcessInstanceDto>(sql, new { IdProcessus = processId });
 
         if (result == null)
         {
             return null;
         }
 
-        var context = new ProcessContext(result.ID_PROCESSUS)
+        var instance = new ProcessInstance(result.ID_PROCESSUS)
         {
             AggregateId = result.ID_AGREGAT,
             Data = string.IsNullOrEmpty(result.DONNEES)
@@ -137,12 +137,12 @@ public class OracleProcessRepository : IProcessRepository
             Status = (ProcessStatus)result.STATUT
         };
 
-        context.ExecutionHistory = await _historyRepository.GetHistoryAsync(processId);
+        instance.ExecutionHistory = await _historyRepository.GetHistoryAsync(processId);
 
-        return context;
+        return instance;
     }
 
-    public async Task UpdateProcessContextAsync(ProcessContext context)
+    public async Task UpdateProcessInstanceAsync(ProcessInstance instance)
     {
         var sql = $@"
             UPDATE {_processContextTable}
@@ -156,33 +156,33 @@ public class OracleProcessRepository : IProcessRepository
 
         var parameters = new
         {
-            IdAgregat = context.AggregateId,
-            Donnees = System.Text.Json.JsonSerializer.Serialize(context.Data),
-            DateDerniereExecution = context.LastExecutedAt,
-            DateCompletion = context.CompletedAt,
-            IdNoeudCourant = context.CurrentNodeId,
-            Statut = (int)context.Status,
-            IdProcessus = context.ProcessId
+            IdAgregat = instance.AggregateId,
+            Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Data),
+            DateDerniereExecution = instance.LastExecutedAt,
+            DateCompletion = instance.CompletedAt,
+            IdNoeudCourant = instance.CurrentNodeId,
+            Statut = (int)instance.Status,
+            IdProcessus = instance.ProcessId
         };
 
         await _connection.ExecuteAsync(sql, parameters);
 
-        var existingHistory = await _historyRepository.GetHistoryAsync(context.ProcessId);
-        var newHistories = context.ExecutionHistory.Skip(existingHistory.Count).ToList();
+        var existingHistory = await _historyRepository.GetHistoryAsync(instance.ProcessId);
+        var newHistories = instance.ExecutionHistory.Skip(existingHistory.Count).ToList();
 
         if (newHistories.Count > 0)
         {
-            await _historyRepository.SaveHistoryBatchAsync(context.ProcessId, newHistories);
+            await _historyRepository.SaveHistoryBatchAsync(instance.ProcessId, newHistories);
         }
     }
 
-    public async Task DeleteProcessContextAsync(string processId)
+    public async Task DeleteProcessInstanceAsync(string processId)
     {
         var sql = $@"DELETE FROM {_processContextTable} WHERE ID_PROCESSUS = :IdProcessus";
         await _connection.ExecuteAsync(sql, new { IdProcessus = processId });
     }
 
-    private class ProcessContextDto
+    private class ProcessInstanceDto
     {
         public string ID_PROCESSUS { get; set; } = string.Empty;
         public string? ID_AGREGAT { get; set; }

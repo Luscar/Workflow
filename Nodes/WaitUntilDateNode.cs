@@ -3,7 +3,7 @@ namespace SimpleBPM.Nodes;
 public class WaitUntilDateNode : ProcessNode
 {
     public DateTime? TargetDate { get; set; }
-    public Func<ProcessContext, DateTime>? DateProvider { get; set; }
+    public Func<ProcessInstance, DateTime>? DateProvider { get; set; }
     public string? DateKey { get; set; }
 
     public WaitUntilDateNode() : base(NodeType.WaitUntilDate)
@@ -15,25 +15,25 @@ public class WaitUntilDateNode : ProcessNode
         TargetDate = targetDate;
     }
 
-    public WaitUntilDateNode(Func<ProcessContext, DateTime> dateProvider) : base(NodeType.WaitUntilDate)
+    public WaitUntilDateNode(Func<ProcessInstance, DateTime> dateProvider) : base(NodeType.WaitUntilDate)
     {
         DateProvider = dateProvider;
     }
 
     /// <summary>
-    /// Constructeur avec clé de date - récupère la date depuis context.Data[dateKey]
+    /// Constructeur avec clé de date - récupère la date depuis instance.Data[dateKey]
     /// </summary>
     public WaitUntilDateNode(string dateKey) : base(NodeType.WaitUntilDate)
     {
         DateKey = dateKey;
     }
 
-    public override Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
+    public override Task<NodeExecutionResult> ExecuteAsync(ProcessInstance instance, Persistence.IProcessRepository? repository = null)
     {
-        DateTime? targetDate = TargetDate ?? DateProvider?.Invoke(context);
+        DateTime? targetDate = TargetDate ?? DateProvider?.Invoke(instance);
 
         // Essayer de récupérer la date depuis le contexte via DateKey
-        if (targetDate == null && !string.IsNullOrEmpty(DateKey) && context.Data.TryGetValue(DateKey, out var dateValue))
+        if (targetDate == null && !string.IsNullOrEmpty(DateKey) && instance.Data.TryGetValue(DateKey, out var dateValue))
         {
             targetDate = dateValue switch
             {
@@ -62,9 +62,9 @@ public class WaitUntilDateNode : ProcessNode
             });
         }
 
-        context.Status = ProcessStatus.WaitingDate;
-        context.CurrentNodeId = Id;
-        context.Data["WaitUntilDate"] = targetDate.Value;
+        instance.Status = ProcessStatus.WaitingDate;
+        instance.CurrentNodeId = Id;
+        instance.Data["WaitUntilDate"] = targetDate.Value;
 
         return Task.FromResult(new NodeExecutionResult
         {

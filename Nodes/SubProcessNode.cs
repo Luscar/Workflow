@@ -10,24 +10,24 @@ public class SubProcessNode : ProcessNode
         SubProcessDefinition = subProcessDefinition;
     }
 
-    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessContext context, Persistence.IProcessRepository? repository = null)
+    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessInstance instance, Persistence.IProcessRepository? repository = null)
     {
         try
         {
             // Vérifier si un sous-processus existe déjà (reprise après arrêt)
-            var existingSubProcessId = context.Data.ContainsKey($"SUB_PROCESS_{Id}")
-                ? context.Data[$"SUB_PROCESS_{Id}"]?.ToString()
+            var existingSubProcessId = instance.Data.ContainsKey($"SUB_PROCESS_{Id}")
+                ? instance.Data[$"SUB_PROCESS_{Id}"]?.ToString()
                 : null;
 
-            ProcessContext subContext;
+            ProcessInstance subInstance;
             string subProcessId;
 
             if (!string.IsNullOrEmpty(existingSubProcessId) && repository != null)
             {
                 // Reprendre un sous-processus existant
-                var loadedContext = await repository.GetProcessContextAsync(existingSubProcessId);
+                var loadedInstance = await repository.GetProcessInstanceAsync(existingSubProcessId);
 
-                if (loadedContext == null)
+                if (loadedInstance == null)
                 {
                     return new NodeExecutionResult
                     {
@@ -36,25 +36,25 @@ public class SubProcessNode : ProcessNode
                     };
                 }
 
-                subContext = loadedContext;
+                subInstance = loadedInstance;
                 subProcessId = existingSubProcessId;
             }
             else
             {
                 // Créer un nouveau sous-processus
-                subProcessId = $"{context.ProcessId}_SUB_{Id}_{Guid.NewGuid():N}";
-                subContext = new ProcessContext(
+                subProcessId = $"{instance.ProcessId}_SUB_{Id}_{Guid.NewGuid():N}";
+                subInstance = new ProcessInstance(
                     subProcessId,
-                    InheritAggregateId ? context.AggregateId : null
+                    InheritAggregateId ? instance.AggregateId : null
                 );
 
                 // Copier les données du contexte parent marquées pour le sous-processus
-                foreach (var kvp in context.Data)
+                foreach (var kvp in instance.Data)
                 {
                     if (kvp.Key.StartsWith("SUB_INPUT_"))
                     {
                         var keyName = kvp.Key.Replace("SUB_INPUT_", "");
-                        subContext.Data[keyName] = kvp.Value;
+                        subInstance.Data[keyName] = kvp.Value;
                     }
                 }
             }
@@ -65,30 +65,30 @@ public class SubProcessNode : ProcessNode
             // Exécuter ou continuer le sous-processus
             if (string.IsNullOrEmpty(existingSubProcessId))
             {
-                subContext = await subEngine.ExecuteAsync(subContext);
+                subInstance = await subEngine.ExecuteAsync(subInstance);
             }
             else
             {
-                subContext = await subEngine.ContinueAsync(subContext);
+                subInstance = await subEngine.ContinueAsync(subInstance);
             }
 
             // Vérifier le statut du sous-processus
-            if (subContext.Status == ProcessStatus.Failed)
+            if (subInstance.Status == ProcessStatus.Failed)
             {
                 return new NodeExecutionResult
                 {
                     IsCompleted = false,
-                    ErrorMessage = $"Sub-process failed at node {subContext.CurrentNodeId}"
+                    ErrorMessage = $"Sub-process failed at node {subInstance.CurrentNodeId}"
                 };
             }
 
             // Si le sous-processus est en attente, sauvegarder son état
-            if (subContext.Status == ProcessStatus.WaitingInteraction ||
-                subContext.Status == ProcessStatus.WaitingDate ||
-                subContext.Status == ProcessStatus.WaitingSignal)
+            if (subInstance.Status == ProcessStatus.WaitingInteraction ||
+                subInstance.Status == ProcessStatus.WaitingDate ||
+                subInstance.Status == ProcessStatus.WaitingSignal)
             {
                 // Sauvegarder l'ID du sous-processus dans le contexte parent
-                context.Data[$"SUB_PROCESS_{Id}"] = subProcessId;
+                instance.Data[$"SUB_PROCESS_{Id}"] = subProcessId;
 
                 return new NodeExecutionResult
                 {
@@ -100,22 +100,22 @@ public class SubProcessNode : ProcessNode
 
             // Le sous-processus est complété
             // Récupérer les données de sortie du sous-processus
-            foreach (var kvp in subContext.Data)
+            foreach (var kvp in subInstance.Data)
             {
                 if (kvp.Key.StartsWith("OUTPUT_"))
                 {
                     var keyName = kvp.Key.Replace("OUTPUT_", "SUB_OUTPUT_");
-                    context.Data[keyName] = kvp.Value;
+                    instance.Data[keyName] = kvp.Value;
                 }
             }
 
             // Nettoyer les données du sous-processus
-            context.Data.Remove($"SUB_PROCESS_{Id}");
+            instance.Data.Remove($"SUB_PROCESS_{Id}");
 
             // Supprimer le contexte du sous-processus de la base de données
             if (repository != null && !string.IsNullOrEmpty(existingSubProcessId))
             {
-                await repository.DeleteProcessContextAsync(existingSubProcessId);
+                await repository.DeleteProcessInstanceAsync(existingSubProcessId);
             }
 
             return new NodeExecutionResult
