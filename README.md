@@ -237,38 +237,60 @@ La migration mappe les nœuds par **nom** (pas par ID interne). Si un nœud cons
 
 ### Exemple
 
+#### Fichier JSON de migration
+
+```json
+{
+    "fromVersion": "1.0",
+    "toVersion": "2.0",
+    "nodeMappings": {
+        "Review": "DetailedReview"
+    },
+    "variableTransforms": [
+        { "type": "set", "name": "MigratedFromV1", "value": true },
+        { "type": "rename", "name": "OldStatus", "newName": "ReviewStatus" },
+        { "type": "remove", "name": "DeprecatedFlag" }
+    ]
+}
+```
+
+#### Chargement et application
+
 ```csharp
 using SimpleBPM.Migration;
 
-// Définir les deux versions
-var v1 = ProcessBuilder.Create("OrderProcess", "1.0")
-    .Business("Validate", "Valider")
-    .Interactive("Review", "Revue")
-    .Business("Complete", "Fin")
-    .Build();
+// Charger depuis JSON
+var migration = ProcessMigrationLoader.FromJsonFile("migrations/v1_to_v2.json");
 
-var v2 = ProcessBuilder.Create("OrderProcess", "2.0")
-    .Business("Validate", "Valider")
-    .Interactive("DetailedReview", "Revue détaillée")
-    .Business("Complete", "Fin")
-    .Build();
-
-// Configurer la migration
-var migration = new ProcessMigration("1.0", "2.0")
-    .MapNode("Review", "DetailedReview")
-    .TransformVariables(vars =>
-    {
-        vars["MigratedFromV1"] = true;
-    });
+// Ou depuis une chaîne JSON
+var migration = ProcessMigrationLoader.FromJson(jsonString);
 
 // Appliquer via IFlowService
-var result = await flowService.MigrateAsync("order-123", v2, migration);
+var result = await flowService.MigrateAsync("order-123", v2Definition, migration);
 
 if (result.Success)
     Console.WriteLine($"Migré de {result.PreviousVersion} vers {result.NewVersion}");
 else
     Console.WriteLine($"Échec : {result.ErrorMessage}");
 ```
+
+#### API fluide (alternative au JSON)
+
+```csharp
+var migration = new ProcessMigration("1.0", "2.0")
+    .MapNode("Review", "DetailedReview")
+    .SetVariable("MigratedFromV1", true)
+    .RenameVariable("OldStatus", "ReviewStatus")
+    .RemoveVariable("DeprecatedFlag");
+```
+
+### Transformations de variables
+
+| Type | Description | Propriétés JSON |
+|------|-------------|-----------------|
+| `set` | Définir une variable | `name`, `value` |
+| `rename` | Renommer une variable | `name`, `newName` |
+| `remove` | Supprimer une variable | `name` |
 
 ## Architecture
 
