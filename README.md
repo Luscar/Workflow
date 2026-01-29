@@ -102,23 +102,77 @@ Les sous-processus permettent de décomposer des processus complexes en sous-uni
 ### Caractéristiques
 
 - **Héritage d'agrégat** : Le sous-processus peut hériter de l'ID d'agrégat du processus parent
-- **Transfert de données** : Données d'entrée (préfixe `SUB_INPUT_`) et de sortie (préfixe `OUTPUT_`)
+- **Mapping explicite** : Les variables sont transférées via `InputMapping` (parent → sous-processus) et `OutputMapping` (sous-processus → parent)
 - **Gestion d'état** : Sauvegarde automatique de l'état du sous-processus en cas d'arrêt
 - **Reprise** : Capacité à reprendre un sous-processus après une pause
+- **Suivi dédié** : Les IDs de sous-processus sont stockés dans `SubProcessIds` (séparé des variables)
 
-### Exemple
+### Mapping de variables
+
+Le transfert de données entre processus parent et sous-processus utilise des mappings explicites :
+
+- **InputMapping** : `{ "ParentVar": "SubVar" }` — copie `ParentVar` du parent vers `SubVar` du sous-processus
+- **OutputMapping** : `{ "SubResult": "ParentResult" }` — copie `SubResult` du sous-processus vers `ParentResult` du parent
+
+### Exemple avec Fluent Builder
 
 ```csharp
-// Créer un sous-processus
-var subProcessDef = new ProcessDefinition("ValidationProcess");
-// ... ajouter des nœuds au sous-processus
+var process = ProcessBuilder.Create("MainProcess")
+    .Business("Start", "Démarrage")
+    .SubProcess("Validation", validationDefinition,
+        inputMapping: new() { ["OrderAmount"] = "Amount", ["CustomerId"] = "ClientId" },
+        outputMapping: new() { ["ValidationResult"] = "IsValid" })
+    .Business("Complete", "Fin")
+    .Build();
+```
 
-// Utiliser dans le processus principal
-var subProcessNode = new SubProcessNode(subProcessDef)
+### Exemple avec builder inline
+
+```csharp
+var process = ProcessBuilder.Create("MainProcess")
+    .Business("Start", "Démarrage")
+    .SubProcess("Validation", sub => sub
+        .Business("ValidateData", "Valider données")
+        .Interactive("Approve", "Approbation"),
+        inputMapping: new() { ["OrderAmount"] = "Amount" },
+        outputMapping: new() { ["Result"] = "ValidationResult" })
+    .Business("Complete", "Fin")
+    .Build();
+```
+
+### Exemple JSON
+
+```json
 {
-    Name = "Validation complète",
-    InheritAggregateId = true
-};
+    "name": "MainProcess",
+    "nodes": [
+        {
+            "name": "Start",
+            "type": "Business",
+            "command": "Start",
+            "next": ["Validation"]
+        },
+        {
+            "name": "Validation",
+            "type": "SubProcess",
+            "inputMapping": { "OrderAmount": "Amount" },
+            "outputMapping": { "Result": "ValidationResult" },
+            "subProcess": {
+                "name": "ValidationProcess",
+                "startNode": "ValidateData",
+                "nodes": [
+                    { "name": "ValidateData", "type": "Business", "command": "Validate" }
+                ]
+            },
+            "next": ["Complete"]
+        },
+        {
+            "name": "Complete",
+            "type": "Business",
+            "command": "Complete"
+        }
+    ]
+}
 ```
 
 Voir `Examples/ExampleWithSubProcess.cs` pour un exemple complet.
@@ -186,7 +240,7 @@ Le client interagit avec la librairie via l'interface `IFlowService`, en passant
 // Démarrer un processus (spécifier le nom de la définition)
 await flowService.StartAsync("OrderProcess", "order-123", aggregateId: "client-456", variables: new()
 {
-    ["SUB_INPUT_OrderAmount"] = 1500.00
+    ["OrderAmount"] = 1500.00
 });
 
 // Continuer un processus en attente

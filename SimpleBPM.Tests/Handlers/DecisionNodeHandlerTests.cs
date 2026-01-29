@@ -1,4 +1,5 @@
 using NSubstitute;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Handlers;
 using SimpleBPM.Nodes;
 
@@ -6,12 +7,12 @@ namespace SimpleBPM.Tests.Handlers;
 
 public class DecisionNodeHandlerTests
 {
-    private readonly ICommandQueryExecutor _executor;
+    private readonly ICommandExecutor _executor;
     private readonly DecisionNodeHandler _handler;
 
     public DecisionNodeHandlerTests()
     {
-        _executor = Substitute.For<ICommandQueryExecutor>();
+        _executor = Substitute.For<ICommandExecutor>();
         _handler = new DecisionNodeHandler(_executor);
     }
 
@@ -29,7 +30,7 @@ public class DecisionNodeHandlerTests
         node.AddRoute("rejected", "reject-node-id");
         var instance = new ProcessInstance("proc-1", "agg-1");
 
-        _executor.ExecuteDecisionAsync("CheckApproval", "proc-1", "agg-1")
+        _executor.EvaluateDecisionAsync("CheckApproval", "proc-1", "agg-1")
             .Returns("approved");
 
         var result = await _handler.HandleAsync(node, instance);
@@ -47,7 +48,7 @@ public class DecisionNodeHandlerTests
         node.AddRoute("inactive", "inactive-node");
         var instance = new ProcessInstance("proc-1");
 
-        _executor.ExecuteDecisionAsync("CheckStatus", "proc-1", null)
+        _executor.EvaluateDecisionAsync("CheckStatus", "proc-1", null)
             .Returns("inactive");
 
         var result = await _handler.HandleAsync(node, instance);
@@ -64,7 +65,7 @@ public class DecisionNodeHandlerTests
         node.AddRoute("no", "no-node");
         var instance = new ProcessInstance("proc-1");
 
-        _executor.ExecuteDecisionAsync("CheckSomething", "proc-1", null)
+        _executor.EvaluateDecisionAsync("CheckSomething", "proc-1", null)
             .Returns("maybe");
 
         var result = await _handler.HandleAsync(node, instance);
@@ -81,7 +82,7 @@ public class DecisionNodeHandlerTests
         node.AddRoute("ok", "ok-node");
         var instance = new ProcessInstance("proc-1");
 
-        _executor.ExecuteDecisionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>())
+        _executor.EvaluateDecisionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>())
             .Returns(Task.FromException<string>(new Exception("Query failed")));
 
         var result = await _handler.HandleAsync(node, instance);

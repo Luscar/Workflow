@@ -1,4 +1,5 @@
 using SimpleBPM;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Nodes;
 using SimpleBPM.Handlers;
 
@@ -33,11 +34,20 @@ var mainProcessDefinition = new ProcessDefinition("OrderProcessWithSubProcess");
 
 var startNode = new BusinessNode("StartOrder") { Name = "Démarrer la commande" };
 
-// Nœud de sous-processus
+// Nœud de sous-processus avec mapping explicite
 var validationSubProcessNode = new SubProcessNode(subProcessDefinition)
 {
     Name = "Validation complète",
-    InheritAggregateId = true  // Le sous-processus hérite de l'ID d'agrégat
+    InheritAggregateId = true,
+    InputMapping = new()
+    {
+        ["OrderAmount"] = "Amount",
+        ["CustomerType"] = "ClientType"
+    },
+    OutputMapping = new()
+    {
+        ["ValidationResult"] = "IsValid"
+    }
 };
 
 var processPaymentNode = new BusinessNode("ProcessPayment") { Name = "Traiter le paiement" };
@@ -60,9 +70,9 @@ var engine = new ProcessEngine(mainProcessDefinition, handlers: handlers);
 
 var instance = new ProcessInstance("order-456", "aggregate-789");
 
-// Ajouter des données d'entrée pour le sous-processus
-instance.Variables["SUB_INPUT_OrderAmount"] = 1500.00;
-instance.Variables["SUB_INPUT_CustomerType"] = "Premium";
+// Ajouter des variables d'entrée (noms normaux, le mapping se charge du transfert)
+instance.Variables["OrderAmount"] = 1500.00;
+instance.Variables["CustomerType"] = "Premium";
 
 Console.WriteLine("=== Démarrage du processus principal ===");
 instance = await engine.ExecuteAsync(instance);
@@ -92,14 +102,11 @@ if (instance.Status == ProcessStatus.WaitingInteraction)
     Console.WriteLine($"Nombre total d'étapes: {instance.ExecutionHistory.Count}");
 }
 
-// Afficher les données de sortie du sous-processus
-Console.WriteLine("\n=== Données de sortie ===");
-foreach (var kvp in instance.Variables)
+// Afficher les variables de sortie récupérées via le mapping
+Console.WriteLine("\n=== Variables de sortie ===");
+if (instance.Variables.TryGetValue("IsValid", out var isValid))
 {
-    if (kvp.Key.StartsWith("SUB_OUTPUT_"))
-    {
-        Console.WriteLine($"{kvp.Key}: {kvp.Value}");
-    }
+    Console.WriteLine($"IsValid: {isValid}");
 }
 
 Console.WriteLine("\n=== Résumé final ===");
@@ -109,18 +116,18 @@ if (instance.CompletedAt.HasValue)
     Console.WriteLine($"Durée totale: {instance.TotalDuration?.TotalSeconds:F2} secondes");
 }
 
-public class SampleExecutor : ICommandQueryExecutor
+public class SampleExecutor : ICommandExecutor
 {
-    public async Task ExecuteAsync(string commandOrQueryName, string processId, string? aggregateId, bool isQuery)
+    public async Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 150));
-        Console.WriteLine($"  Exécution: {commandOrQueryName}");
+        Console.WriteLine($"  Exécution: {commandName}");
     }
 
-    public async Task<string> ExecuteDecisionAsync(string queryName, string processId, string? aggregateId)
+    public async Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 100));
-        Console.WriteLine($"  Décision: {queryName}");
+        Console.WriteLine($"  Décision: {decisionName}");
         return "approved";
     }
 }

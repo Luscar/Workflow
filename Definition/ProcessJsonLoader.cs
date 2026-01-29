@@ -141,8 +141,24 @@ public static class ProcessJsonLoader
             {
                 Name = nodeDef.DisplayName ?? nodeDef.Name
             },
-            NodeType.SubProcess => throw new NotSupportedException("SubProcess nodes must be defined programmatically"),
+            NodeType.SubProcess => CreateSubProcessNode(nodeDef),
             _ => throw new InvalidOperationException($"Unknown node type: {nodeDef.Type}")
+        };
+    }
+
+    private static ProcessNode CreateSubProcessNode(NodeJsonDefinition nodeDef)
+    {
+        if (nodeDef.SubProcess == null)
+            throw new InvalidOperationException($"SubProcess node '{nodeDef.Name}' requires a 'subProcess' definition");
+
+        var subDefinition = BuildFromJson(nodeDef.SubProcess);
+
+        return new SubProcessNode(subDefinition)
+        {
+            Name = nodeDef.DisplayName ?? nodeDef.Name,
+            InheritAggregateId = nodeDef.InheritAggregateId ?? true,
+            InputMapping = nodeDef.InputMapping ?? new(),
+            OutputMapping = nodeDef.OutputMapping ?? new()
         };
     }
 
@@ -182,6 +198,14 @@ public static class ProcessJsonLoader
                     break;
                 case WaitUntilDateNode wdn:
                     nodeDef.DateKey = wdn.DateKey;
+                    break;
+                case SubProcessNode spn:
+                    nodeDef.SubProcess = BuildJsonDefinition(spn.SubProcessDefinition);
+                    nodeDef.InheritAggregateId = spn.InheritAggregateId;
+                    if (spn.InputMapping.Count > 0)
+                        nodeDef.InputMapping = spn.InputMapping;
+                    if (spn.OutputMapping.Count > 0)
+                        nodeDef.OutputMapping = spn.OutputMapping;
                     break;
             }
 
@@ -232,6 +256,12 @@ public class NodeJsonDefinition
 
     // WaitUntilDate node
     public string? DateKey { get; set; }
+
+    // SubProcess node
+    public ProcessJsonDefinition? SubProcess { get; set; }
+    public bool? InheritAggregateId { get; set; }
+    public Dictionary<string, string>? InputMapping { get; set; }
+    public Dictionary<string, string>? OutputMapping { get; set; }
 
     // Connexions
     public List<string>? Next { get; set; }

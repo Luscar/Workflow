@@ -1,4 +1,5 @@
 using NSubstitute;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Handlers;
 using SimpleBPM.Nodes;
 
@@ -6,12 +7,12 @@ namespace SimpleBPM.Tests.Handlers;
 
 public class BusinessNodeHandlerTests
 {
-    private readonly ICommandQueryExecutor _executor;
+    private readonly ICommandExecutor _executor;
     private readonly BusinessNodeHandler _handler;
 
     public BusinessNodeHandlerTests()
     {
-        _executor = Substitute.For<ICommandQueryExecutor>();
+        _executor = Substitute.For<ICommandExecutor>();
         _handler = new BusinessNodeHandler(_executor);
     }
 
@@ -33,21 +34,7 @@ public class BusinessNodeHandlerTests
         Assert.True(result.IsCompleted);
         Assert.False(result.RequiresStop);
         Assert.Equal("next-node-id", result.NextNodeId);
-        await _executor.Received(1).ExecuteAsync("CreateOrder", "proc-1", "agg-1", false);
-    }
-
-    [Fact]
-    public async Task HandleAsync_Query_ExecutesAsQuery()
-    {
-        var node = new BusinessNode("GetStock", isQuery: true) { Name = "Get Stock" };
-        node.NextNodeIds.Add("next-id");
-        var instance = new ProcessInstance("proc-1", "agg-1");
-
-        var result = await _handler.HandleAsync(node, instance);
-
-        Assert.True(result.IsCompleted);
-        Assert.False(result.RequiresStop);
-        await _executor.Received(1).ExecuteAsync("GetStock", "proc-1", "agg-1", true);
+        await _executor.Received(1).ExecuteCommandAsync("CreateOrder", "proc-1", "agg-1");
     }
 
     [Fact]
@@ -67,7 +54,7 @@ public class BusinessNodeHandlerTests
     {
         var node = new BusinessNode("FailingCommand") { Name = "Fail" };
         var instance = new ProcessInstance("proc-1");
-        _executor.ExecuteAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>())
+        _executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>())
             .Returns(Task.FromException(new InvalidOperationException("DB error")));
 
         var result = await _handler.HandleAsync(node, instance);
@@ -84,7 +71,7 @@ public class BusinessNodeHandlerTests
 
         await _handler.HandleAsync(node, instance);
 
-        await _executor.Received(1).ExecuteAsync("SomeCommand", "proc-1", null, false);
+        await _executor.Received(1).ExecuteCommandAsync("SomeCommand", "proc-1", null);
     }
 
     [Fact]

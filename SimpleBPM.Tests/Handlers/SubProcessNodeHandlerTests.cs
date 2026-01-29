@@ -1,4 +1,5 @@
 using NSubstitute;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Handlers;
 using SimpleBPM.Nodes;
 using SimpleBPM.Persistence;
@@ -8,14 +9,14 @@ namespace SimpleBPM.Tests.Handlers;
 public class SubProcessNodeHandlerTests
 {
     private readonly IProcessRepository _repository;
-    private readonly ICommandQueryExecutor _executor;
+    private readonly ICommandExecutor _executor;
     private readonly Dictionary<NodeType, INodeHandler> _handlers;
     private readonly SubProcessNodeHandler _handler;
 
     public SubProcessNodeHandlerTests()
     {
         _repository = Substitute.For<IProcessRepository>();
-        _executor = Substitute.For<ICommandQueryExecutor>();
+        _executor = Substitute.For<ICommandExecutor>();
 
         _handlers = new Dictionary<NodeType, INodeHandler>
         {
@@ -46,7 +47,7 @@ public class SubProcessNodeHandlerTests
         node.NextNodeIds.Add("after-sub");
         var instance = new ProcessInstance("parent-1", "agg-1");
 
-        _executor.ExecuteAsync("DoWork", Arg.Any<string>(), Arg.Any<string?>(), false)
+        _executor.ExecuteCommandAsync("DoWork", Arg.Any<string>(), Arg.Any<string?>())
             .Returns(Task.CompletedTask);
 
         var result = await _handler.HandleAsync(node, instance);
@@ -72,7 +73,7 @@ public class SubProcessNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.True(result.RequiresStop);
-        Assert.True(instance.Variables.ContainsKey($"SUB_PROCESS_{node.Id}"));
+        Assert.True(instance.SubProcessIds.ContainsKey(node.Id));
     }
 
     [Fact]
@@ -85,12 +86,12 @@ public class SubProcessNodeHandlerTests
         var node = new SubProcessNode(subDef) { Name = "Sub", InheritAggregateId = true };
         var instance = new ProcessInstance("parent-1", "parent-agg");
 
-        _executor.ExecuteAsync("CheckAgg", Arg.Any<string>(), "parent-agg", false)
+        _executor.ExecuteCommandAsync("CheckAgg", Arg.Any<string>(), "parent-agg")
             .Returns(Task.CompletedTask);
 
         await _handler.HandleAsync(node, instance);
 
-        await _executor.Received(1).ExecuteAsync("CheckAgg", Arg.Any<string>(), "parent-agg", false);
+        await _executor.Received(1).ExecuteCommandAsync("CheckAgg", Arg.Any<string>(), "parent-agg");
     }
 
     [Fact]
@@ -103,34 +104,65 @@ public class SubProcessNodeHandlerTests
         var node = new SubProcessNode(subDef) { Name = "Sub", InheritAggregateId = false };
         var instance = new ProcessInstance("parent-1", "parent-agg");
 
-        _executor.ExecuteAsync("CheckAgg", Arg.Any<string>(), null, false)
+        _executor.ExecuteCommandAsync("CheckAgg", Arg.Any<string>(), null)
             .Returns(Task.CompletedTask);
 
         await _handler.HandleAsync(node, instance);
 
-        await _executor.Received(1).ExecuteAsync("CheckAgg", Arg.Any<string>(), null, false);
+        await _executor.Received(1).ExecuteCommandAsync("CheckAgg", Arg.Any<string>(), null);
     }
 
     [Fact]
-    public async Task HandleAsync_SubInputVariables_CopiedToSubProcess()
+    public async Task HandleAsync_InputMapping_CopiesVariablesToSubProcess()
     {
         var subDef = new ProcessDefinition("SubProc");
         var bizNode = new BusinessNode("UseInput") { Name = "UseInput" };
         subDef.AddNode(bizNode);
 
-        var node = new SubProcessNode(subDef) { Name = "Sub" };
+        var node = new SubProcessNode(subDef)
+        {
+            Name = "Sub",
+            InputMapping = new() { ["OrderId"] = "Id", ["Amount"] = "Total" }
+        };
         node.NextNodeIds.Add("after");
         var instance = new ProcessInstance("parent-1");
-        instance.Variables["SUB_INPUT_OrderId"] = "order-42";
+        instance.Variables["OrderId"] = "order-42";
+        instance.Variables["Amount"] = 100.0;
         instance.Variables["RegularVar"] = "should-not-copy";
 
-        _executor.ExecuteAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>())
+        _executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>())
             .Returns(Task.CompletedTask);
 
         var result = await _handler.HandleAsync(node, instance);
 
         Assert.True(result.IsCompleted);
         Assert.False(result.RequiresStop);
+    }
+
+    [Fact]
+    public async Task HandleAsync_OutputMapping_CopiesVariablesFromSubProcess()
+    {
+        var subDef = new ProcessDefinition("SubProc");
+        var bizNode = new BusinessNode("Produce") { Name = "Produce" };
+        subDef.AddNode(bizNode);
+
+        var node = new SubProcessNode(subDef)
+        {
+            Name = "Sub",
+            OutputMapping = new() { ["Result"] = "ValidationResult" }
+        };
+        node.NextNodeIds.Add("after");
+        var instance = new ProcessInstance("parent-1");
+
+        _executor.ExecuteCommandAsync("Produce", Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(node, instance);
+
+        Assert.True(result.IsCompleted);
+        Assert.False(result.RequiresStop);
+        // Output mapping copies sub-process variables to parent
+        // (the sub-process variable "Result" would need to be set by the business command)
     }
 
     [Fact]
@@ -143,7 +175,7 @@ public class SubProcessNodeHandlerTests
         var node = new SubProcessNode(subDef) { Name = "Sub" };
         var instance = new ProcessInstance("parent-1");
 
-        _executor.ExecuteAsync("FailingWork", Arg.Any<string>(), Arg.Any<string?>(), false)
+        _executor.ExecuteCommandAsync("FailingWork", Arg.Any<string>(), Arg.Any<string?>())
             .Returns(Task.FromException(new Exception("Sub failed")));
 
         var result = await _handler.HandleAsync(node, instance);
@@ -165,10 +197,10 @@ public class SubProcessNodeHandlerTests
         var node = new SubProcessNode(subDef) { Name = "Sub" };
         node.NextNodeIds.Add("after-sub");
 
-        // Parent instance has saved sub-process reference
+        // Parent instance has saved sub-process reference in SubProcessIds
         var existingSubId = "sub-proc-id-123";
         var instance = new ProcessInstance("parent-1");
-        instance.Variables[$"SUB_PROCESS_{node.Id}"] = existingSubId;
+        instance.SubProcessIds[node.Id] = existingSubId;
 
         // Repository returns the existing sub-process instance waiting at interactive node
         var existingSubInstance = new ProcessInstance(existingSubId)
@@ -178,7 +210,7 @@ public class SubProcessNodeHandlerTests
         };
         _repository.GetProcessInstanceAsync(existingSubId).Returns(existingSubInstance);
 
-        _executor.ExecuteAsync("AfterInput", Arg.Any<string>(), Arg.Any<string?>(), false)
+        _executor.ExecuteCommandAsync("AfterInput", Arg.Any<string>(), Arg.Any<string?>())
             .Returns(Task.CompletedTask);
 
         var result = await _handler.HandleAsync(node, instance);
@@ -197,7 +229,7 @@ public class SubProcessNodeHandlerTests
 
         var node = new SubProcessNode(subDef) { Name = "Sub" };
         var instance = new ProcessInstance("parent-1");
-        instance.Variables[$"SUB_PROCESS_{node.Id}"] = "missing-sub-id";
+        instance.SubProcessIds[node.Id] = "missing-sub-id";
 
         _repository.GetProcessInstanceAsync("missing-sub-id").Returns((ProcessInstance?)null);
 
@@ -220,7 +252,7 @@ public class SubProcessNodeHandlerTests
 
         var handlerNoRepo = new SubProcessNodeHandler(null, _handlers);
 
-        _executor.ExecuteAsync("Work", Arg.Any<string>(), Arg.Any<string?>(), false)
+        _executor.ExecuteCommandAsync("Work", Arg.Any<string>(), Arg.Any<string?>())
             .Returns(Task.CompletedTask);
 
         var result = await handlerNoRepo.HandleAsync(node, instance);

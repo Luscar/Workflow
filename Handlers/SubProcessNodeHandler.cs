@@ -23,9 +23,7 @@ public class SubProcessNodeHandler : INodeHandler
         try
         {
             // Vérifier si un sous-processus existe déjà (reprise après arrêt)
-            var existingSubProcessId = instance.Variables.ContainsKey($"SUB_PROCESS_{node.Id}")
-                ? instance.Variables[$"SUB_PROCESS_{node.Id}"]?.ToString()
-                : null;
+            instance.SubProcessIds.TryGetValue(node.Id, out var existingSubProcessId);
 
             ProcessInstance subInstance;
             string subProcessId;
@@ -56,13 +54,12 @@ public class SubProcessNodeHandler : INodeHandler
                     subNode.InheritAggregateId ? instance.AggregateId : null
                 );
 
-                // Copier les données du contexte parent marquées pour le sous-processus
-                foreach (var kvp in instance.Variables)
+                // Copier les variables d'entrée via le mapping explicite
+                foreach (var mapping in subNode.InputMapping)
                 {
-                    if (kvp.Key.StartsWith("SUB_INPUT_"))
+                    if (instance.Variables.TryGetValue(mapping.Key, out var value))
                     {
-                        var keyName = kvp.Key.Replace("SUB_INPUT_", "");
-                        subInstance.Variables[keyName] = kvp.Value;
+                        subInstance.Variables[mapping.Value] = value;
                     }
                 }
             }
@@ -95,8 +92,8 @@ public class SubProcessNodeHandler : INodeHandler
                 subInstance.Status == ProcessStatus.WaitingDate ||
                 subInstance.Status == ProcessStatus.WaitingSignal)
             {
-                // Sauvegarder l'ID du sous-processus dans le contexte parent
-                instance.Variables[$"SUB_PROCESS_{node.Id}"] = subProcessId;
+                // Sauvegarder l'ID du sous-processus dans le dictionnaire dédié
+                instance.SubProcessIds[node.Id] = subProcessId;
 
                 return new NodeExecutionResult
                 {
@@ -107,18 +104,17 @@ public class SubProcessNodeHandler : INodeHandler
             }
 
             // Le sous-processus est complété
-            // Récupérer les données de sortie du sous-processus
-            foreach (var kvp in subInstance.Variables)
+            // Récupérer les variables de sortie via le mapping explicite
+            foreach (var mapping in subNode.OutputMapping)
             {
-                if (kvp.Key.StartsWith("OUTPUT_"))
+                if (subInstance.Variables.TryGetValue(mapping.Key, out var value))
                 {
-                    var keyName = kvp.Key.Replace("OUTPUT_", "SUB_OUTPUT_");
-                    instance.Variables[keyName] = kvp.Value;
+                    instance.Variables[mapping.Value] = value;
                 }
             }
 
-            // Nettoyer les données du sous-processus
-            instance.Variables.Remove($"SUB_PROCESS_{node.Id}");
+            // Nettoyer l'ID du sous-processus
+            instance.SubProcessIds.Remove(node.Id);
 
             // Supprimer le contexte du sous-processus de la base de données
             if (_repository != null && !string.IsNullOrEmpty(existingSubProcessId))

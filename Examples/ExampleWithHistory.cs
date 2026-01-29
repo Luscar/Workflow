@@ -1,5 +1,6 @@
 using Oracle.ManagedDataAccess.Client;
 using SimpleBPM;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Nodes;
 using SimpleBPM.Handlers;
 using SimpleBPM.Persistence;
@@ -27,7 +28,7 @@ var handlers = new INodeHandler[]
 var processDefinition = new ProcessDefinition("OrderProcess");
 
 var validateOrderNode = new BusinessNode("ValidateOrder") { Name = "Validate Order" };
-var checkInventoryNode = new BusinessNode("CheckInventory", isQuery: true) { Name = "Check Inventory" };
+var checkInventoryNode = new BusinessNode("CheckInventory") { Name = "Check Inventory" };
 var decisionNode = new DecisionNode("DecideApproval") { Name = "Approval Decision" };
 var approvedNode = new BusinessNode("ProcessApprovedOrder") { Name = "Process Approved" };
 var waitNode = new WaitForSignalNode("PaymentReceived") { Name = "Wait Payment" };
@@ -106,7 +107,7 @@ if (loadedInstance != null)
             AvgDuration = g.Average(h => h.Duration.TotalMilliseconds),
             TotalDuration = g.Sum(h => h.Duration.TotalMilliseconds)
         });
-    
+
     Console.WriteLine("\n=== Résumé par type de nœud ===");
     foreach (var item in summary)
     {
@@ -116,19 +117,19 @@ if (loadedInstance != null)
     }
 }
 
-public class SampleExecutor : ICommandQueryExecutor
+public class SampleExecutor : ICommandExecutor
 {
-    public async Task ExecuteAsync(string commandOrQueryName, string processId, string? aggregateId, bool isQuery)
+    public async Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
     {
         // Simuler un délai de traitement
         await Task.Delay(Random.Shared.Next(50, 200));
-        Console.WriteLine($"Executing {(isQuery ? "Query" : "Command")}: {commandOrQueryName}");
+        Console.WriteLine($"Executing Command: {commandName}");
     }
 
-    public async Task<string> ExecuteDecisionAsync(string queryName, string processId, string? aggregateId)
+    public async Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 150));
-        Console.WriteLine($"Executing Decision Query: {queryName}");
+        Console.WriteLine($"Executing Decision: {decisionName}");
         return "approved";
     }
 }

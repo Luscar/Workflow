@@ -32,6 +32,7 @@ public class OracleProcessRepository : IProcessRepository
                     ID_NOEUD_COURANT VARCHAR2(255),
                     NOM_DEFINITION VARCHAR2(255),
                     VERSION_DEFINITION VARCHAR2(50),
+                    SOUS_PROCESSUS CLOB,
                     STATUT NUMBER(10),
                     CONSTRAINT CHK_{_config.TablePrefix}_STATUT CHECK (STATUT BETWEEN 0 AND 5)
                 )';
@@ -93,9 +94,9 @@ public class OracleProcessRepository : IProcessRepository
     {
         var sql = $@"
             INSERT INTO {_processContextTable}
-            (ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT)
+            (ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT)
             VALUES
-            (:IdProcessus, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :Statut)";
+            (:IdProcessus, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :SousProcessus, :Statut)";
 
         var parameters = new
         {
@@ -108,6 +109,9 @@ public class OracleProcessRepository : IProcessRepository
             IdNoeudCourant = instance.CurrentNodeId,
             NomDefinition = instance.DefinitionName,
             VersionDefinition = instance.DefinitionVersion,
+            SousProcessus = instance.SubProcessIds.Count > 0
+                ? System.Text.Json.JsonSerializer.Serialize(instance.SubProcessIds)
+                : null,
             Statut = (int)instance.Status
         };
 
@@ -117,7 +121,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetProcessInstanceAsync(string processId)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS = :IdProcessus";
 
@@ -136,6 +140,9 @@ public class OracleProcessRepository : IProcessRepository
             Variables = string.IsNullOrEmpty(result.DONNEES)
                 ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>(),
+            SubProcessIds = string.IsNullOrEmpty(result.SOUS_PROCESSUS)
+                ? new Dictionary<string, string>()
+                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(result.SOUS_PROCESSUS) ?? new Dictionary<string, string>(),
             StartedAt = result.DATE_DEBUT,
             LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
             CompletedAt = result.DATE_COMPLETION,
@@ -159,6 +166,7 @@ public class OracleProcessRepository : IProcessRepository
                 ID_NOEUD_COURANT = :IdNoeudCourant,
                 NOM_DEFINITION = :NomDefinition,
                 VERSION_DEFINITION = :VersionDefinition,
+                SOUS_PROCESSUS = :SousProcessus,
                 STATUT = :Statut
             WHERE ID_PROCESSUS = :IdProcessus";
 
@@ -171,6 +179,9 @@ public class OracleProcessRepository : IProcessRepository
             IdNoeudCourant = instance.CurrentNodeId,
             NomDefinition = instance.DefinitionName,
             VersionDefinition = instance.DefinitionVersion,
+            SousProcessus = instance.SubProcessIds.Count > 0
+                ? System.Text.Json.JsonSerializer.Serialize(instance.SubProcessIds)
+                : null,
             Statut = (int)instance.Status,
             IdProcessus = instance.ProcessId
         };
@@ -203,6 +214,7 @@ public class OracleProcessRepository : IProcessRepository
         public string? ID_NOEUD_COURANT { get; set; }
         public string? NOM_DEFINITION { get; set; }
         public string? VERSION_DEFINITION { get; set; }
+        public string? SOUS_PROCESSUS { get; set; }
         public int STATUT { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 using SimpleBPM;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Definition;
 using SimpleBPM.Handlers;
 
@@ -16,7 +17,7 @@ Console.WriteLine("=== Définition avec Fluent Builder ===\n");
 
 var processFromBuilder = ProcessBuilder.Create("OrderProcess")
     .Business("ValidateOrder", "Valider la commande")
-    .Query("CheckInventory", "Vérifier le stock")
+    .Business("CheckInventory", "Vérifier le stock")
     .Decision("DecideApproval", "Décision d'approbation", routes => routes
         .When("approved", "ProcessApproved")
         .When("rejected", "ProcessRejected"))
@@ -53,7 +54,6 @@ var json = """
             "type": "Business",
             "displayName": "Vérifier le stock",
             "command": "CheckInventory",
-            "isQuery": true,
             "next": ["DecideApproval"]
         },
         {
@@ -139,24 +139,26 @@ var processWithSubProcess = ProcessBuilder.Create("MainProcess")
     .SubProcess("Validation", sub => sub
         .Business("ValidateData", "Valider données")
         .Business("CheckRules", "Vérifier règles")
-        .Interactive("Approve", "Approbation"))
+        .Interactive("Approve", "Approbation"),
+        inputMapping: new() { ["OrderId"] = "Id" },
+        outputMapping: new() { ["Result"] = "ValidationResult" })
     .Business("Complete", "Fin")
     .Build();
 
 Console.WriteLine($"Processus principal: {processWithSubProcess.Name}");
 Console.WriteLine($"Nombre de nœuds: {processWithSubProcess.Nodes.Count}");
 
-public class SampleExecutor : ICommandQueryExecutor
+public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteAsync(string commandOrQueryName, string processId, string? aggregateId, bool isQuery)
+    public Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
     {
-        Console.WriteLine($"    Exécution: {commandOrQueryName} ({(isQuery ? "Query" : "Command")})");
+        Console.WriteLine($"    Exécution: {commandName}");
         return Task.CompletedTask;
     }
 
-    public Task<string> ExecuteDecisionAsync(string queryName, string processId, string? aggregateId)
+    public Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
     {
-        Console.WriteLine($"    Décision: {queryName} -> approved");
+        Console.WriteLine($"    Décision: {decisionName} -> approved");
         return Task.FromResult("approved");
     }
 }

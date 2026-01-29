@@ -72,12 +72,17 @@ public class ProcessBuilder
     /// <summary>
     /// Ajoute un sous-processus
     /// </summary>
-    public ProcessBuilder SubProcess(string name, ProcessDefinition subProcessDefinition, bool inheritAggregateId = true, string? displayName = null)
+    public ProcessBuilder SubProcess(string name, ProcessDefinition subProcessDefinition,
+        Dictionary<string, string>? inputMapping = null,
+        Dictionary<string, string>? outputMapping = null,
+        bool inheritAggregateId = true, string? displayName = null)
     {
         var node = new SubProcessNode(subProcessDefinition)
         {
             Name = displayName ?? name,
-            InheritAggregateId = inheritAggregateId
+            InheritAggregateId = inheritAggregateId,
+            InputMapping = inputMapping ?? new(),
+            OutputMapping = outputMapping ?? new()
         };
         return AddNode(name, node);
     }
@@ -85,7 +90,10 @@ public class ProcessBuilder
     /// <summary>
     /// Ajoute un sous-processus défini via builder
     /// </summary>
-    public ProcessBuilder SubProcess(string name, Action<ProcessBuilder> configureSubProcess, bool inheritAggregateId = true, string? displayName = null)
+    public ProcessBuilder SubProcess(string name, Action<ProcessBuilder> configureSubProcess,
+        Dictionary<string, string>? inputMapping = null,
+        Dictionary<string, string>? outputMapping = null,
+        bool inheritAggregateId = true, string? displayName = null)
     {
         var subBuilder = new ProcessBuilder(name);
         configureSubProcess(subBuilder);
@@ -94,7 +102,9 @@ public class ProcessBuilder
         var node = new SubProcessNode(subDefinition)
         {
             Name = displayName ?? name,
-            InheritAggregateId = inheritAggregateId
+            InheritAggregateId = inheritAggregateId,
+            InputMapping = inputMapping ?? new(),
+            OutputMapping = outputMapping ?? new()
         };
         return AddNode(name, node);
     }

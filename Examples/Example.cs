@@ -1,19 +1,20 @@
 using SimpleBPM;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Nodes;
 using SimpleBPM.Handlers;
 
 // Exemple d'implémentation d'un exécuteur
-public class SampleExecutor : ICommandQueryExecutor
+public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteAsync(string commandOrQueryName, string processId, string? aggregateId, bool isQuery)
+    public Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
     {
-        Console.WriteLine($"Executing {(isQuery ? "Query" : "Command")}: {commandOrQueryName} for Process: {processId}, Aggregate: {aggregateId}");
+        Console.WriteLine($"Executing Command: {commandName} for Process: {processId}, Aggregate: {aggregateId}");
         return Task.CompletedTask;
     }
 
-    public Task<string> ExecuteDecisionAsync(string queryName, string processId, string? aggregateId)
+    public Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
     {
-        Console.WriteLine($"Executing Decision Query: {queryName} for Process: {processId}, Aggregate: {aggregateId}");
+        Console.WriteLine($"Executing Decision: {decisionName} for Process: {processId}, Aggregate: {aggregateId}");
         // Retourne une condition (ex: "approved", "rejected", etc.)
         return Task.FromResult("approved");
     }
@@ -30,8 +31,8 @@ var handlers = new INodeHandler[]
 // Définition d'un processus simple
 var processDefinition = new ProcessDefinition("OrderProcess");
 
-var validateOrderNode = new BusinessNode("ValidateOrder", isQuery: false) { Name = "Validate Order" };
-var checkInventoryNode = new BusinessNode("CheckInventory", isQuery: true) { Name = "Check Inventory" };
+var validateOrderNode = new BusinessNode("ValidateOrder") { Name = "Validate Order" };
+var checkInventoryNode = new BusinessNode("CheckInventory") { Name = "Check Inventory" };
 var decisionNode = new DecisionNode("DecideApproval") { Name = "Approval Decision" };
 var approvedNode = new BusinessNode("ProcessApprovedOrder") { Name = "Process Approved" };
 var rejectedNode = new BusinessNode("ProcessRejectedOrder") { Name = "Process Rejected" };

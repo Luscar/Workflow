@@ -1,5 +1,6 @@
 using Oracle.ManagedDataAccess.Client;
 using SimpleBPM;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Nodes;
 using SimpleBPM.Handlers;
 using SimpleBPM.Persistence;
@@ -32,7 +33,7 @@ var handlers = new INodeHandler[]
 var processDefinition = new ProcessDefinition("OrderProcess");
 
 var validateOrderNode = new BusinessNode("ValidateOrder") { Name = "Validate Order" };
-var checkInventoryNode = new BusinessNode("CheckInventory", isQuery: true) { Name = "Check Inventory" };
+var checkInventoryNode = new BusinessNode("CheckInventory") { Name = "Check Inventory" };
 var decisionNode = new DecisionNode("DecideApproval") { Name = "Approval Decision" };
 var approvedNode = new BusinessNode("ProcessApprovedOrder") { Name = "Process Approved" };
 var rejectedNode = new BusinessNode("ProcessRejectedOrder") { Name = "Process Rejected" };
@@ -83,17 +84,17 @@ if (loadedInstance != null)
 }
 
 // Exemple d'implémentation d'un exécuteur
-public class SampleExecutor : ICommandQueryExecutor
+public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteAsync(string commandOrQueryName, string processId, string? aggregateId, bool isQuery)
+    public Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
     {
-        Console.WriteLine($"Executing {(isQuery ? "Query" : "Command")}: {commandOrQueryName}");
+        Console.WriteLine($"Executing Command: {commandName}");
         return Task.CompletedTask;
     }
 
-    public Task<string> ExecuteDecisionAsync(string queryName, string processId, string? aggregateId)
+    public Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
     {
-        Console.WriteLine($"Executing Decision Query: {queryName}");
+        Console.WriteLine($"Executing Decision: {decisionName}");
         return Task.FromResult("approved");
     }
 }
