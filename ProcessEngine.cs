@@ -39,6 +39,7 @@ public class ProcessEngine
 
     public async Task<ProcessInstance> ExecuteAsync(ProcessInstance instance)
     {
+        instance.DefinitionVersion ??= _definition.Version;
         instance.LastExecutedAt = DateTime.UtcNow;
 
         if (_repository != null)

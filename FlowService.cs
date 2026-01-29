@@ -1,15 +1,18 @@
 using SimpleBPM.Handlers;
+using SimpleBPM.Migration;
 using SimpleBPM.Persistence;
 
 namespace SimpleBPM;
 
 public class FlowService : IFlowService
 {
+    private readonly ProcessDefinition _definition;
     private readonly ProcessEngine _engine;
     private readonly IProcessRepository _repository;
 
     public FlowService(ProcessDefinition definition, IProcessRepository repository, IEnumerable<INodeHandler> handlers)
     {
+        _definition = definition ?? throw new ArgumentNullException(nameof(definition));
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _engine = new ProcessEngine(definition, repository, handlers);
     }
@@ -52,5 +55,20 @@ public class FlowService : IFlowService
             ?? throw new InvalidOperationException($"Process '{processId}' not found");
 
         return instance.Status;
+    }
+
+    public async Task<MigrationResult> MigrateAsync(string processId, ProcessDefinition targetDefinition, ProcessMigration migration)
+    {
+        var instance = await _repository.GetProcessInstanceAsync(processId)
+            ?? throw new InvalidOperationException($"Process '{processId}' not found");
+
+        var result = ProcessMigrationRunner.Migrate(instance, _definition, targetDefinition, migration);
+
+        if (result.Success)
+        {
+            await _repository.UpdateProcessInstanceAsync(instance);
+        }
+
+        return result;
     }
 }

@@ -1,3 +1,5 @@
+using SimpleBPM.Migration;
+
 namespace SimpleBPM;
 
 public interface IFlowService
@@ -6,4 +8,5 @@ public interface IFlowService
     Task<ProcessStatus> ContinueAsync(string processId);
     Task<ProcessStatus> SignalAsync(string processId, string signalName);
     Task<ProcessStatus> GetStatusAsync(string processId);
+    Task<MigrationResult> MigrateAsync(string processId, ProcessDefinition targetDefinition, ProcessMigration migration);
 }

@@ -220,6 +220,56 @@ Voir `Examples/ExampleWithOracle.cs` pour un exemple complet avec Oracle.
 
 Voir `Examples/ExampleWithHistory.cs` pour voir comment analyser l'historique d'exécution.
 
+## Migration de version
+
+La librairie permet de migrer les instances en attente vers une nouvelle version de définition de processus.
+
+### Conditions
+
+Seules les instances dans un état d'attente peuvent être migrées :
+- `WaitingInteraction`
+- `WaitingSignal`
+- `WaitingDate`
+
+### Principe
+
+La migration mappe les nœuds par **nom** (pas par ID interne). Si un nœud conserve le même nom entre les versions, il est mappé automatiquement. Sinon, un mapping explicite est requis.
+
+### Exemple
+
+```csharp
+using SimpleBPM.Migration;
+
+// Définir les deux versions
+var v1 = ProcessBuilder.Create("OrderProcess", "1.0")
+    .Business("Validate", "Valider")
+    .Interactive("Review", "Revue")
+    .Business("Complete", "Fin")
+    .Build();
+
+var v2 = ProcessBuilder.Create("OrderProcess", "2.0")
+    .Business("Validate", "Valider")
+    .Interactive("DetailedReview", "Revue détaillée")
+    .Business("Complete", "Fin")
+    .Build();
+
+// Configurer la migration
+var migration = new ProcessMigration("1.0", "2.0")
+    .MapNode("Review", "DetailedReview")
+    .TransformVariables(vars =>
+    {
+        vars["MigratedFromV1"] = true;
+    });
+
+// Appliquer via IFlowService
+var result = await flowService.MigrateAsync("order-123", v2, migration);
+
+if (result.Success)
+    Console.WriteLine($"Migré de {result.PreviousVersion} vers {result.NewVersion}");
+else
+    Console.WriteLine($"Échec : {result.ErrorMessage}");
+```
+
 ## Architecture
 
 - Le processus s'exécute nœud par nœud jusqu'à rencontrer un nœud d'arrêt ou la fin naturelle
@@ -238,6 +288,7 @@ SimpleBPM/
 ├── Definition/        # Fluent Builder et chargeur JSON
 ├── Examples/          # Exemples d'utilisation
 ├── Handlers/          # Handlers par type de nœud (logique d'exécution)
+├── Migration/         # Migration de version (ProcessMigration, Runner, Result)
 ├── Nodes/             # Définitions des nœuds (données seulement)
 ├── Persistence/       # Repository Oracle et configuration
 ├── IFlowService.cs    # Interface client
