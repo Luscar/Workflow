@@ -94,7 +94,7 @@ var process = ProcessJsonLoader.FromJsonFile("process.json");
 var json = ProcessJsonLoader.ToJson(process);
 ```
 
-Voir `ExampleWithBuilder.cs` pour un exemple complet.
+Voir `Examples/ExampleWithBuilder.cs` pour un exemple complet.
 
 ## Sous-processus
 
@@ -122,7 +122,7 @@ var subProcessNode = new SubProcessNode(subProcessDef)
 };
 ```
 
-Voir `ExampleWithSubProcess.cs` pour un exemple complet.
+Voir `Examples/ExampleWithSubProcess.cs` pour un exemple complet.
 
 ## Persistance Oracle
 
@@ -210,15 +210,15 @@ services.AddScoped<IFlowService>(sp => new FlowService(
 
 ### Sans persistance (usage direct du moteur)
 
-Voir `Example.cs` pour un exemple simple sans base de données.
+Voir `Examples/Example.cs` pour un exemple simple sans base de données.
 
 ### Avec persistance Oracle
 
-Voir `ExampleWithOracle.cs` pour un exemple complet avec Oracle.
+Voir `Examples/ExampleWithOracle.cs` pour un exemple complet avec Oracle.
 
 ### Avec historique
 
-Voir `ExampleWithHistory.cs` pour voir comment analyser l'historique d'exécution.
+Voir `Examples/ExampleWithHistory.cs` pour voir comment analyser l'historique d'exécution.
 
 ## Architecture
 
@@ -230,6 +230,23 @@ Voir `ExampleWithHistory.cs` pour voir comment analyser l'historique d'exécutio
 - Les variables d'instance (`Variables`) stockent l'état partagé entre les nœuds
 - L'instance est automatiquement sauvegardée/mise à jour dans Oracle après chaque exécution
 - Les sous-processus peuvent être imbriqués et sont gérés de manière transparente
+
+## Structure du projet
+
+```
+SimpleBPM/
+├── Definition/        # Fluent Builder et chargeur JSON
+├── Examples/          # Exemples d'utilisation
+├── Handlers/          # Handlers par type de nœud (logique d'exécution)
+├── Nodes/             # Définitions des nœuds (données seulement)
+├── Persistence/       # Repository Oracle et configuration
+├── IFlowService.cs    # Interface client
+├── FlowService.cs     # Implémentation du service
+├── ProcessEngine.cs   # Moteur d'exécution interne
+├── ProcessInstance.cs # Instance de processus en cours
+├── ProcessNode.cs     # Classe de base des nœuds
+└── ProcessDefinition.cs # Définition d'un processus
+```
 
 ## Script SQL
 
