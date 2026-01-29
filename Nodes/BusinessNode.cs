@@ -10,38 +10,4 @@ public class BusinessNode : ProcessNode
         CommandOrQueryName = commandOrQueryName;
         IsQuery = isQuery;
     }
-
-    public override async Task<NodeExecutionResult> ExecuteAsync(ProcessInstance instance, Persistence.IProcessRepository? repository = null)
-    {
-        try
-        {
-            var executor = ProcessEngine.GetCommandQueryExecutor();
-
-            if (executor == null)
-            {
-                return new NodeExecutionResult
-                {
-                    IsCompleted = false,
-                    ErrorMessage = "No command/query executor configured"
-                };
-            }
-
-            await executor.ExecuteAsync(CommandOrQueryName, instance.ProcessId, instance.AggregateId, IsQuery);
-
-            return new NodeExecutionResult
-            {
-                IsCompleted = true,
-                RequiresStop = false,
-                NextNodeId = NextNodeIds.FirstOrDefault()
-            };
-        }
-        catch (Exception ex)
-        {
-            return new NodeExecutionResult
-            {
-                IsCompleted = false,
-                ErrorMessage = ex.Message
-            };
-        }
-    }
 }

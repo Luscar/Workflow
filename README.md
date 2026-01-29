@@ -158,6 +158,9 @@ services.AddScoped<IDbConnection>(sp =>
 });
 services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(connectionString, "BPM"));
 services.AddScoped<IProcessRepository, OracleProcessRepository>();
+services.AddSingleton<ICommandQueryExecutor, MyCommandQueryExecutor>();
+services.AddSingleton<INodeHandler>(sp => new BusinessNodeHandler(sp.GetRequiredService<ICommandQueryExecutor>()));
+services.AddSingleton<INodeHandler>(sp => new DecisionNodeHandler(sp.GetRequiredService<ICommandQueryExecutor>()));
 ```
 
 **Note** : Le repository ne gère pas le cycle de vie de la connexion. C'est la responsabilité du client (ou du container DI) de l'ouvrir et la fermer.
@@ -185,8 +188,18 @@ Voir `Example.cs` pour un exemple simple sans base de données.
 Voir `ExampleWithOracle.cs` pour un exemple complet avec Oracle.
 
 ```csharp
-// Créer le moteur avec repository
-var engine = new ProcessEngine(processDefinition, repository);
+using SimpleBPM.Handlers;
+
+// Créer les handlers avec leurs dépendances
+var executor = new MyCommandQueryExecutor();
+var handlers = new INodeHandler[]
+{
+    new BusinessNodeHandler(executor),
+    new DecisionNodeHandler(executor)
+};
+
+// Créer le moteur avec repository et handlers
+var engine = new ProcessEngine(processDefinition, repository, handlers);
 
 // Exécuter un processus (sauvegardé automatiquement)
 var instance = await engine.ExecuteAsync(new ProcessInstance("order-123"));
@@ -206,7 +219,9 @@ Voir `ExampleWithHistory.cs` pour voir comment analyser l'historique d'exécutio
 
 - Le processus s'exécute nœud par nœud jusqu'à rencontrer un nœud d'arrêt ou la fin naturelle
 - Les nœuds métier et décisionnels appellent des commandes/queries via leur nom et l'ID du processus/agrégat
-- L'application cliente implémente `ICommandQueryExecutor` pour définir comment exécuter les commandes/queries
+- L'application cliente implémente `ICommandQueryExecutor` et enregistre les handlers correspondants
+- Chaque type de nœud a un handler dédié injecté avec ses propres dépendances
+- Les handlers par défaut (Interactive, WaitForSignal, WaitUntilDate, SubProcess) sont auto-enregistrés
 - L'instance est automatiquement sauvegardée/mise à jour dans Oracle après chaque exécution
 - Les sous-processus peuvent être imbriqués et sont gérés de manière transparente
 

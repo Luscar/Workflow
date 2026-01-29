@@ -1,7 +1,13 @@
 using SimpleBPM;
 using SimpleBPM.Definition;
+using SimpleBPM.Handlers;
 
-ProcessEngine.ConfigureExecutor(new SampleExecutor());
+var executor = new SampleExecutor();
+var handlers = new INodeHandler[]
+{
+    new BusinessNodeHandler(executor),
+    new DecisionNodeHandler(executor)
+};
 
 // ============================================================
 // MÉTHODE 1: Fluent Builder
@@ -109,7 +115,7 @@ Console.WriteLine();
 // ============================================================
 Console.WriteLine("=== Exécution du processus ===\n");
 
-var engine = new ProcessEngine(processFromBuilder);
+var engine = new ProcessEngine(processFromBuilder, handlers: handlers);
 var instance = new ProcessInstance("order-789", "aggregate-123");
 
 instance = await engine.ExecuteAsync(instance);

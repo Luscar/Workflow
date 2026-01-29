@@ -1,7 +1,13 @@
 using SimpleBPM;
 using SimpleBPM.Nodes;
+using SimpleBPM.Handlers;
 
-ProcessEngine.ConfigureExecutor(new SampleExecutor());
+var executor = new SampleExecutor();
+var handlers = new INodeHandler[]
+{
+    new BusinessNodeHandler(executor),
+    new DecisionNodeHandler(executor)
+};
 
 // ========================================
 // 1. Définir un SOUS-PROCESSUS de validation
@@ -50,7 +56,7 @@ mainProcessDefinition
 // ========================================
 // 3. Exécuter le processus principal
 // ========================================
-var engine = new ProcessEngine(mainProcessDefinition);
+var engine = new ProcessEngine(mainProcessDefinition, handlers: handlers);
 
 var instance = new ProcessInstance("order-456", "aggregate-789");
 

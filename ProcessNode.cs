@@ -10,20 +10,18 @@ public enum NodeType
     SubProcess
 }
 
-public abstract class ProcessNode
+public class ProcessNode
 {
     public string Id { get; set; }
     public string Name { get; set; }
     public NodeType Type { get; }
     public List<string> NextNodeIds { get; set; } = new();
 
-    protected ProcessNode(NodeType type)
+    public ProcessNode(NodeType type)
     {
         Type = type;
         Id = Guid.NewGuid().ToString();
     }
-
-    public abstract Task<NodeExecutionResult> ExecuteAsync(ProcessInstance context, Persistence.IProcessRepository? repository = null);
 }
 
 public class NodeExecutionResult

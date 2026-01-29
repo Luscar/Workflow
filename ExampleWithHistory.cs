@@ -1,6 +1,7 @@
 using Oracle.ManagedDataAccess.Client;
 using SimpleBPM;
 using SimpleBPM.Nodes;
+using SimpleBPM.Handlers;
 using SimpleBPM.Persistence;
 
 // Configuration et initialisation
@@ -15,7 +16,12 @@ connection.Open();
 var repository = new OracleProcessRepository(oracleConfig, connection);
 await repository.InitializeDatabaseAsync();
 
-ProcessEngine.ConfigureExecutor(new SampleExecutor());
+var executor = new SampleExecutor();
+var handlers = new INodeHandler[]
+{
+    new BusinessNodeHandler(executor),
+    new DecisionNodeHandler(executor)
+};
 
 // Définition du processus
 var processDefinition = new ProcessDefinition("OrderProcess");
@@ -38,7 +44,7 @@ processDefinition
     .AddNode(approvedNode)
     .AddNode(waitNode);
 
-var engine = new ProcessEngine(processDefinition, repository);
+var engine = new ProcessEngine(processDefinition, repository, handlers);
 
 // Exécuter le processus
 var instance = new ProcessInstance("order-123", "aggregate-456");

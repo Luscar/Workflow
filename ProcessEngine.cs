@@ -1,46 +1,56 @@
+using SimpleBPM.Handlers;
+
 namespace SimpleBPM;
 
 public class ProcessEngine
 {
-    private static ICommandQueryExecutor? _commandQueryExecutor;
     private readonly ProcessDefinition _definition;
     private readonly Persistence.IProcessRepository? _repository;
+    private readonly Dictionary<NodeType, INodeHandler> _handlers;
 
-    public ProcessEngine(ProcessDefinition definition, Persistence.IProcessRepository? repository = null)
+    public ProcessEngine(ProcessDefinition definition, Persistence.IProcessRepository? repository = null, IEnumerable<INodeHandler>? handlers = null)
     {
         _definition = definition;
         _repository = repository;
+        _handlers = new Dictionary<NodeType, INodeHandler>();
+
+        if (handlers != null)
+        {
+            foreach (var handler in handlers)
+                _handlers[handler.NodeType] = handler;
+        }
+
+        // Auto-register default handlers for nodes without dependencies
+        _handlers.TryAdd(NodeType.Interactive, new InteractiveNodeHandler());
+        _handlers.TryAdd(NodeType.WaitUntilDate, new WaitUntilDateNodeHandler());
+        _handlers.TryAdd(NodeType.WaitForSignal, new WaitForSignalNodeHandler());
+        _handlers.TryAdd(NodeType.SubProcess, new SubProcessNodeHandler(repository, _handlers));
     }
 
     /// <summary>
-    /// Repository utilisé pour la persistance. Accessible pour les sous-processus.
+    /// Internal constructor for sub-processes that share the parent's handler registry.
     /// </summary>
-    internal Persistence.IProcessRepository? Repository => _repository;
-
-    public static void ConfigureExecutor(ICommandQueryExecutor executor)
+    internal ProcessEngine(ProcessDefinition definition, Persistence.IProcessRepository? repository, Dictionary<NodeType, INodeHandler> handlers)
     {
-        _commandQueryExecutor = executor;
+        _definition = definition;
+        _repository = repository;
+        _handlers = handlers;
     }
 
-    internal static ICommandQueryExecutor? GetCommandQueryExecutor()
+    public async Task<ProcessInstance> ExecuteAsync(ProcessInstance instance)
     {
-        return _commandQueryExecutor;
-    }
-
-    public async Task<ProcessInstance> ExecuteAsync(ProcessInstance context)
-    {
-        context.LastExecutedAt = DateTime.UtcNow;
+        instance.LastExecutedAt = DateTime.UtcNow;
 
         if (_repository != null)
         {
-            var existingContext = await _repository.GetProcessInstanceAsync(context.ProcessId);
-            if (existingContext == null)
+            var existing = await _repository.GetProcessInstanceAsync(instance.ProcessId);
+            if (existing == null)
             {
-                await _repository.SaveProcessInstanceAsync(context);
+                await _repository.SaveProcessInstanceAsync(instance);
             }
         }
 
-        var currentNodeId = context.CurrentNodeId ?? _definition.StartNodeId;
+        var currentNodeId = instance.CurrentNodeId ?? _definition.StartNodeId;
 
         while (!string.IsNullOrEmpty(currentNodeId))
         {
@@ -48,108 +58,118 @@ public class ProcessEngine
 
             if (node == null)
             {
-                context.Status = ProcessStatus.Failed;
+                instance.Status = ProcessStatus.Failed;
                 if (_repository != null)
                 {
-                    await _repository.UpdateProcessInstanceAsync(context);
+                    await _repository.UpdateProcessInstanceAsync(instance);
                 }
-                return context;
+                return instance;
+            }
+
+            if (!_handlers.TryGetValue(node.Type, out var handler))
+            {
+                instance.Status = ProcessStatus.Failed;
+                if (_repository != null)
+                {
+                    await _repository.UpdateProcessInstanceAsync(instance);
+                }
+                return instance;
             }
 
             // Créer l'entrée d'historique
             var historyEntry = new NodeExecutionHistory(node.Id, node.Name, node.Type);
 
-            var result = await node.ExecuteAsync(context, _repository);
+            var result = await handler.HandleAsync(node, instance);
 
             // Compléter l'entrée d'historique
             historyEntry.Complete(result.IsCompleted, result.ErrorMessage, result.NextNodeId);
-            context.ExecutionHistory.Add(historyEntry);
+            instance.ExecutionHistory.Add(historyEntry);
 
             if (!result.IsCompleted)
             {
-                context.Status = ProcessStatus.Failed;
+                instance.Status = ProcessStatus.Failed;
                 if (_repository != null)
                 {
-                    await _repository.UpdateProcessInstanceAsync(context);
+                    await _repository.UpdateProcessInstanceAsync(instance);
                 }
-                return context;
+                return instance;
             }
 
             if (result.RequiresStop)
             {
-                context.CurrentNodeId = result.NextNodeId;
+                instance.CurrentNodeId = result.NextNodeId;
                 if (_repository != null)
                 {
-                    await _repository.UpdateProcessInstanceAsync(context);
+                    await _repository.UpdateProcessInstanceAsync(instance);
                 }
-                return context;
+                return instance;
             }
 
             currentNodeId = result.NextNodeId;
         }
 
-        context.Status = ProcessStatus.Completed;
-        context.CurrentNodeId = null;
-        context.CompletedAt = DateTime.UtcNow;
+        instance.Status = ProcessStatus.Completed;
+        instance.CurrentNodeId = null;
+        instance.CompletedAt = DateTime.UtcNow;
         if (_repository != null)
         {
-            await _repository.UpdateProcessInstanceAsync(context);
+            await _repository.UpdateProcessInstanceAsync(instance);
         }
-        return context;
+        return instance;
     }
 
-    public async Task<ProcessInstance> ContinueAsync(ProcessInstance context)
+    public async Task<ProcessInstance> ContinueAsync(ProcessInstance instance)
     {
-        if (context.Status == ProcessStatus.Completed || context.Status == ProcessStatus.Failed)
+        if (instance.Status == ProcessStatus.Completed || instance.Status == ProcessStatus.Failed)
         {
-            return context;
+            return instance;
         }
 
-        if (string.IsNullOrEmpty(context.CurrentNodeId))
+        if (string.IsNullOrEmpty(instance.CurrentNodeId))
         {
-            context.Status = ProcessStatus.Failed;
+            instance.Status = ProcessStatus.Failed;
             if (_repository != null)
             {
-                await _repository.UpdateProcessInstanceAsync(context);
+                await _repository.UpdateProcessInstanceAsync(instance);
             }
-            return context;
+            return instance;
         }
 
-        context.Status = ProcessStatus.Running;
+        instance.Status = ProcessStatus.Running;
 
-        var currentNode = _definition.GetNode(context.CurrentNodeId);
+        var currentNode = _definition.GetNode(instance.CurrentNodeId);
         if (currentNode == null || currentNode.NextNodeIds.Count == 0)
         {
-            context.Status = ProcessStatus.Completed;
-            context.CurrentNodeId = null;
-            context.CompletedAt = DateTime.UtcNow;
+            instance.Status = ProcessStatus.Completed;
+            instance.CurrentNodeId = null;
+            instance.CompletedAt = DateTime.UtcNow;
             if (_repository != null)
             {
-                await _repository.UpdateProcessInstanceAsync(context);
+                await _repository.UpdateProcessInstanceAsync(instance);
             }
-            return context;
+            return instance;
         }
 
         var nextNodeId = currentNode.NextNodeIds.FirstOrDefault();
-        context.CurrentNodeId = nextNodeId;
+        instance.CurrentNodeId = nextNodeId;
 
-        return await ExecuteAsync(context);
+        return await ExecuteAsync(instance);
     }
 
-    public async Task<ProcessInstance> SignalAsync(ProcessInstance context, string signalName)
+    public async Task<ProcessInstance> SignalAsync(ProcessInstance instance, string signalName)
     {
-        if (context.Status != ProcessStatus.WaitingSignal)
+        if (instance.Status != ProcessStatus.WaitingSignal)
         {
-            return context;
+            return instance;
         }
 
-        if (context.Data.TryGetValue("WaitingForSignal", out var waitingSignal) &&
+        if (instance.Data.TryGetValue("WaitingForSignal", out var waitingSignal) &&
             waitingSignal?.ToString() == signalName)
         {
-            return await ContinueAsync(context);
+            return await ContinueAsync(instance);
         }
 
-        return context;
+        return instance;
     }
 
     public async Task<ProcessInstance?> LoadProcessAsync(string processId)

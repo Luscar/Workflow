@@ -20,57 +20,8 @@ public class WaitUntilDateNode : ProcessNode
         DateProvider = dateProvider;
     }
 
-    /// <summary>
-    /// Constructeur avec clé de date - récupère la date depuis instance.Data[dateKey]
-    /// </summary>
     public WaitUntilDateNode(string dateKey) : base(NodeType.WaitUntilDate)
     {
         DateKey = dateKey;
-    }
-
-    public override Task<NodeExecutionResult> ExecuteAsync(ProcessInstance instance, Persistence.IProcessRepository? repository = null)
-    {
-        DateTime? targetDate = TargetDate ?? DateProvider?.Invoke(instance);
-
-        // Essayer de récupérer la date depuis le contexte via DateKey
-        if (targetDate == null && !string.IsNullOrEmpty(DateKey) && instance.Data.TryGetValue(DateKey, out var dateValue))
-        {
-            targetDate = dateValue switch
-            {
-                DateTime dt => dt,
-                string s when DateTime.TryParse(s, out var parsed) => parsed,
-                _ => null
-            };
-        }
-
-        if (targetDate == null)
-        {
-            return Task.FromResult(new NodeExecutionResult
-            {
-                IsCompleted = false,
-                ErrorMessage = "No target date configured"
-            });
-        }
-
-        if (DateTime.UtcNow >= targetDate.Value)
-        {
-            return Task.FromResult(new NodeExecutionResult
-            {
-                IsCompleted = true,
-                RequiresStop = false,
-                NextNodeId = NextNodeIds.FirstOrDefault()
-            });
-        }
-
-        instance.Status = ProcessStatus.WaitingDate;
-        instance.CurrentNodeId = Id;
-        instance.Data["WaitUntilDate"] = targetDate.Value;
-
-        return Task.FromResult(new NodeExecutionResult
-        {
-            IsCompleted = true,
-            RequiresStop = true,
-            NextNodeId = NextNodeIds.FirstOrDefault()
-        });
     }
 }

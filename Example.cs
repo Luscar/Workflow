@@ -1,5 +1,6 @@
 using SimpleBPM;
 using SimpleBPM.Nodes;
+using SimpleBPM.Handlers;
 
 // Exemple d'implémentation d'un exécuteur
 public class SampleExecutor : ICommandQueryExecutor
@@ -19,7 +20,12 @@ public class SampleExecutor : ICommandQueryExecutor
 }
 
 // Configuration
-ProcessEngine.ConfigureExecutor(new SampleExecutor());
+var executor = new SampleExecutor();
+var handlers = new INodeHandler[]
+{
+    new BusinessNodeHandler(executor),
+    new DecisionNodeHandler(executor)
+};
 
 // Définition d'un processus simple
 var processDefinition = new ProcessDefinition("OrderProcess");
@@ -54,7 +60,7 @@ processDefinition
     .AddNode(interactiveNode);
 
 // Exécution
-var engine = new ProcessEngine(processDefinition);
+var engine = new ProcessEngine(processDefinition, handlers: handlers);
 var instance = new ProcessInstance("order-123", "aggregate-456");
 
 // Première exécution - s'arrêtera au premier nœud d'attente/interactif
