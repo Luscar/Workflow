@@ -13,7 +13,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
         DateTime? targetDate = waitNode.TargetDate ?? waitNode.DateProvider?.Invoke(instance);
 
         // Essayer de récupérer la date depuis le contexte via DateKey
-        if (targetDate == null && !string.IsNullOrEmpty(waitNode.DateKey) && instance.Data.TryGetValue(waitNode.DateKey, out var dateValue))
+        if (targetDate == null && !string.IsNullOrEmpty(waitNode.DateKey) && instance.Variables.TryGetValue(waitNode.DateKey, out var dateValue))
         {
             targetDate = dateValue switch
             {
@@ -44,7 +44,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
 
         instance.Status = ProcessStatus.WaitingDate;
         instance.CurrentNodeId = node.Id;
-        instance.Data["WaitUntilDate"] = targetDate.Value;
+        instance.Variables["WaitUntilDate"] = targetDate.Value;
 
         return Task.FromResult(new NodeExecutionResult
         {

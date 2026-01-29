@@ -23,8 +23,8 @@ public class SubProcessNodeHandler : INodeHandler
         try
         {
             // Vérifier si un sous-processus existe déjà (reprise après arrêt)
-            var existingSubProcessId = instance.Data.ContainsKey($"SUB_PROCESS_{node.Id}")
-                ? instance.Data[$"SUB_PROCESS_{node.Id}"]?.ToString()
+            var existingSubProcessId = instance.Variables.ContainsKey($"SUB_PROCESS_{node.Id}")
+                ? instance.Variables[$"SUB_PROCESS_{node.Id}"]?.ToString()
                 : null;
 
             ProcessInstance subInstance;
@@ -57,12 +57,12 @@ public class SubProcessNodeHandler : INodeHandler
                 );
 
                 // Copier les données du contexte parent marquées pour le sous-processus
-                foreach (var kvp in instance.Data)
+                foreach (var kvp in instance.Variables)
                 {
                     if (kvp.Key.StartsWith("SUB_INPUT_"))
                     {
                         var keyName = kvp.Key.Replace("SUB_INPUT_", "");
-                        subInstance.Data[keyName] = kvp.Value;
+                        subInstance.Variables[keyName] = kvp.Value;
                     }
                 }
             }
@@ -96,7 +96,7 @@ public class SubProcessNodeHandler : INodeHandler
                 subInstance.Status == ProcessStatus.WaitingSignal)
             {
                 // Sauvegarder l'ID du sous-processus dans le contexte parent
-                instance.Data[$"SUB_PROCESS_{node.Id}"] = subProcessId;
+                instance.Variables[$"SUB_PROCESS_{node.Id}"] = subProcessId;
 
                 return new NodeExecutionResult
                 {
@@ -108,17 +108,17 @@ public class SubProcessNodeHandler : INodeHandler
 
             // Le sous-processus est complété
             // Récupérer les données de sortie du sous-processus
-            foreach (var kvp in subInstance.Data)
+            foreach (var kvp in subInstance.Variables)
             {
                 if (kvp.Key.StartsWith("OUTPUT_"))
                 {
                     var keyName = kvp.Key.Replace("OUTPUT_", "SUB_OUTPUT_");
-                    instance.Data[keyName] = kvp.Value;
+                    instance.Variables[keyName] = kvp.Value;
                 }
             }
 
             // Nettoyer les données du sous-processus
-            instance.Data.Remove($"SUB_PROCESS_{node.Id}");
+            instance.Variables.Remove($"SUB_PROCESS_{node.Id}");
 
             // Supprimer le contexte du sous-processus de la base de données
             if (_repository != null && !string.IsNullOrEmpty(existingSubProcessId))

@@ -61,8 +61,8 @@ var engine = new ProcessEngine(mainProcessDefinition, handlers: handlers);
 var instance = new ProcessInstance("order-456", "aggregate-789");
 
 // Ajouter des données d'entrée pour le sous-processus
-instance.Data["SUB_INPUT_OrderAmount"] = 1500.00;
-instance.Data["SUB_INPUT_CustomerType"] = "Premium";
+instance.Variables["SUB_INPUT_OrderAmount"] = 1500.00;
+instance.Variables["SUB_INPUT_CustomerType"] = "Premium";
 
 Console.WriteLine("=== Démarrage du processus principal ===");
 instance = await engine.ExecuteAsync(instance);
@@ -94,7 +94,7 @@ if (instance.Status == ProcessStatus.WaitingInteraction)
 
 // Afficher les données de sortie du sous-processus
 Console.WriteLine("\n=== Données de sortie ===");
-foreach (var kvp in instance.Data)
+foreach (var kvp in instance.Variables)
 {
     if (kvp.Key.StartsWith("SUB_OUTPUT_"))
     {

@@ -99,7 +99,7 @@ public class OracleProcessRepository : IProcessRepository
         {
             IdProcessus = instance.ProcessId,
             IdAgregat = instance.AggregateId,
-            Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Data),
+            Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
             DateDebut = instance.StartedAt,
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
@@ -127,7 +127,7 @@ public class OracleProcessRepository : IProcessRepository
         var instance = new ProcessInstance(result.ID_PROCESSUS)
         {
             AggregateId = result.ID_AGREGAT,
-            Data = string.IsNullOrEmpty(result.DONNEES)
+            Variables = string.IsNullOrEmpty(result.DONNEES)
                 ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>(),
             StartedAt = result.DATE_DEBUT,
@@ -157,7 +157,7 @@ public class OracleProcessRepository : IProcessRepository
         var parameters = new
         {
             IdAgregat = instance.AggregateId,
-            Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Data),
+            Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
             IdNoeudCourant = instance.CurrentNodeId,

@@ -163,7 +163,7 @@ public class ProcessEngine
             return instance;
         }
 
-        if (instance.Data.TryGetValue("WaitingForSignal", out var waitingSignal) &&
+        if (instance.Variables.TryGetValue("WaitingForSignal", out var waitingSignal) &&
             waitingSignal?.ToString() == signalName)
         {
             return await ContinueAsync(instance);

@@ -179,37 +179,42 @@ services.AddSingleton<INodeHandler>(sp => new DecisionNodeHandler(sp.GetRequired
 
 ## Utilisation
 
-### Sans persistance
+Le client interagit avec la librairie via l'interface `IFlowService`, en passant l'ID du processus et/ou de l'agrégat.
+
+```csharp
+// Démarrer un processus
+await flowService.StartAsync("order-123", aggregateId: "client-456", variables: new()
+{
+    ["SUB_INPUT_OrderAmount"] = 1500.00
+});
+
+// Continuer un processus en attente
+await flowService.ContinueAsync("order-123");
+
+// Envoyer un signal
+await flowService.SignalAsync("order-123", "PaymentReceived");
+
+// Vérifier le statut
+var status = await flowService.GetStatusAsync("order-123");
+```
+
+### Avec Dependency Injection
+
+```csharp
+services.AddScoped<IFlowService>(sp => new FlowService(
+    processDefinition,
+    sp.GetRequiredService<IProcessRepository>(),
+    sp.GetServices<INodeHandler>()
+));
+```
+
+### Sans persistance (usage direct du moteur)
 
 Voir `Example.cs` pour un exemple simple sans base de données.
 
 ### Avec persistance Oracle
 
 Voir `ExampleWithOracle.cs` pour un exemple complet avec Oracle.
-
-```csharp
-using SimpleBPM.Handlers;
-
-// Créer les handlers avec leurs dépendances
-var executor = new MyCommandQueryExecutor();
-var handlers = new INodeHandler[]
-{
-    new BusinessNodeHandler(executor),
-    new DecisionNodeHandler(executor)
-};
-
-// Créer le moteur avec repository et handlers
-var engine = new ProcessEngine(processDefinition, repository, handlers);
-
-// Exécuter un processus (sauvegardé automatiquement)
-var instance = await engine.ExecuteAsync(new ProcessInstance("order-123"));
-
-// Charger un processus existant
-var loadedInstance = await engine.LoadProcessAsync("order-123");
-
-// Continuer l'exécution
-await engine.ContinueAsync(loadedInstance);
-```
 
 ### Avec historique
 
@@ -219,9 +224,10 @@ Voir `ExampleWithHistory.cs` pour voir comment analyser l'historique d'exécutio
 
 - Le processus s'exécute nœud par nœud jusqu'à rencontrer un nœud d'arrêt ou la fin naturelle
 - Les nœuds métier et décisionnels appellent des commandes/queries via leur nom et l'ID du processus/agrégat
-- L'application cliente implémente `ICommandQueryExecutor` et enregistre les handlers correspondants
+- Le client interagit via `IFlowService` avec des ID de processus et d'agrégat
 - Chaque type de nœud a un handler dédié injecté avec ses propres dépendances
 - Les handlers par défaut (Interactive, WaitForSignal, WaitUntilDate, SubProcess) sont auto-enregistrés
+- Les variables d'instance (`Variables`) stockent l'état partagé entre les nœuds
 - L'instance est automatiquement sauvegardée/mise à jour dans Oracle après chaque exécution
 - Les sous-processus peuvent être imbriqués et sont gérés de manière transparente
 
