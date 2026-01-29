@@ -9,12 +9,12 @@ public class ProcessBuilder
     private ProcessNode? _lastNode;
     private ProcessNode? _startNode;
 
-    private ProcessBuilder(string processName)
+    private ProcessBuilder(string processName, string version = "1.0")
     {
-        _definition = new ProcessDefinition(processName);
+        _definition = new ProcessDefinition(processName, version);
     }
 
-    public static ProcessBuilder Create(string processName) => new(processName);
+    public static ProcessBuilder Create(string processName, string version = "1.0") => new(processName, version);
 
     /// <summary>
     /// Ajoute un nœud métier (commande)

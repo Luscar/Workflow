@@ -50,7 +50,7 @@ public static class ProcessJsonLoader
 
     private static ProcessDefinition BuildFromJson(ProcessJsonDefinition jsonDef)
     {
-        var definition = new ProcessDefinition(jsonDef.Name);
+        var definition = new ProcessDefinition(jsonDef.Name, jsonDef.Version ?? "1.0");
         var nodesByName = new Dictionary<string, ProcessNode>();
 
         // Créer tous les nœuds
@@ -151,13 +151,13 @@ public static class ProcessJsonLoader
         var jsonDef = new ProcessJsonDefinition
         {
             Name = definition.Name,
+            Version = definition.Version,
             Nodes = new List<NodeJsonDefinition>()
         };
 
-        var nodesById = definition.Nodes.ToDictionary(n => n.Id, n => n);
-        var nodeNames = definition.Nodes.ToDictionary(n => n.Id, n => n.Name);
+        var nodeNames = definition.Nodes.Values.ToDictionary(n => n.Id, n => n.Name);
 
-        foreach (var node in definition.Nodes)
+        foreach (var node in definition.Nodes.Values)
         {
             var nodeDef = new NodeJsonDefinition
             {
@@ -197,7 +197,7 @@ public static class ProcessJsonLoader
         }
 
         // Trouver le nœud de départ
-        var startNode = definition.Nodes.FirstOrDefault(n => n.Id == definition.StartNodeId);
+        var startNode = definition.Nodes.Values.FirstOrDefault(n => n.Id == definition.StartNodeId);
         if (startNode != null)
         {
             jsonDef.StartNode = startNode.Name;
@@ -210,6 +210,7 @@ public static class ProcessJsonLoader
 public class ProcessJsonDefinition
 {
     public string Name { get; set; } = string.Empty;
+    public string? Version { get; set; }
     public string? StartNode { get; set; }
     public List<NodeJsonDefinition> Nodes { get; set; } = new();
 }
