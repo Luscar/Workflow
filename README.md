@@ -4,8 +4,8 @@ Une librairie légère pour gérer des processus métier (BPM) avec différents 
 
 ## Types de nœuds
 
-- **BusinessNode** : Exécute une commande ou query métier
-- **DecisionNode** : Permet de router vers différents nœuds selon le résultat d'une query
+- **BusinessNode** : Exécute une commande métier
+- **DecisionNode** : Permet de router vers différents nœuds selon le résultat d'une évaluation
 - **InteractiveNode** : Arrête le processus en attente d'interaction utilisateur
 - **WaitUntilDateNode** : Arrête le processus jusqu'à une date précise
 - **WaitForSignalNode** : Arrête le processus en attente d'un signal spécifique
@@ -24,7 +24,7 @@ using SimpleBPM.Definition;
 
 var process = ProcessBuilder.Create("OrderProcess")
     .Business("ValidateOrder", "Valider la commande")
-    .Query("CheckInventory", "Vérifier le stock")
+    .Business("CheckInventory", "Vérifier le stock")
     .Decision("DecideApproval", "Décision", routes => routes
         .When("approved", "ProcessApproved")
         .When("rejected", "ProcessRejected"))
@@ -67,7 +67,6 @@ Définition déclarative, idéale pour la configuration externe.
             "name": "CheckInventory",
             "type": "Business",
             "command": "CheckInventory",
-            "isQuery": true,
             "next": ["DecideApproval"]
         },
         {
@@ -158,9 +157,11 @@ services.AddScoped<IDbConnection>(sp =>
 });
 services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(connectionString, "BPM"));
 services.AddScoped<IProcessRepository, OracleProcessRepository>();
-services.AddSingleton<ICommandQueryExecutor, MyCommandQueryExecutor>();
-services.AddSingleton<INodeHandler>(sp => new BusinessNodeHandler(sp.GetRequiredService<ICommandQueryExecutor>()));
-services.AddSingleton<INodeHandler>(sp => new DecisionNodeHandler(sp.GetRequiredService<ICommandQueryExecutor>()));
+services.AddSingleton<ICommandExecutor, MyCommandExecutor>();
+services.AddSingleton<INodeHandler>(sp => new BusinessNodeHandler(sp.GetRequiredService<ICommandExecutor>()));
+services.AddSingleton<INodeHandler>(sp => new DecisionNodeHandler(sp.GetRequiredService<ICommandExecutor>()));
+services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
+services.AddSingleton<INodeHandler>(sp => new InteractiveNodeHandler(sp.GetService<IGestionTache>()));
 ```
 
 **Note** : Le repository ne gère pas le cycle de vie de la connexion. C'est la responsabilité du client (ou du container DI) de l'ouvrir et la fermer.
@@ -182,8 +183,8 @@ services.AddSingleton<INodeHandler>(sp => new DecisionNodeHandler(sp.GetRequired
 Le client interagit avec la librairie via l'interface `IFlowService`, en passant l'ID du processus et/ou de l'agrégat.
 
 ```csharp
-// Démarrer un processus
-await flowService.StartAsync("order-123", aggregateId: "client-456", variables: new()
+// Démarrer un processus (spécifier le nom de la définition)
+await flowService.StartAsync("OrderProcess", "order-123", aggregateId: "client-456", variables: new()
 {
     ["SUB_INPUT_OrderAmount"] = 1500.00
 });
@@ -202,7 +203,7 @@ var status = await flowService.GetStatusAsync("order-123");
 
 ```csharp
 services.AddScoped<IFlowService>(sp => new FlowService(
-    processDefinition,
+    sp.GetServices<ProcessDefinition>(),  // Toutes les définitions et versions
     sp.GetRequiredService<IProcessRepository>(),
     sp.GetServices<INodeHandler>()
 ));
@@ -292,11 +293,46 @@ var migration = new ProcessMigration("1.0", "2.0")
 | `rename` | Renommer une variable | `name`, `newName` |
 | `remove` | Supprimer une variable | `name` |
 
+## Interfaces client (Abstractions)
+
+La librairie définit deux interfaces dans `Abstractions/` que l'application client doit implémenter :
+
+### ICommandExecutor
+
+Exécute les commandes métier et évalue les décisions. Implémenté côté client.
+
+```csharp
+public interface ICommandExecutor
+{
+    Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId);
+    Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId);
+}
+```
+
+### IGestionTache
+
+Gestion de tâches pour les nœuds interactifs. Optionnel — si fourni, le handler interactif crée automatiquement une tâche à l'entrée du nœud et la ferme à la sortie.
+
+```csharp
+public interface IGestionTache
+{
+    Task CreerTacheAsync(string processId, string? aggregateId, string definitionName, string nodeName);
+    Task FermerTacheAsync(string processId, string? aggregateId, string definitionName, string nodeName);
+}
+```
+
+Le cycle de vie est :
+1. **Entrée** dans un nœud interactif → `CreerTacheAsync` (l'utilisateur voit la tâche)
+2. **Sortie** du nœud (via `ContinueAsync`) → `FermerTacheAsync` (la tâche est fermée)
+
 ## Architecture
 
+- Le `FlowService` gère l'ensemble des définitions de processus et de leurs versions
+- Le client interagit via `IFlowService` en spécifiant le nom de la définition au démarrage
+- L'instance stocke le nom et la version de la définition pour retrouver le bon processus
 - Le processus s'exécute nœud par nœud jusqu'à rencontrer un nœud d'arrêt ou la fin naturelle
-- Les nœuds métier et décisionnels appellent des commandes/queries via leur nom et l'ID du processus/agrégat
-- Le client interagit via `IFlowService` avec des ID de processus et d'agrégat
+- Les nœuds métier appellent des commandes via `ICommandExecutor`
+- Les décisions sont évaluées via `ICommandExecutor.EvaluateDecisionAsync`
 - Chaque type de nœud a un handler dédié injecté avec ses propres dépendances
 - Les handlers par défaut (Interactive, WaitForSignal, WaitUntilDate, SubProcess) sont auto-enregistrés
 - Les variables d'instance (`Variables`) stockent l'état partagé entre les nœuds
@@ -307,6 +343,7 @@ var migration = new ProcessMigration("1.0", "2.0")
 
 ```
 SimpleBPM/
+├── Abstractions/      # Interfaces client (ICommandExecutor, IGestionTache)
 ├── Definition/        # Fluent Builder et chargeur JSON
 ├── Examples/          # Exemples d'utilisation
 ├── Handlers/          # Handlers par type de nœud (logique d'exécution)
@@ -314,11 +351,11 @@ SimpleBPM/
 ├── Nodes/             # Définitions des nœuds (données seulement)
 ├── Persistence/       # Repository Oracle et configuration
 ├── IFlowService.cs    # Interface client
-├── FlowService.cs     # Implémentation du service
-├── ProcessEngine.cs   # Moteur d'exécution interne
+├── FlowService.cs     # Implémentation (multi-définitions, multi-versions)
+├── ProcessEngine.cs   # Moteur d'exécution interne (mono-définition)
 ├── ProcessInstance.cs # Instance de processus en cours
 ├── ProcessNode.cs     # Classe de base des nœuds
-└── ProcessDefinition.cs # Définition d'un processus
+└── ProcessDefinition.cs # Définition d'un processus (nom + version)
 ```
 
 ## Script SQL

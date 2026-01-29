@@ -39,6 +39,7 @@ public class ProcessEngine
 
     public async Task<ProcessInstance> ExecuteAsync(ProcessInstance instance)
     {
+        instance.DefinitionName ??= _definition.Name;
         instance.DefinitionVersion ??= _definition.Version;
         instance.LastExecutedAt = DateTime.UtcNow;
 
@@ -136,9 +137,16 @@ public class ProcessEngine
             return instance;
         }
 
+        var currentNode = _definition.GetNode(instance.CurrentNodeId);
+
+        // Notify handler that we are leaving this node
+        if (currentNode != null && _handlers.TryGetValue(currentNode.Type, out var currentHandler))
+        {
+            await currentHandler.OnLeaveAsync(currentNode, instance);
+        }
+
         instance.Status = ProcessStatus.Running;
 
-        var currentNode = _definition.GetNode(instance.CurrentNodeId);
         if (currentNode == null || currentNode.NextNodeIds.Count == 0)
         {
             instance.Status = ProcessStatus.Completed;

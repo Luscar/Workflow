@@ -4,6 +4,7 @@ public class ProcessInstance
 {
     public string ProcessId { get; set; }
     public string? AggregateId { get; set; }
+    public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }
     public Dictionary<string, object> Variables { get; set; } = new();
     public DateTime StartedAt { get; set; }

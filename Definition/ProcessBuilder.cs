@@ -26,15 +26,6 @@ public class ProcessBuilder
     }
 
     /// <summary>
-    /// Ajoute un nœud métier (query)
-    /// </summary>
-    public ProcessBuilder Query(string queryName, string? displayName = null)
-    {
-        var node = new BusinessNode(queryName, isQuery: true) { Name = displayName ?? queryName };
-        return AddNode(queryName, node);
-    }
-
-    /// <summary>
     /// Ajoute un nœud de décision avec ses routes
     /// </summary>
     public ProcessBuilder Decision(string queryName, string? displayName, Action<DecisionRouteBuilder> configureRoutes)

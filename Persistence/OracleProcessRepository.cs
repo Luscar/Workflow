@@ -30,6 +30,7 @@ public class OracleProcessRepository : IProcessRepository
                     DATE_DERNIERE_EXECUTION TIMESTAMP,
                     DATE_COMPLETION TIMESTAMP,
                     ID_NOEUD_COURANT VARCHAR2(255),
+                    NOM_DEFINITION VARCHAR2(255),
                     VERSION_DEFINITION VARCHAR2(50),
                     STATUT NUMBER(10),
                     CONSTRAINT CHK_{_config.TablePrefix}_STATUT CHECK (STATUT BETWEEN 0 AND 5)
@@ -92,9 +93,9 @@ public class OracleProcessRepository : IProcessRepository
     {
         var sql = $@"
             INSERT INTO {_processContextTable}
-            (ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, VERSION_DEFINITION, STATUT)
+            (ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT)
             VALUES
-            (:IdProcessus, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :VersionDefinition, :Statut)";
+            (:IdProcessus, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :Statut)";
 
         var parameters = new
         {
@@ -105,6 +106,7 @@ public class OracleProcessRepository : IProcessRepository
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
             IdNoeudCourant = instance.CurrentNodeId,
+            NomDefinition = instance.DefinitionName,
             VersionDefinition = instance.DefinitionVersion,
             Statut = (int)instance.Status
         };
@@ -115,7 +117,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetProcessInstanceAsync(string processId)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS = :IdProcessus";
 
@@ -129,6 +131,7 @@ public class OracleProcessRepository : IProcessRepository
         var instance = new ProcessInstance(result.ID_PROCESSUS)
         {
             AggregateId = result.ID_AGREGAT,
+            DefinitionName = result.NOM_DEFINITION,
             DefinitionVersion = result.VERSION_DEFINITION,
             Variables = string.IsNullOrEmpty(result.DONNEES)
                 ? new Dictionary<string, object>()
@@ -154,6 +157,7 @@ public class OracleProcessRepository : IProcessRepository
                 DATE_DERNIERE_EXECUTION = :DateDerniereExecution,
                 DATE_COMPLETION = :DateCompletion,
                 ID_NOEUD_COURANT = :IdNoeudCourant,
+                NOM_DEFINITION = :NomDefinition,
                 VERSION_DEFINITION = :VersionDefinition,
                 STATUT = :Statut
             WHERE ID_PROCESSUS = :IdProcessus";
@@ -165,6 +169,7 @@ public class OracleProcessRepository : IProcessRepository
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
             IdNoeudCourant = instance.CurrentNodeId,
+            NomDefinition = instance.DefinitionName,
             VersionDefinition = instance.DefinitionVersion,
             Statut = (int)instance.Status,
             IdProcessus = instance.ProcessId
@@ -196,6 +201,7 @@ public class OracleProcessRepository : IProcessRepository
         public DateTime? DATE_DERNIERE_EXECUTION { get; set; }
         public DateTime? DATE_COMPLETION { get; set; }
         public string? ID_NOEUD_COURANT { get; set; }
+        public string? NOM_DEFINITION { get; set; }
         public string? VERSION_DEFINITION { get; set; }
         public int STATUT { get; set; }
     }

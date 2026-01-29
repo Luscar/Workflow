@@ -1,14 +1,15 @@
+using SimpleBPM.Abstractions;
 using SimpleBPM.Nodes;
 
 namespace SimpleBPM.Handlers;
 
 public class DecisionNodeHandler : INodeHandler
 {
-    private readonly ICommandQueryExecutor _executor;
+    private readonly ICommandExecutor _executor;
 
     public NodeType NodeType => NodeType.Decision;
 
-    public DecisionNodeHandler(ICommandQueryExecutor executor)
+    public DecisionNodeHandler(ICommandExecutor executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
@@ -19,7 +20,7 @@ public class DecisionNodeHandler : INodeHandler
 
         try
         {
-            var decisionResult = await _executor.ExecuteDecisionAsync(decisionNode.QueryName, instance.ProcessId, instance.AggregateId);
+            var decisionResult = await _executor.EvaluateDecisionAsync(decisionNode.QueryName, instance.ProcessId, instance.AggregateId);
 
             if (decisionNode.ConditionToNodeId.TryGetValue(decisionResult, out var nextNodeId))
             {

@@ -121,7 +121,7 @@ public static class ProcessJsonLoader
     {
         return nodeDef.Type switch
         {
-            NodeType.Business => new BusinessNode(nodeDef.Command ?? nodeDef.Name, nodeDef.IsQuery)
+            NodeType.Business => new BusinessNode(nodeDef.Command ?? nodeDef.Name)
             {
                 Name = nodeDef.DisplayName ?? nodeDef.Name
             },
@@ -169,8 +169,7 @@ public static class ProcessJsonLoader
             switch (node)
             {
                 case BusinessNode bn:
-                    nodeDef.Command = bn.CommandOrQueryName;
-                    nodeDef.IsQuery = bn.IsQuery;
+                    nodeDef.Command = bn.CommandName;
                     break;
                 case DecisionNode dn:
                     nodeDef.Query = dn.QueryName;
@@ -223,7 +222,6 @@ public class NodeJsonDefinition
 
     // Business node
     public string? Command { get; set; }
-    public bool IsQuery { get; set; }
 
     // Decision node
     public string? Query { get; set; }
