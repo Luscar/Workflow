@@ -4,13 +4,15 @@ public class ProcessDefinition
 {
     public string Id { get; set; }
     public string Name { get; set; }
+    public string Version { get; set; }
     public Dictionary<string, ProcessNode> Nodes { get; set; } = new();
     public string StartNodeId { get; set; }
 
-    public ProcessDefinition(string name)
+    public ProcessDefinition(string name, string version = "1.0")
     {
         Id = Guid.NewGuid().ToString();
         Name = name;
+        Version = version;
     }
 
     public ProcessDefinition AddNode(ProcessNode node)
@@ -39,5 +41,10 @@ public class ProcessDefinition
     public ProcessNode? GetNode(string nodeId)
     {
         return Nodes.TryGetValue(nodeId, out var node) ? node : null;
+    }
+
+    public ProcessNode? GetNodeByName(string name)
+    {
+        return Nodes.Values.FirstOrDefault(n => n.Name == name);
     }
 }

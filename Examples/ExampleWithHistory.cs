@@ -1,6 +1,8 @@
 using Oracle.ManagedDataAccess.Client;
 using SimpleBPM;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Nodes;
+using SimpleBPM.Handlers;
 using SimpleBPM.Persistence;
 
 // Configuration et initialisation
@@ -15,13 +17,18 @@ connection.Open();
 var repository = new OracleProcessRepository(oracleConfig, connection);
 await repository.InitializeDatabaseAsync();
 
-ProcessEngine.ConfigureExecutor(new SampleExecutor());
+var executor = new SampleExecutor();
+var handlers = new INodeHandler[]
+{
+    new BusinessNodeHandler(executor),
+    new DecisionNodeHandler(executor)
+};
 
 // Définition du processus
 var processDefinition = new ProcessDefinition("OrderProcess");
 
 var validateOrderNode = new BusinessNode("ValidateOrder") { Name = "Validate Order" };
-var checkInventoryNode = new BusinessNode("CheckInventory", isQuery: true) { Name = "Check Inventory" };
+var checkInventoryNode = new BusinessNode("CheckInventory") { Name = "Check Inventory" };
 var decisionNode = new DecisionNode("DecideApproval") { Name = "Approval Decision" };
 var approvedNode = new BusinessNode("ProcessApprovedOrder") { Name = "Process Approved" };
 var waitNode = new WaitForSignalNode("PaymentReceived") { Name = "Wait Payment" };
@@ -38,20 +45,20 @@ processDefinition
     .AddNode(approvedNode)
     .AddNode(waitNode);
 
-var engine = new ProcessEngine(processDefinition, repository);
+var engine = new FlowEngine(new[] { processDefinition }, repository, handlers);
 
 // Exécuter le processus
-var context = new ProcessContext("order-123", "aggregate-456");
-context = await engine.ExecuteAsync(context);
+var instance = new ProcessInstance("order-123", "aggregate-456");
+instance = await engine.ExecuteAsync(instance);
 
 Console.WriteLine("=== État du processus ===");
-Console.WriteLine($"Status: {context.Status}");
-Console.WriteLine($"Durée actuelle: {context.CurrentDuration}");
-Console.WriteLine($"Étapes complétées: {context.CompletedStepsCount}");
-Console.WriteLine($"Étapes échouées: {context.FailedStepsCount}");
+Console.WriteLine($"Status: {instance.Status}");
+Console.WriteLine($"Durée actuelle: {instance.CurrentDuration}");
+Console.WriteLine($"Étapes complétées: {instance.CompletedStepsCount}");
+Console.WriteLine($"Étapes échouées: {instance.FailedStepsCount}");
 
 Console.WriteLine("\n=== Historique d'exécution ===");
-foreach (var history in context.ExecutionHistory)
+foreach (var history in instance.ExecutionHistory)
 {
     Console.WriteLine($"Nœud: {history.NodeName} ({history.NodeType})");
     Console.WriteLine($"  Début: {history.StartedAt:yyyy-MM-dd HH:mm:ss.fff}");
@@ -68,30 +75,30 @@ foreach (var history in context.ExecutionHistory)
 
 // Simuler l'attente et continuer
 await Task.Delay(1000);
-context = await engine.SignalAsync(context, "PaymentReceived");
+instance = await engine.SignalAsync(instance, "PaymentReceived");
 
 Console.WriteLine("\n=== Après signal ===");
-Console.WriteLine($"Status: {context.Status}");
-Console.WriteLine($"Nouvelles étapes exécutées: {context.ExecutionHistory.Count}");
+Console.WriteLine($"Status: {instance.Status}");
+Console.WriteLine($"Nouvelles étapes exécutées: {instance.ExecutionHistory.Count}");
 
 // Charger depuis la base de données plus tard
-var loadedContext = await engine.LoadProcessAsync("order-123");
-if (loadedContext != null)
+var loadedInstance = await engine.LoadProcessAsync("order-123");
+if (loadedInstance != null)
 {
-    Console.WriteLine("\n=== Contexte rechargé depuis Oracle ===");
-    Console.WriteLine($"Process ID: {loadedContext.ProcessId}");
-    Console.WriteLine($"Démarré le: {loadedContext.StartedAt}");
-    Console.WriteLine($"Dernière exécution: {loadedContext.LastExecutedAt}");
-    if (loadedContext.CompletedAt.HasValue)
+    Console.WriteLine("\n=== Instance rechargée depuis Oracle ===");
+    Console.WriteLine($"Process ID: {loadedInstance.ProcessId}");
+    Console.WriteLine($"Démarré le: {loadedInstance.StartedAt}");
+    Console.WriteLine($"Dernière exécution: {loadedInstance.LastExecutedAt}");
+    if (loadedInstance.CompletedAt.HasValue)
     {
-        Console.WriteLine($"Complété le: {loadedContext.CompletedAt}");
-        Console.WriteLine($"Durée totale: {loadedContext.TotalDuration?.TotalSeconds:F2} secondes");
+        Console.WriteLine($"Complété le: {loadedInstance.CompletedAt}");
+        Console.WriteLine($"Durée totale: {loadedInstance.TotalDuration?.TotalSeconds:F2} secondes");
     }
-    
-    Console.WriteLine($"\nNombre total d'étapes: {loadedContext.ExecutionHistory.Count}");
-    
+
+    Console.WriteLine($"\nNombre total d'étapes: {loadedInstance.ExecutionHistory.Count}");
+
     // Afficher un résumé par type de nœud
-    var summary = loadedContext.ExecutionHistory
+    var summary = loadedInstance.ExecutionHistory
         .GroupBy(h => h.NodeType)
         .Select(g => new
         {
@@ -100,7 +107,7 @@ if (loadedContext != null)
             AvgDuration = g.Average(h => h.Duration.TotalMilliseconds),
             TotalDuration = g.Sum(h => h.Duration.TotalMilliseconds)
         });
-    
+
     Console.WriteLine("\n=== Résumé par type de nœud ===");
     foreach (var item in summary)
     {
@@ -110,19 +117,19 @@ if (loadedContext != null)
     }
 }
 
-public class SampleExecutor : ICommandQueryExecutor
+public class SampleExecutor : ICommandExecutor
 {
-    public async Task ExecuteAsync(string commandOrQueryName, string processId, string? aggregateId, bool isQuery)
+    public async Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
     {
         // Simuler un délai de traitement
         await Task.Delay(Random.Shared.Next(50, 200));
-        Console.WriteLine($"Executing {(isQuery ? "Query" : "Command")}: {commandOrQueryName}");
+        Console.WriteLine($"Executing Command: {commandName}");
     }
 
-    public async Task<string> ExecuteDecisionAsync(string queryName, string processId, string? aggregateId)
+    public async Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 150));
-        Console.WriteLine($"Executing Decision Query: {queryName}");
+        Console.WriteLine($"Executing Decision: {decisionName}");
         return "approved";
     }
 }

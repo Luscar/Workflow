@@ -1,7 +1,14 @@
 using SimpleBPM;
+using SimpleBPM.Abstractions;
 using SimpleBPM.Nodes;
+using SimpleBPM.Handlers;
 
-ProcessEngine.ConfigureExecutor(new SampleExecutor());
+var executor = new SampleExecutor();
+var handlers = new INodeHandler[]
+{
+    new BusinessNodeHandler(executor),
+    new DecisionNodeHandler(executor)
+};
 
 // ========================================
 // 1. Définir un SOUS-PROCESSUS de validation
@@ -27,11 +34,20 @@ var mainProcessDefinition = new ProcessDefinition("OrderProcessWithSubProcess");
 
 var startNode = new BusinessNode("StartOrder") { Name = "Démarrer la commande" };
 
-// Nœud de sous-processus
+// Nœud de sous-processus avec mapping explicite
 var validationSubProcessNode = new SubProcessNode(subProcessDefinition)
 {
     Name = "Validation complète",
-    InheritAggregateId = true  // Le sous-processus hérite de l'ID d'agrégat
+    InheritAggregateId = true,
+    InputMapping = new()
+    {
+        ["OrderAmount"] = "Amount",
+        ["CustomerType"] = "ClientType"
+    },
+    OutputMapping = new()
+    {
+        ["ValidationResult"] = "IsValid"
+    }
 };
 
 var processPaymentNode = new BusinessNode("ProcessPayment") { Name = "Traiter le paiement" };
@@ -50,71 +66,68 @@ mainProcessDefinition
 // ========================================
 // 3. Exécuter le processus principal
 // ========================================
-var engine = new ProcessEngine(mainProcessDefinition);
+var engine = new FlowEngine(new[] { mainProcessDefinition }, handlers: handlers);
 
-var context = new ProcessContext("order-456", "aggregate-789");
+var instance = new ProcessInstance("order-456", "aggregate-789");
 
-// Ajouter des données d'entrée pour le sous-processus
-context.Data["SUB_INPUT_OrderAmount"] = 1500.00;
-context.Data["SUB_INPUT_CustomerType"] = "Premium";
+// Ajouter des variables d'entrée (noms normaux, le mapping se charge du transfert)
+instance.Variables["OrderAmount"] = 1500.00;
+instance.Variables["CustomerType"] = "Premium";
 
 Console.WriteLine("=== Démarrage du processus principal ===");
-context = await engine.ExecuteAsync(context);
+instance = await engine.ExecuteAsync(instance);
 
-Console.WriteLine($"Statut: {context.Status}");
-Console.WriteLine($"Nœud courant: {context.CurrentNodeId}");
-Console.WriteLine($"Nombre d'étapes exécutées: {context.ExecutionHistory.Count}");
+Console.WriteLine($"Statut: {instance.Status}");
+Console.WriteLine($"Nœud courant: {instance.CurrentNodeId}");
+Console.WriteLine($"Nombre d'étapes exécutées: {instance.ExecutionHistory.Count}");
 
 // Afficher l'historique
 Console.WriteLine("\n=== Historique d'exécution ===");
-foreach (var history in context.ExecutionHistory)
+foreach (var history in instance.ExecutionHistory)
 {
     Console.WriteLine($"- {history.NodeName} ({history.NodeType}): {history.Duration.TotalMilliseconds:F0}ms - Succès: {history.Success}");
 }
 
 // Si le processus est en attente (à cause de l'approbation manuelle dans le sous-processus)
-if (context.Status == ProcessStatus.WaitingInteraction)
+if (instance.Status == ProcessStatus.WaitingInteraction)
 {
     Console.WriteLine("\n=== Le processus attend une interaction (approbation manuelle) ===");
     Console.WriteLine("Simulation de l'approbation...");
-    
+
     // Continuer le processus
     await Task.Delay(1000);
-    context = await engine.ContinueAsync(context);
-    
-    Console.WriteLine($"Nouveau statut: {context.Status}");
-    Console.WriteLine($"Nombre total d'étapes: {context.ExecutionHistory.Count}");
+    instance = await engine.ContinueAsync(instance);
+
+    Console.WriteLine($"Nouveau statut: {instance.Status}");
+    Console.WriteLine($"Nombre total d'étapes: {instance.ExecutionHistory.Count}");
 }
 
-// Afficher les données de sortie du sous-processus
-Console.WriteLine("\n=== Données de sortie ===");
-foreach (var kvp in context.Data)
+// Afficher les variables de sortie récupérées via le mapping
+Console.WriteLine("\n=== Variables de sortie ===");
+if (instance.Variables.TryGetValue("IsValid", out var isValid))
 {
-    if (kvp.Key.StartsWith("SUB_OUTPUT_"))
-    {
-        Console.WriteLine($"{kvp.Key}: {kvp.Value}");
-    }
+    Console.WriteLine($"IsValid: {isValid}");
 }
 
 Console.WriteLine("\n=== Résumé final ===");
-Console.WriteLine($"Statut final: {context.Status}");
-if (context.CompletedAt.HasValue)
+Console.WriteLine($"Statut final: {instance.Status}");
+if (instance.CompletedAt.HasValue)
 {
-    Console.WriteLine($"Durée totale: {context.TotalDuration?.TotalSeconds:F2} secondes");
+    Console.WriteLine($"Durée totale: {instance.TotalDuration?.TotalSeconds:F2} secondes");
 }
 
-public class SampleExecutor : ICommandQueryExecutor
+public class SampleExecutor : ICommandExecutor
 {
-    public async Task ExecuteAsync(string commandOrQueryName, string processId, string? aggregateId, bool isQuery)
+    public async Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 150));
-        Console.WriteLine($"  Exécution: {commandOrQueryName}");
+        Console.WriteLine($"  Exécution: {commandName}");
     }
 
-    public async Task<string> ExecuteDecisionAsync(string queryName, string processId, string? aggregateId)
+    public async Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 100));
-        Console.WriteLine($"  Décision: {queryName}");
+        Console.WriteLine($"  Décision: {decisionName}");
         return "approved";
     }
 }
