@@ -60,7 +60,7 @@ processDefinition
     .AddNode(interactiveNode);
 
 // Créer le moteur avec le repository et les handlers
-var engine = new ProcessEngine(processDefinition, repository, handlers);
+var engine = new FlowEngine(new[] { processDefinition }, repository, handlers);
 
 // Démarrer un nouveau processus
 var instance = new ProcessInstance("order-123", "aggregate-456");

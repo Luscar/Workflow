@@ -66,7 +66,7 @@ mainProcessDefinition
 // ========================================
 // 3. Exécuter le processus principal
 // ========================================
-var engine = new ProcessEngine(mainProcessDefinition, handlers: handlers);
+var engine = new FlowEngine(new[] { mainProcessDefinition }, handlers: handlers);
 
 var instance = new ProcessInstance("order-456", "aggregate-789");
 

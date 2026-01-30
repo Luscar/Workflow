@@ -61,7 +61,7 @@ processDefinition
     .AddNode(interactiveNode);
 
 // Exécution
-var engine = new ProcessEngine(processDefinition, handlers: handlers);
+var engine = new FlowEngine(new[] { processDefinition }, handlers: handlers);
 var instance = new ProcessInstance("order-123", "aggregate-456");
 
 // Première exécution - s'arrêtera au premier nœud d'attente/interactif

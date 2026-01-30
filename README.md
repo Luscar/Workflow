@@ -406,7 +406,7 @@ SimpleBPM/
 ├── Persistence/       # Repository Oracle et configuration
 ├── IFlowService.cs    # Interface client
 ├── FlowService.cs     # Implémentation (multi-définitions, multi-versions)
-├── ProcessEngine.cs   # Moteur d'exécution interne (mono-définition)
+├── FlowEngine.cs      # Moteur d'exécution (multi-définitions, multi-versions)
 ├── ProcessInstance.cs # Instance de processus en cours
 ├── ProcessNode.cs     # Classe de base des nœuds
 └── ProcessDefinition.cs # Définition d'un processus (nom + version)

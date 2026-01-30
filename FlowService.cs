@@ -6,29 +6,19 @@ namespace SimpleBPM;
 
 public class FlowService : IFlowService
 {
-    private readonly Dictionary<string, List<ProcessDefinition>> _definitions = new();
+    private readonly FlowEngine _engine;
     private readonly IProcessRepository _repository;
-    private readonly IEnumerable<INodeHandler> _handlers;
 
     public FlowService(IEnumerable<ProcessDefinition> definitions, IProcessRepository repository, IEnumerable<INodeHandler> handlers)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _handlers = handlers ?? throw new ArgumentNullException(nameof(handlers));
-
-        foreach (var def in definitions)
-        {
-            if (!_definitions.ContainsKey(def.Name))
-                _definitions[def.Name] = new List<ProcessDefinition>();
-            _definitions[def.Name].Add(def);
-        }
+        _engine = new FlowEngine(definitions, repository, handlers);
     }
 
     public async Task<ProcessStatus> StartAsync(string definitionName, string processId, string? aggregateId = null, Dictionary<string, object>? variables = null)
     {
-        var definition = GetLatestDefinition(definitionName);
-        var engine = new ProcessEngine(definition, _repository, _handlers);
-
         var instance = new ProcessInstance(processId, aggregateId);
+        instance.DefinitionName = definitionName;
 
         if (variables != null)
         {
@@ -36,7 +26,7 @@ public class FlowService : IFlowService
                 instance.Variables[kvp.Key] = kvp.Value;
         }
 
-        var result = await engine.ExecuteAsync(instance);
+        var result = await _engine.ExecuteAsync(instance);
         return result.Status;
     }
 
@@ -45,8 +35,7 @@ public class FlowService : IFlowService
         var instance = await _repository.GetProcessInstanceAsync(processId)
             ?? throw new InvalidOperationException($"Process '{processId}' not found");
 
-        var engine = CreateEngineForInstance(instance);
-        var result = await engine.ContinueAsync(instance);
+        var result = await _engine.ContinueAsync(instance);
         return result.Status;
     }
 
@@ -55,8 +44,7 @@ public class FlowService : IFlowService
         var instance = await _repository.GetProcessInstanceAsync(processId)
             ?? throw new InvalidOperationException($"Process '{processId}' not found");
 
-        var engine = CreateEngineForInstance(instance);
-        var result = await engine.SignalAsync(instance, signalName);
+        var result = await _engine.SignalAsync(instance, signalName);
         return result.Status;
     }
 
@@ -73,7 +61,7 @@ public class FlowService : IFlowService
         var instance = await _repository.GetProcessInstanceAsync(processId)
             ?? throw new InvalidOperationException($"Process '{processId}' not found");
 
-        var sourceDefinition = GetDefinition(instance.DefinitionName!, instance.DefinitionVersion!);
+        var sourceDefinition = _engine.GetDefinition(instance.DefinitionName!, instance.DefinitionVersion!);
         var result = ProcessMigrationRunner.Migrate(instance, sourceDefinition, targetDefinition, migration);
 
         if (result.Success)
@@ -82,31 +70,5 @@ public class FlowService : IFlowService
         }
 
         return result;
-    }
-
-    private ProcessEngine CreateEngineForInstance(ProcessInstance instance)
-    {
-        var definition = GetDefinition(
-            instance.DefinitionName ?? throw new InvalidOperationException("Instance has no definition name"),
-            instance.DefinitionVersion ?? throw new InvalidOperationException("Instance has no definition version"));
-
-        return new ProcessEngine(definition, _repository, _handlers);
-    }
-
-    private ProcessDefinition GetLatestDefinition(string name)
-    {
-        if (!_definitions.TryGetValue(name, out var versions) || versions.Count == 0)
-            throw new InvalidOperationException($"No definition found for '{name}'");
-
-        return versions[^1];
-    }
-
-    private ProcessDefinition GetDefinition(string name, string version)
-    {
-        if (!_definitions.TryGetValue(name, out var versions))
-            throw new InvalidOperationException($"No definition found for '{name}'");
-
-        return versions.FirstOrDefault(d => d.Version == version)
-            ?? throw new InvalidOperationException($"No definition found for '{name}' version '{version}'");
     }
 }

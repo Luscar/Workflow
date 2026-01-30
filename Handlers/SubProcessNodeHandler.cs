@@ -65,7 +65,7 @@ public class SubProcessNodeHandler : INodeHandler
             }
 
             // Créer un moteur pour le sous-processus avec le même repository et handlers
-            var subEngine = new ProcessEngine(subNode.SubProcessDefinition, _repository, _handlers);
+            var subEngine = new FlowEngine(subNode.SubProcessDefinition, _repository, _handlers);
 
             // Exécuter ou continuer le sous-processus
             if (string.IsNullOrEmpty(existingSubProcessId))

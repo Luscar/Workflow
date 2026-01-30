@@ -2,17 +2,24 @@ using SimpleBPM.Handlers;
 
 namespace SimpleBPM;
 
-public class ProcessEngine
+public class FlowEngine
 {
-    private readonly ProcessDefinition _definition;
+    private readonly Dictionary<string, List<ProcessDefinition>> _definitions;
     private readonly Persistence.IProcessRepository? _repository;
     private readonly Dictionary<NodeType, INodeHandler> _handlers;
 
-    public ProcessEngine(ProcessDefinition definition, Persistence.IProcessRepository? repository = null, IEnumerable<INodeHandler>? handlers = null)
+    public FlowEngine(IEnumerable<ProcessDefinition> definitions, Persistence.IProcessRepository? repository = null, IEnumerable<INodeHandler>? handlers = null)
     {
-        _definition = definition;
+        _definitions = new Dictionary<string, List<ProcessDefinition>>();
         _repository = repository;
         _handlers = new Dictionary<NodeType, INodeHandler>();
+
+        foreach (var def in definitions)
+        {
+            if (!_definitions.ContainsKey(def.Name))
+                _definitions[def.Name] = new List<ProcessDefinition>();
+            _definitions[def.Name].Add(def);
+        }
 
         if (handlers != null)
         {
@@ -30,17 +37,21 @@ public class ProcessEngine
     /// <summary>
     /// Internal constructor for sub-processes that share the parent's handler registry.
     /// </summary>
-    internal ProcessEngine(ProcessDefinition definition, Persistence.IProcessRepository? repository, Dictionary<NodeType, INodeHandler> handlers)
+    internal FlowEngine(ProcessDefinition definition, Persistence.IProcessRepository? repository, Dictionary<NodeType, INodeHandler> handlers)
     {
-        _definition = definition;
+        _definitions = new Dictionary<string, List<ProcessDefinition>>
+        {
+            [definition.Name] = new List<ProcessDefinition> { definition }
+        };
         _repository = repository;
         _handlers = handlers;
     }
 
     public async Task<ProcessInstance> ExecuteAsync(ProcessInstance instance)
     {
-        instance.DefinitionName ??= _definition.Name;
-        instance.DefinitionVersion ??= _definition.Version;
+        var definition = ResolveDefinition(instance);
+        instance.DefinitionName ??= definition.Name;
+        instance.DefinitionVersion ??= definition.Version;
         instance.LastExecutedAt = DateTime.UtcNow;
 
         if (_repository != null)
@@ -52,11 +63,11 @@ public class ProcessEngine
             }
         }
 
-        var currentNodeId = instance.CurrentNodeId ?? _definition.StartNodeId;
+        var currentNodeId = instance.CurrentNodeId ?? definition.StartNodeId;
 
         while (!string.IsNullOrEmpty(currentNodeId))
         {
-            var node = _definition.GetNode(currentNodeId);
+            var node = definition.GetNode(currentNodeId);
 
             if (node == null)
             {
@@ -137,7 +148,8 @@ public class ProcessEngine
             return instance;
         }
 
-        var currentNode = _definition.GetNode(instance.CurrentNodeId);
+        var definition = ResolveDefinition(instance);
+        var currentNode = definition.GetNode(instance.CurrentNodeId);
 
         // Notify handler that we are leaving this node
         if (currentNode != null && _handlers.TryGetValue(currentNode.Type, out var currentHandler))
@@ -189,5 +201,36 @@ public class ProcessEngine
         }
 
         return await _repository.GetProcessInstanceAsync(processId);
+    }
+
+    internal ProcessDefinition GetDefinition(string name, string version)
+    {
+        if (!_definitions.TryGetValue(name, out var versions))
+            throw new InvalidOperationException($"No definition found for '{name}'");
+
+        return versions.FirstOrDefault(d => d.Version == version)
+            ?? throw new InvalidOperationException($"No definition found for '{name}' version '{version}'");
+    }
+
+    internal ProcessDefinition GetLatestDefinition(string name)
+    {
+        if (!_definitions.TryGetValue(name, out var versions) || versions.Count == 0)
+            throw new InvalidOperationException($"No definition found for '{name}'");
+
+        return versions[^1];
+    }
+
+    private ProcessDefinition ResolveDefinition(ProcessInstance instance)
+    {
+        if (!string.IsNullOrEmpty(instance.DefinitionName) && !string.IsNullOrEmpty(instance.DefinitionVersion))
+            return GetDefinition(instance.DefinitionName, instance.DefinitionVersion);
+
+        if (!string.IsNullOrEmpty(instance.DefinitionName))
+            return GetLatestDefinition(instance.DefinitionName);
+
+        if (_definitions.Count == 1)
+            return _definitions.Values.First()[^1];
+
+        throw new InvalidOperationException("Cannot resolve process definition. Set DefinitionName on the instance.");
     }
 }

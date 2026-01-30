@@ -115,7 +115,7 @@ Console.WriteLine();
 // ============================================================
 Console.WriteLine("=== Exécution du processus ===\n");
 
-var engine = new ProcessEngine(processFromBuilder, handlers: handlers);
+var engine = new FlowEngine(new[] { processFromBuilder }, handlers: handlers);
 var instance = new ProcessInstance("order-789", "aggregate-123");
 
 instance = await engine.ExecuteAsync(instance);

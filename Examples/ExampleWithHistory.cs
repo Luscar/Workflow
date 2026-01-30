@@ -45,7 +45,7 @@ processDefinition
     .AddNode(approvedNode)
     .AddNode(waitNode);
 
-var engine = new ProcessEngine(processDefinition, repository, handlers);
+var engine = new FlowEngine(new[] { processDefinition }, repository, handlers);
 
 // Exécuter le processus
 var instance = new ProcessInstance("order-123", "aggregate-456");
