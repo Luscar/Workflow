@@ -15,6 +15,16 @@ public class ProcessInstance
     public ProcessStatus Status { get; set; }
     public List<NodeExecutionHistory> ExecutionHistory { get; set; } = new();
 
+    /// <summary>
+    /// ID of the parent process that spawned this subprocess, null for root processes.
+    /// </summary>
+    public string? ParentProcessId { get; set; }
+
+    /// <summary>
+    /// ID of the node in the parent process that spawned this subprocess.
+    /// </summary>
+    public string? ParentNodeId { get; set; }
+
     public ProcessInstance(string processId, string? aggregateId = null)
     {
         ProcessId = processId;

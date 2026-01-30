@@ -3,6 +3,9 @@ using SimpleBPM.Abstractions;
 using SimpleBPM.Nodes;
 using SimpleBPM.Handlers;
 
+// NOTE: Subprocess instances now carry ParentProcessId and ParentNodeId,
+// enabling bidirectional navigation and event-based completion notification.
+
 var executor = new SampleExecutor();
 var handlers = new INodeHandler[]
 {
@@ -64,9 +67,9 @@ mainProcessDefinition
     .AddNode(completeNode);
 
 // ========================================
-// 3. Exécuter le processus principal
+// 3. Exécuter le processus principal (with optional event handler)
 // ========================================
-var engine = new FlowEngine(new[] { mainProcessDefinition }, handlers: handlers);
+var engine = new FlowEngine(new[] { mainProcessDefinition }, handlers: handlers, eventHandler: new SampleEventHandler());
 
 var instance = new ProcessInstance("order-456", "aggregate-789");
 
@@ -129,5 +132,16 @@ public class SampleExecutor : ICommandExecutor
         await Task.Delay(Random.Shared.Next(50, 100));
         Console.WriteLine($"  Décision: {decisionName}");
         return "approved";
+    }
+}
+
+public class SampleEventHandler : IProcessEventHandler
+{
+    public Task OnSubProcessCompletedAsync(SubProcessCompletedEvent evt)
+    {
+        Console.WriteLine($"\n  [Event] Subprocess {evt.SubProcessId} completed");
+        Console.WriteLine($"  [Event] Parent: {evt.ParentProcessId} (node: {evt.ParentNodeId})");
+        Console.WriteLine($"  [Event] Output variables propagated: {string.Join(", ", evt.OutputData.Select(kv => $"{kv.Key}={kv.Value}"))}");
+        return Task.CompletedTask;
     }
 }

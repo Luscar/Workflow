@@ -1,3 +1,4 @@
+using SimpleBPM.Abstractions;
 using SimpleBPM.Nodes;
 using SimpleBPM.Persistence;
 
@@ -7,13 +8,15 @@ public class SubProcessNodeHandler : INodeHandler
 {
     private readonly IProcessRepository? _repository;
     private readonly Dictionary<NodeType, INodeHandler> _handlers;
+    private readonly IProcessEventHandler? _eventHandler;
 
     public NodeType NodeType => NodeType.SubProcess;
 
-    internal SubProcessNodeHandler(IProcessRepository? repository, Dictionary<NodeType, INodeHandler> handlers)
+    internal SubProcessNodeHandler(IProcessRepository? repository, Dictionary<NodeType, INodeHandler> handlers, IProcessEventHandler? eventHandler = null)
     {
         _repository = repository;
         _handlers = handlers;
+        _eventHandler = eventHandler;
     }
 
     public async Task<NodeExecutionResult> HandleAsync(ProcessNode node, ProcessInstance instance)
@@ -22,7 +25,7 @@ public class SubProcessNodeHandler : INodeHandler
 
         try
         {
-            // Vérifier si un sous-processus existe déjà (reprise après arrêt)
+            // Check if a subprocess already exists (resume after stop)
             instance.SubProcessIds.TryGetValue(node.Id, out var existingSubProcessId);
 
             ProcessInstance subInstance;
@@ -30,7 +33,7 @@ public class SubProcessNodeHandler : INodeHandler
 
             if (!string.IsNullOrEmpty(existingSubProcessId) && _repository != null)
             {
-                // Reprendre un sous-processus existant
+                // Resume an existing subprocess
                 var loadedInstance = await _repository.GetProcessInstanceAsync(existingSubProcessId);
 
                 if (loadedInstance == null)
@@ -47,14 +50,18 @@ public class SubProcessNodeHandler : INodeHandler
             }
             else
             {
-                // Créer un nouveau sous-processus
+                // Create a new subprocess with parent link
                 subProcessId = $"{instance.ProcessId}_SUB_{node.Id}_{Guid.NewGuid():N}";
                 subInstance = new ProcessInstance(
                     subProcessId,
                     subNode.InheritAggregateId ? instance.AggregateId : null
-                );
+                )
+                {
+                    ParentProcessId = instance.ProcessId,
+                    ParentNodeId = node.Id
+                };
 
-                // Copier les variables d'entrée via le mapping explicite
+                // Apply input mapping: parent variables -> subprocess variables
                 foreach (var mapping in subNode.InputMapping)
                 {
                     if (instance.Variables.TryGetValue(mapping.Key, out var value))
@@ -64,10 +71,10 @@ public class SubProcessNodeHandler : INodeHandler
                 }
             }
 
-            // Créer un moteur pour le sous-processus avec le même repository et handlers
+            // Create engine for the subprocess sharing handlers
             var subEngine = new FlowEngine(subNode.SubProcessDefinition, _repository, _handlers);
 
-            // Exécuter ou continuer le sous-processus
+            // Execute or continue the subprocess
             if (string.IsNullOrEmpty(existingSubProcessId))
             {
                 subInstance = await subEngine.ExecuteAsync(subInstance);
@@ -77,7 +84,7 @@ public class SubProcessNodeHandler : INodeHandler
                 subInstance = await subEngine.ContinueAsync(subInstance);
             }
 
-            // Vérifier le statut du sous-processus
+            // Check subprocess status
             if (subInstance.Status == ProcessStatus.Failed)
             {
                 return new NodeExecutionResult
@@ -87,12 +94,11 @@ public class SubProcessNodeHandler : INodeHandler
                 };
             }
 
-            // Si le sous-processus est en attente, sauvegarder son état
+            // If the subprocess is waiting, save its state and pause the parent
             if (subInstance.Status == ProcessStatus.WaitingInteraction ||
                 subInstance.Status == ProcessStatus.WaitingDate ||
                 subInstance.Status == ProcessStatus.WaitingSignal)
             {
-                // Sauvegarder l'ID du sous-processus dans le dictionnaire dédié
                 instance.SubProcessIds[node.Id] = subProcessId;
 
                 return new NodeExecutionResult
@@ -103,20 +109,27 @@ public class SubProcessNodeHandler : INodeHandler
                 };
             }
 
-            // Le sous-processus est complété
-            // Récupérer les variables de sortie via le mapping explicite
-            foreach (var mapping in subNode.OutputMapping)
+            // Subprocess completed - propagate output variables back to parent
+            var outputVariables = ExtractOutputVariables(subInstance, subNode);
+            PropagateToParent(instance, outputVariables);
+
+            // Notify that subprocess completed
+            if (_eventHandler != null && subInstance.ParentProcessId != null)
             {
-                if (subInstance.Variables.TryGetValue(mapping.Key, out var value))
+                await _eventHandler.OnSubProcessCompletedAsync(new SubProcessCompletedEvent
                 {
-                    instance.Variables[mapping.Value] = value;
-                }
+                    SubProcessId = subInstance.ProcessId,
+                    ParentProcessId = subInstance.ParentProcessId,
+                    ParentNodeId = subInstance.ParentNodeId ?? node.Id,
+                    OutputData = outputVariables,
+                    SubProcessStatus = subInstance.Status,
+                    CompletedAt = subInstance.CompletedAt ?? DateTime.UtcNow
+                });
             }
 
-            // Nettoyer l'ID du sous-processus
+            // Clean up subprocess tracking
             instance.SubProcessIds.Remove(node.Id);
 
-            // Supprimer le contexte du sous-processus de la base de données
             if (_repository != null && !string.IsNullOrEmpty(existingSubProcessId))
             {
                 await _repository.DeleteProcessInstanceAsync(existingSubProcessId);
@@ -136,6 +149,33 @@ public class SubProcessNodeHandler : INodeHandler
                 IsCompleted = false,
                 ErrorMessage = $"Sub-process execution error: {ex.Message}"
             };
+        }
+    }
+
+    /// <summary>
+    /// Extracts the mapped output variables from a completed subprocess.
+    /// </summary>
+    private static Dictionary<string, object> ExtractOutputVariables(ProcessInstance subInstance, SubProcessNode subNode)
+    {
+        var output = new Dictionary<string, object>();
+        foreach (var mapping in subNode.OutputMapping)
+        {
+            if (subInstance.Variables.TryGetValue(mapping.Key, out var value))
+            {
+                output[mapping.Value] = value;
+            }
+        }
+        return output;
+    }
+
+    /// <summary>
+    /// Applies the mapped output variables to the parent process instance.
+    /// </summary>
+    private static void PropagateToParent(ProcessInstance parentInstance, Dictionary<string, object> outputVariables)
+    {
+        foreach (var kvp in outputVariables)
+        {
+            parentInstance.Variables[kvp.Key] = kvp.Value;
         }
     }
 }

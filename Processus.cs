@@ -11,6 +11,8 @@ public class Processus
     public string? CurrentNodeId { get; set; }
     public DateTime StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public string? ParentProcessId { get; set; }
+    public string? ParentNodeId { get; set; }
 
     internal static Processus FromInstance(ProcessInstance instance) => new()
     {
@@ -22,6 +24,8 @@ public class Processus
         Variables = instance.Variables,
         CurrentNodeId = instance.CurrentNodeId,
         StartedAt = instance.StartedAt,
-        CompletedAt = instance.CompletedAt
+        CompletedAt = instance.CompletedAt,
+        ParentProcessId = instance.ParentProcessId,
+        ParentNodeId = instance.ParentNodeId
     };
 }

@@ -1,3 +1,4 @@
+using SimpleBPM.Abstractions;
 using SimpleBPM.Handlers;
 
 namespace SimpleBPM;
@@ -8,7 +9,7 @@ public class FlowEngine
     private readonly Persistence.IProcessRepository? _repository;
     private readonly Dictionary<NodeType, INodeHandler> _handlers;
 
-    public FlowEngine(IEnumerable<ProcessDefinition> definitions, Persistence.IProcessRepository? repository = null, IEnumerable<INodeHandler>? handlers = null)
+    public FlowEngine(IEnumerable<ProcessDefinition> definitions, Persistence.IProcessRepository? repository = null, IEnumerable<INodeHandler>? handlers = null, IProcessEventHandler? eventHandler = null)
     {
         _definitions = new Dictionary<string, List<ProcessDefinition>>();
         _repository = repository;
@@ -31,7 +32,7 @@ public class FlowEngine
         _handlers.TryAdd(NodeType.Interactive, new InteractiveNodeHandler());
         _handlers.TryAdd(NodeType.WaitUntilDate, new WaitUntilDateNodeHandler());
         _handlers.TryAdd(NodeType.WaitForSignal, new WaitForSignalNodeHandler());
-        _handlers.TryAdd(NodeType.SubProcess, new SubProcessNodeHandler(repository, _handlers));
+        _handlers.TryAdd(NodeType.SubProcess, new SubProcessNodeHandler(repository, _handlers, eventHandler));
     }
 
     /// <summary>

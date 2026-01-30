@@ -1,3 +1,4 @@
+using SimpleBPM.Abstractions;
 using SimpleBPM.Handlers;
 using SimpleBPM.Migration;
 using SimpleBPM.Persistence;
@@ -9,10 +10,10 @@ public class FlowService : IFlowService
     private readonly FlowEngine _engine;
     private readonly IProcessRepository _repository;
 
-    public FlowService(IEnumerable<ProcessDefinition> definitions, IProcessRepository repository, IEnumerable<INodeHandler> handlers)
+    public FlowService(IEnumerable<ProcessDefinition> definitions, IProcessRepository repository, IEnumerable<INodeHandler> handlers, IProcessEventHandler? eventHandler = null)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _engine = new FlowEngine(definitions, repository, handlers);
+        _engine = new FlowEngine(definitions, repository, handlers, eventHandler);
     }
 
     public async Task<Processus> ObtenirAsync(string instanceProcessId)
@@ -58,6 +59,18 @@ public class FlowService : IFlowService
                 children.Add(Processus.FromInstance(child));
         }
         return children;
+    }
+
+    public async Task<Processus?> ObtenirParent(string idInstanceEnfant)
+    {
+        var child = await _repository.GetProcessInstanceAsync(idInstanceEnfant)
+            ?? throw new InvalidOperationException($"Process '{idInstanceEnfant}' not found");
+
+        if (string.IsNullOrEmpty(child.ParentProcessId))
+            return null;
+
+        var parent = await _repository.GetProcessInstanceAsync(child.ParentProcessId);
+        return parent != null ? Processus.FromInstance(parent) : null;
     }
 
     public async Task<IEnumerable<string>> ObtenirSignauxEnAttente(string idInstanceProcessus)
