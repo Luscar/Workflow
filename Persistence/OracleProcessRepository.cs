@@ -132,24 +132,7 @@ public class OracleProcessRepository : IProcessRepository
             return null;
         }
 
-        var instance = new ProcessInstance(result.ID_PROCESSUS)
-        {
-            AggregateId = result.ID_AGREGAT,
-            DefinitionName = result.NOM_DEFINITION,
-            DefinitionVersion = result.VERSION_DEFINITION,
-            Variables = string.IsNullOrEmpty(result.DONNEES)
-                ? new Dictionary<string, object>()
-                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>(),
-            SubProcessIds = string.IsNullOrEmpty(result.SOUS_PROCESSUS)
-                ? new Dictionary<string, string>()
-                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(result.SOUS_PROCESSUS) ?? new Dictionary<string, string>(),
-            StartedAt = result.DATE_DEBUT,
-            LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
-            CompletedAt = result.DATE_COMPLETION,
-            CurrentNodeId = result.ID_NOEUD_COURANT,
-            Status = (ProcessStatus)result.STATUT
-        };
-
+        var instance = MapToInstance(result);
         instance.ExecutionHistory = await _historyRepository.GetHistoryAsync(processId);
 
         return instance;
@@ -201,6 +184,63 @@ public class OracleProcessRepository : IProcessRepository
     {
         var sql = $@"DELETE FROM {_processContextTable} WHERE ID_PROCESSUS = :IdProcessus";
         await _connection.ExecuteAsync(sql, new { IdProcessus = processId });
+    }
+
+    public async Task<List<ProcessInstance>> SearchByVariableAsync(Dictionary<string, object> variablesFiltre)
+    {
+        var sql = $@"
+            SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT
+            FROM {_processContextTable}
+            WHERE DONNEES IS NOT NULL";
+
+        var results = await _connection.QueryAsync<ProcessInstanceDto>(sql);
+        var matches = new List<ProcessInstance>();
+
+        foreach (var result in results)
+        {
+            var variables = string.IsNullOrEmpty(result.DONNEES)
+                ? new Dictionary<string, object>()
+                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>();
+
+            var allMatch = variablesFiltre.All(filter =>
+                variables.TryGetValue(filter.Key, out var value) &&
+                value?.ToString() == filter.Value?.ToString());
+
+            if (allMatch)
+            {
+                var instance = MapToInstance(result);
+                instance.ExecutionHistory = await _historyRepository.GetHistoryAsync(result.ID_PROCESSUS);
+                matches.Add(instance);
+            }
+        }
+
+        return matches;
+    }
+
+    public async Task<(NodeExecutionHistory History, string ProcessId)?> GetNodeHistoryByIdAsync(string historyId)
+    {
+        return await _historyRepository.GetByIdAsync(historyId);
+    }
+
+    private ProcessInstance MapToInstance(ProcessInstanceDto result)
+    {
+        return new ProcessInstance(result.ID_PROCESSUS)
+        {
+            AggregateId = result.ID_AGREGAT,
+            DefinitionName = result.NOM_DEFINITION,
+            DefinitionVersion = result.VERSION_DEFINITION,
+            Variables = string.IsNullOrEmpty(result.DONNEES)
+                ? new Dictionary<string, object>()
+                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>(),
+            SubProcessIds = string.IsNullOrEmpty(result.SOUS_PROCESSUS)
+                ? new Dictionary<string, string>()
+                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(result.SOUS_PROCESSUS) ?? new Dictionary<string, string>(),
+            StartedAt = result.DATE_DEBUT,
+            LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
+            CompletedAt = result.DATE_COMPLETION,
+            CurrentNodeId = result.ID_NOEUD_COURANT,
+            Status = (ProcessStatus)result.STATUT
+        };
     }
 
     private class ProcessInstanceDto

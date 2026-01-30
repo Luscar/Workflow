@@ -1,12 +1,12 @@
-using SimpleBPM.Migration;
-
 namespace SimpleBPM;
 
 public interface IFlowService
 {
-    Task<ProcessStatus> StartAsync(string definitionName, string processId, string? aggregateId = null, Dictionary<string, object>? variables = null);
-    Task<ProcessStatus> ContinueAsync(string processId);
-    Task<ProcessStatus> SignalAsync(string processId, string signalName);
-    Task<ProcessStatus> GetStatusAsync(string processId);
-    Task<MigrationResult> MigrateAsync(string processId, ProcessDefinition targetDefinition, ProcessMigration migration);
+    Task<Processus> ObtenirAsync(string instanceProcessId);
+    Task<string> CreateProcessInstance(string definitionId, Dictionary<string, object>? variables = null);
+    Task<List<Processus>> RechercherParVariable(Dictionary<string, object> variablesFiltre);
+    Task<List<Processus>> ObtenirEnfants(string idInstanceParent);
+    Task<IEnumerable<string>> ObtenirSignauxEnAttente(string idInstanceProcessus);
+    Task<InstanceNode> Obtenir(string idInstanceNoeud);
+    Task TerminerEtape(string idInstanceNoeud, object contenu);
 }

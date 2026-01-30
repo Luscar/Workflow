@@ -234,23 +234,35 @@ services.AddSingleton<INodeHandler>(sp => new InteractiveNodeHandler(sp.GetServi
 
 ## Utilisation
 
-Le client interagit avec la librairie via l'interface `IFlowService`, en passant l'ID du processus et/ou de l'agrégat.
+Le client interagit avec la librairie via l'interface `IFlowService`.
 
 ```csharp
-// Démarrer un processus (spécifier le nom de la définition)
-await flowService.StartAsync("OrderProcess", "order-123", aggregateId: "client-456", variables: new()
+// Créer une instance de processus
+var processId = await flowService.CreateProcessInstance("OrderProcess", new()
 {
     ["OrderAmount"] = 1500.00
 });
 
-// Continuer un processus en attente
-await flowService.ContinueAsync("order-123");
+// Obtenir un processus
+var processus = await flowService.ObtenirAsync(processId);
 
-// Envoyer un signal
-await flowService.SignalAsync("order-123", "PaymentReceived");
+// Terminer une étape (nœud interactif) avec du contenu
+await flowService.TerminerEtape(nodeInstanceId, new Dictionary<string, object>
+{
+    ["Decision"] = "approved"
+});
 
-// Vérifier le statut
-var status = await flowService.GetStatusAsync("order-123");
+// Obtenir les signaux en attente
+var signaux = await flowService.ObtenirSignauxEnAttente(processId);
+
+// Rechercher par variable
+var resultats = await flowService.RechercherParVariable(new() { ["OrderAmount"] = 1500.00 });
+
+// Obtenir les sous-processus enfants
+var enfants = await flowService.ObtenirEnfants(processId);
+
+// Obtenir un nœud d'instance
+var noeud = await flowService.Obtenir(nodeInstanceId);
 ```
 
 ### Avec Dependency Injection
@@ -404,10 +416,12 @@ SimpleBPM/
 ├── Migration/         # Migration de version (ProcessMigration, Runner, Result)
 ├── Nodes/             # Définitions des nœuds (données seulement)
 ├── Persistence/       # Repository Oracle et configuration
-├── IFlowService.cs    # Interface client
+├── IFlowService.cs    # Interface client (compatible BPM existant)
 ├── FlowService.cs     # Implémentation (multi-définitions, multi-versions)
 ├── FlowEngine.cs      # Moteur d'exécution (multi-définitions, multi-versions)
-├── ProcessInstance.cs # Instance de processus en cours
+├── Processus.cs       # Vue externe d'une instance de processus
+├── InstanceNode.cs    # Vue externe d'une instance de nœud
+├── ProcessInstance.cs # Instance de processus interne
 ├── ProcessNode.cs     # Classe de base des nœuds
 └── ProcessDefinition.cs # Définition d'un processus (nom + version)
 ```

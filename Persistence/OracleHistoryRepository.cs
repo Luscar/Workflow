@@ -176,6 +176,48 @@ public class OracleHistoryRepository
         return histories;
     }
 
+    public async Task<(NodeExecutionHistory History, string ProcessId)?> GetByIdAsync(string historyId)
+    {
+        var sql = $@"
+            SELECT ID_PROCESSUS, ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DATE_DEBUT, DATE_FIN, SUCCES, MESSAGE_ERREUR, ID_NOEUD_SUIVANT
+            FROM {_historyTable}
+            WHERE ID_HISTORIQUE = :IdHistorique";
+
+        var result = await _connection.QueryFirstOrDefaultAsync<NodeHistoryWithProcessDto>(sql, new { IdHistorique = historyId });
+
+        if (result == null)
+            return null;
+
+        var history = new NodeExecutionHistory(
+            result.ID_NOEUD,
+            result.NOM_NOEUD ?? string.Empty,
+            (NodeType)result.TYPE_NOEUD
+        );
+
+        history.StartedAt = result.DATE_DEBUT;
+        history.Complete(
+            result.SUCCES == 1,
+            result.MESSAGE_ERREUR,
+            result.ID_NOEUD_SUIVANT
+        );
+        history.CompletedAt = result.DATE_FIN;
+
+        return (history, result.ID_PROCESSUS);
+    }
+
+    private class NodeHistoryWithProcessDto
+    {
+        public string ID_PROCESSUS { get; set; } = string.Empty;
+        public string ID_NOEUD { get; set; } = string.Empty;
+        public string? NOM_NOEUD { get; set; }
+        public int TYPE_NOEUD { get; set; }
+        public DateTime DATE_DEBUT { get; set; }
+        public DateTime DATE_FIN { get; set; }
+        public int SUCCES { get; set; }
+        public string? MESSAGE_ERREUR { get; set; }
+        public string? ID_NOEUD_SUIVANT { get; set; }
+    }
+
     private class NodeExecutionHistoryDto
     {
         public string ID_NOEUD { get; set; } = string.Empty;
