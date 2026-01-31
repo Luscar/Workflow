@@ -7,13 +7,17 @@ public class ProcessInstance
     public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }
     public Dictionary<string, object> Variables { get; set; } = new();
+    public Dictionary<string, object> InternalState { get; set; } = new();
     public Dictionary<string, string> SubProcessIds { get; set; } = new();
     public DateTime StartedAt { get; set; }
     public DateTime? LastExecutedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public string? CurrentNodeId { get; set; }
     public ProcessStatus Status { get; set; }
+    public string? ErrorMessage { get; set; }
     public List<NodeExecutionHistory> ExecutionHistory { get; set; } = new();
+
+    internal SemaphoreSlim ExecutionLock { get; } = new(1, 1);
 
     public ProcessInstance(string processId, string? aggregateId = null)
     {

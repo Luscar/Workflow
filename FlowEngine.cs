@@ -1,17 +1,18 @@
 using SimpleBPM.Handlers;
+using SimpleBPM.Persistence;
 
 namespace SimpleBPM;
 
 public class FlowEngine
 {
     private readonly Dictionary<string, List<ProcessDefinition>> _definitions;
-    private readonly Persistence.IProcessRepository? _repository;
+    private readonly IProcessRepository _repository;
     private readonly Dictionary<NodeType, INodeHandler> _handlers;
 
-    public FlowEngine(IEnumerable<ProcessDefinition> definitions, Persistence.IProcessRepository? repository = null, IEnumerable<INodeHandler>? handlers = null)
+    public FlowEngine(IEnumerable<ProcessDefinition> definitions, IProcessRepository? repository = null, IEnumerable<INodeHandler>? handlers = null)
     {
         _definitions = new Dictionary<string, List<ProcessDefinition>>();
-        _repository = repository;
+        _repository = repository ?? NullProcessRepository.Instance;
         _handlers = new Dictionary<NodeType, INodeHandler>();
 
         foreach (var def in definitions)
@@ -37,30 +38,66 @@ public class FlowEngine
     /// <summary>
     /// Internal constructor for sub-processes that share the parent's handler registry.
     /// </summary>
-    internal FlowEngine(ProcessDefinition definition, Persistence.IProcessRepository? repository, Dictionary<NodeType, INodeHandler> handlers)
+    internal FlowEngine(ProcessDefinition definition, IProcessRepository? repository, Dictionary<NodeType, INodeHandler> handlers)
     {
         _definitions = new Dictionary<string, List<ProcessDefinition>>
         {
             [definition.Name] = new List<ProcessDefinition> { definition }
         };
-        _repository = repository;
+        _repository = repository ?? NullProcessRepository.Instance;
         _handlers = handlers;
     }
 
     public async Task<ProcessInstance> ExecuteAsync(ProcessInstance instance)
+    {
+        await instance.ExecutionLock.WaitAsync();
+        try
+        {
+            return await ExecuteInternalAsync(instance);
+        }
+        finally
+        {
+            instance.ExecutionLock.Release();
+        }
+    }
+
+    public async Task<ProcessInstance> ContinueAsync(ProcessInstance instance)
+    {
+        await instance.ExecutionLock.WaitAsync();
+        try
+        {
+            return await ContinueInternalAsync(instance);
+        }
+        finally
+        {
+            instance.ExecutionLock.Release();
+        }
+    }
+
+    public async Task<ProcessInstance> SignalAsync(ProcessInstance instance, string signalName)
+    {
+        await instance.ExecutionLock.WaitAsync();
+        try
+        {
+            return await SignalInternalAsync(instance, signalName);
+        }
+        finally
+        {
+            instance.ExecutionLock.Release();
+        }
+    }
+
+    private async Task<ProcessInstance> ExecuteInternalAsync(ProcessInstance instance)
     {
         var definition = ResolveDefinition(instance);
         instance.DefinitionName ??= definition.Name;
         instance.DefinitionVersion ??= definition.Version;
         instance.LastExecutedAt = DateTime.UtcNow;
 
-        if (_repository != null)
+        var existing = await _repository.GetProcessInstanceAsync(instance.ProcessId);
+        if (existing == null)
         {
-            var existing = await _repository.GetProcessInstanceAsync(instance.ProcessId);
-            if (existing == null)
-            {
-                await _repository.SaveProcessInstanceAsync(instance);
-            }
+            await _repository.SaveProcessInstanceAsync(instance);
         }
 
         var currentNodeId = instance.CurrentNodeId ?? definition.StartNodeId;
@@ -72,20 +109,16 @@ public class FlowEngine
             if (node == null)
             {
                 instance.Status = ProcessStatus.Failed;
-                if (_repository != null)
-                {
-                    await _repository.UpdateProcessInstanceAsync(instance);
-                }
+                instance.ErrorMessage = $"Node '{currentNodeId}' not found in definition '{definition.Name}'";
+                await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
 
             if (!_handlers.TryGetValue(node.Type, out var handler))
             {
                 instance.Status = ProcessStatus.Failed;
-                if (_repository != null)
-                {
-                    await _repository.UpdateProcessInstanceAsync(instance);
-                }
+                instance.ErrorMessage = $"No handler registered for node type '{node.Type}'";
+                await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
 
@@ -101,20 +134,15 @@ public class FlowEngine
             if (!result.IsCompleted)
             {
                 instance.Status = ProcessStatus.Failed;
-                if (_repository != null)
-                {
-                    await _repository.UpdateProcessInstanceAsync(instance);
-                }
+                instance.ErrorMessage = result.ErrorMessage ?? $"Node '{node.Name}' (type: {node.Type}) failed";
+                await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
 
             if (result.RequiresStop)
             {
                 instance.CurrentNodeId = result.NextNodeId;
-                if (_repository != null)
-                {
-                    await _repository.UpdateProcessInstanceAsync(instance);
-                }
+                await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
 
@@ -124,27 +152,23 @@ public class FlowEngine
         instance.Status = ProcessStatus.Completed;
         instance.CurrentNodeId = null;
         instance.CompletedAt = DateTime.UtcNow;
-        if (_repository != null)
-        {
-            await _repository.UpdateProcessInstanceAsync(instance);
-        }
+        await _repository.UpdateProcessInstanceAsync(instance);
         return instance;
     }
 
-    public async Task<ProcessInstance> ContinueAsync(ProcessInstance instance)
+    private async Task<ProcessInstance> ContinueInternalAsync(ProcessInstance instance)
     {
         if (instance.Status == ProcessStatus.Completed || instance.Status == ProcessStatus.Failed)
         {
-            return instance;
+            throw new InvalidOperationException(
+                $"Cannot continue process '{instance.ProcessId}': status is '{instance.Status}'");
         }
 
         if (string.IsNullOrEmpty(instance.CurrentNodeId))
         {
             instance.Status = ProcessStatus.Failed;
-            if (_repository != null)
-            {
-                await _repository.UpdateProcessInstanceAsync(instance);
-            }
+            instance.ErrorMessage = "Cannot continue: no current node set on the instance";
+            await _repository.UpdateProcessInstanceAsync(instance);
             return instance;
         }
 
@@ -164,30 +188,28 @@ public class FlowEngine
             instance.Status = ProcessStatus.Completed;
             instance.CurrentNodeId = null;
             instance.CompletedAt = DateTime.UtcNow;
-            if (_repository != null)
-            {
-                await _repository.UpdateProcessInstanceAsync(instance);
-            }
+            await _repository.UpdateProcessInstanceAsync(instance);
             return instance;
         }
 
         var nextNodeId = currentNode.NextNodeIds.FirstOrDefault();
         instance.CurrentNodeId = nextNodeId;
 
-        return await ExecuteAsync(instance);
+        return await ExecuteInternalAsync(instance);
     }
 
-    public async Task<ProcessInstance> SignalAsync(ProcessInstance instance, string signalName)
+    private async Task<ProcessInstance> SignalInternalAsync(ProcessInstance instance, string signalName)
     {
         if (instance.Status != ProcessStatus.WaitingSignal)
         {
-            return instance;
+            throw new InvalidOperationException(
+                $"Cannot signal process '{instance.ProcessId}': status is '{instance.Status}', expected '{ProcessStatus.WaitingSignal}'");
         }
 
-        if (instance.Variables.TryGetValue("WaitingForSignal", out var waitingSignal) &&
+        if (instance.InternalState.TryGetValue("WaitingForSignal", out var waitingSignal) &&
             waitingSignal?.ToString() == signalName)
         {
-            return await ContinueAsync(instance);
+            return await ContinueInternalAsync(instance);
         }
 
         return instance;
@@ -195,7 +217,7 @@ public class FlowEngine
 
     public async Task<ProcessInstance?> LoadProcessAsync(string processId)
     {
-        if (_repository == null)
+        if (_repository is NullProcessRepository)
         {
             throw new InvalidOperationException("No repository configured");
         }
@@ -217,7 +239,9 @@ public class FlowEngine
         if (!_definitions.TryGetValue(name, out var versions) || versions.Count == 0)
             throw new InvalidOperationException($"No definition found for '{name}'");
 
-        return versions[^1];
+        return versions
+            .OrderByDescending(d => Version.TryParse(d.Version, out var v) ? v : new Version(0, 0))
+            .First();
     }
 
     private ProcessDefinition ResolveDefinition(ProcessInstance instance)
@@ -229,7 +253,9 @@ public class FlowEngine
             return GetLatestDefinition(instance.DefinitionName);
 
         if (_definitions.Count == 1)
-            return _definitions.Values.First()[^1];
+            return _definitions.Values.First()
+                .OrderByDescending(d => Version.TryParse(d.Version, out var v) ? v : new Version(0, 0))
+                .First();
 
         throw new InvalidOperationException("Cannot resolve process definition. Set DefinitionName on the instance.");
     }

@@ -66,7 +66,7 @@ public class FlowService : IFlowService
             ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");
 
         if (instance.Status == ProcessStatus.WaitingSignal &&
-            instance.Variables.TryGetValue("WaitingForSignal", out var signal))
+            instance.InternalState.TryGetValue("WaitingForSignal", out var signal))
         {
             return new[] { signal?.ToString() ?? string.Empty };
         }
