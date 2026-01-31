@@ -202,23 +202,21 @@ await repository.InitializeDatabaseAsync();
 ### Avec Dependency Injection
 
 ```csharp
-// Program.cs / Startup.cs
-services.AddScoped<IDbConnection>(sp =>
-{
-    var conn = new OracleConnection(connectionString);
-    conn.Open();
-    return conn;
-});
-services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(connectionString, "BPM"));
-services.AddScoped<IProcessRepository, OracleProcessRepository>();
-services.AddSingleton<ICommandExecutor, MyCommandExecutor>();
-services.AddSingleton<INodeHandler>(sp => new BusinessNodeHandler(sp.GetRequiredService<ICommandExecutor>()));
-services.AddSingleton<INodeHandler>(sp => new DecisionNodeHandler(sp.GetRequiredService<ICommandExecutor>()));
-services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
-services.AddSingleton<INodeHandler>(sp => new InteractiveNodeHandler(sp.GetService<IGestionTache>()));
-```
+using SimpleBPM.Localisation;
 
-**Note** : Le repository ne gère pas le cycle de vie de la connexion. C'est la responsabilité du client (ou du container DI) de l'ouvrir et la fermer.
+// Program.cs / Startup.cs
+
+// 1. Enregistrer les implémentations client (requis)
+services.AddSingleton<ICommandExecutor, MyCommandExecutor>();
+services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
+
+// 2. Enregistrer les définitions de processus
+services.AddSingleton(orderProcessDefinition);
+services.AddSingleton(invoiceProcessDefinition);
+
+// 3. Enregistrer SimpleBPM (Oracle, handlers, FlowService)
+services.AddSimpleBPM(connectionString, tablePrefix: "BPM");
+```
 
 ### Préfixe de tables
 
@@ -263,16 +261,6 @@ var enfants = await flowService.ObtenirEnfants(processId);
 
 // Obtenir un nœud d'instance
 var noeud = await flowService.Obtenir(nodeInstanceId);
-```
-
-### Avec Dependency Injection
-
-```csharp
-services.AddScoped<IFlowService>(sp => new FlowService(
-    sp.GetServices<ProcessDefinition>(),  // Toutes les définitions et versions
-    sp.GetRequiredService<IProcessRepository>(),
-    sp.GetServices<INodeHandler>()
-));
 ```
 
 ### Sans persistance (usage direct du moteur)
@@ -409,6 +397,7 @@ SimpleBPM/
 ├── Definition/        # Fluent Builder et chargeur JSON
 ├── Examples/          # Exemples d'utilisation
 ├── Handlers/          # Handlers par type de nœud (logique d'exécution)
+├── Localisation/      # Enregistrement DI (extension AddSimpleBPM)
 ├── Migration/         # Migration de version (ProcessMigration, Runner, Result)
 ├── Nodes/             # Définitions des nœuds (données seulement)
 ├── Persistence/       # Repository Oracle et configuration
