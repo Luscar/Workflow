@@ -281,11 +281,7 @@ Voir `Examples/Example.cs` pour un exemple simple sans base de données.
 
 ### Avec persistance Oracle
 
-Voir `Examples/ExampleWithOracle.cs` pour un exemple complet avec Oracle.
-
-### Avec historique
-
-Voir `Examples/ExampleWithHistory.cs` pour voir comment analyser l'historique d'exécution.
+Voir `Examples/ExampleWithOracle.cs` pour un exemple complet avec Oracle, incluant l'analyse de l'historique d'exécution.
 
 ## Migration de version
 
