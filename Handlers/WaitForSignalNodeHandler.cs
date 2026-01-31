@@ -12,7 +12,7 @@ public class WaitForSignalNodeHandler : INodeHandler
 
         instance.Status = ProcessStatus.WaitingSignal;
         instance.CurrentNodeId = node.Id;
-        instance.Variables["WaitingForSignal"] = signalNode.SignalName;
+        instance.InternalState["WaitingForSignal"] = signalNode.SignalName;
 
         return Task.FromResult(new NodeExecutionResult
         {
