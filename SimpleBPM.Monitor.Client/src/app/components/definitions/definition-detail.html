@@ -1,0 +1,103 @@
+<div class="page-header">
+  <div class="breadcrumb">
+    <a routerLink="/definitions">Definitions</a>
+    <span class="sep">/</span>
+    <span>{{ definition?.name || 'Loading...' }}</span>
+  </div>
+</div>
+
+@if (loading) {
+  <div class="loading-container">
+    <span class="spinner"></span>
+    <span>Loading definition...</span>
+  </div>
+} @else if (error) {
+  <div class="alert alert-error">{{ error }}</div>
+} @else if (definition) {
+  <!-- Definition Header -->
+  <div class="def-header card">
+    <div class="card-body">
+      <div class="def-info">
+        <h2>{{ definition.name }}</h2>
+        <div class="def-meta">
+          <span class="meta-item">
+            <span class="meta-label">Version</span>
+            <span class="meta-value mono">{{ definition.version }}</span>
+          </span>
+          <span class="meta-item">
+            <span class="meta-label">Nodes</span>
+            <span class="meta-value">{{ definition.nodes.length }}</span>
+          </span>
+          <span class="meta-item">
+            <span class="meta-label">Connections</span>
+            <span class="meta-value">{{ definition.connections.length }}</span>
+          </span>
+          <span class="meta-item">
+            <span class="meta-label">Start Node</span>
+            <span class="meta-value">{{ getStartNodeName() }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow Visualization -->
+  <div class="card" style="margin-top: 16px;">
+    <div class="card-header">
+      <h3>Process Flow</h3>
+    </div>
+    <div class="card-body">
+      <app-flow-viewer [definition]="definition"></app-flow-viewer>
+    </div>
+  </div>
+
+  <!-- Nodes Table -->
+  <div class="card" style="margin-top: 16px;">
+    <div class="card-header">
+      <h3>Nodes ({{ definition.nodes.length }})</h3>
+    </div>
+    <div class="card-body table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>ID</th>
+            <th>Next Nodes</th>
+            <th>Metadata</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (node of definition.nodes; track node.id) {
+            <tr>
+              <td>
+                <span class="node-name">
+                  {{ node.name }}
+                  @if (node.isStartNode) {
+                    <span class="start-badge">START</span>
+                  }
+                </span>
+              </td>
+              <td>
+                <span class="node-type-badge" [style.color]="getNodeTypeColor(node.type)" [style.background]="getNodeTypeColor(node.type) + '18'">
+                  {{ node.type }}
+                </span>
+              </td>
+              <td class="mono">{{ node.id.substring(0, 8) }}...</td>
+              <td>
+                @if (node.nextNodeIds.length > 0) {
+                  @for (nextId of node.nextNodeIds; track nextId) {
+                    <span class="mono next-id">{{ nextId.substring(0, 8) }}</span>
+                  }
+                } @else {
+                  <span class="text-muted">End</span>
+                }
+              </td>
+              <td class="meta-cell">{{ formatMetadata(node.metadata) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

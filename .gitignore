@@ -50,6 +50,12 @@ project.fragment.lock.json
 *.coverage
 *.coveragexml
 
+# Angular / Node
+node_modules/
+dist/
+.angular/
+*.tsbuildinfo
+
 # OS files
 .DS_Store
 Thumbs.db

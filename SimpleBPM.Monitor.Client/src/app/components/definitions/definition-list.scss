@@ -1,0 +1,55 @@
+.page-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;
+  h1 { font-size: 24px; font-weight: 700; }
+}
+
+.def-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.def-card {
+  display: block;
+  text-decoration: none !important;
+  transition: border-color 0.15s, transform 0.15s;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+  }
+
+  .def-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .def-name {
+    font-size: 16px; font-weight: 600; color: var(--color-text);
+  }
+
+  .def-version {
+    font-family: monospace; font-size: 12px; color: var(--color-text-muted);
+    background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px;
+  }
+
+  .def-card-body {
+    display: flex; gap: 24px; padding: 16px 20px;
+  }
+
+  .def-stat {
+    display: flex; flex-direction: column;
+    .def-stat-value { font-size: 20px; font-weight: 700; color: var(--color-text); }
+    .def-stat-label { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  }
+
+  .def-types {
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 0 20px 16px;
+  }
+
+  .type-pill {
+    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+  }
+}

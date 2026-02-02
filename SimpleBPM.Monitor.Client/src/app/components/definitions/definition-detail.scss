@@ -1,0 +1,54 @@
+.page-header {
+  margin-bottom: 24px;
+}
+
+.breadcrumb {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px;
+
+  a { color: var(--color-text-secondary); &:hover { color: var(--color-primary); } }
+  .sep { color: var(--color-text-muted); }
+  span:last-child { color: var(--color-text); font-weight: 600; }
+}
+
+.def-info {
+  h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+}
+
+.def-meta {
+  display: flex; gap: 24px; flex-wrap: wrap;
+}
+
+.meta-item {
+  display: flex; flex-direction: column;
+  .meta-label { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .meta-value { font-size: 14px; color: var(--color-text); font-weight: 500; }
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+.node-name {
+  display: flex; align-items: center; gap: 8px; color: var(--color-text); font-weight: 500;
+}
+
+.start-badge {
+  font-size: 10px; font-weight: 700; color: var(--color-success);
+  background: rgba(34,197,94,0.15); padding: 1px 6px; border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+
+.node-type-badge {
+  font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+}
+
+.next-id {
+  display: inline-block;
+  background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 3px; margin: 1px 2px;
+}
+
+.text-muted { color: var(--color-text-muted); font-style: italic; }
+
+.meta-cell {
+  max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 12px;
+}

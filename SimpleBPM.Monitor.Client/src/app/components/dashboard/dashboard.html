@@ -1,0 +1,187 @@
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <button class="btn btn-ghost btn-sm" (click)="loadDashboard()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    Refresh
+  </button>
+</div>
+
+@if (loading) {
+  <div class="loading-container">
+    <span class="spinner"></span>
+    <span>Loading dashboard...</span>
+  </div>
+} @else if (error) {
+  <div class="alert alert-error">{{ error }}</div>
+} @else if (dashboard) {
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-value">{{ dashboard.totalInstances }}</div>
+      <div class="kpi-label">Total Instances</div>
+    </div>
+    <div class="kpi-card kpi-active">
+      <div class="kpi-value">{{ getActiveCount() }}</div>
+      <div class="kpi-label">Active</div>
+    </div>
+    <div class="kpi-card kpi-failed">
+      <div class="kpi-value">{{ dashboard.failedCount }}</div>
+      <div class="kpi-label">Failed</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ dashboard.definitionCount }}</div>
+      <div class="kpi-label">Definitions</div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <!-- Status Breakdown -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Status Breakdown</h3>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <svg viewBox="0 0 120 120" class="donut-chart">
+            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--color-border)" stroke-width="10" opacity="0.3"/>
+            @for (seg of getChartSegments(); track seg.color) {
+              <circle cx="60" cy="60" r="54"
+                fill="none"
+                [attr.stroke]="seg.color"
+                stroke-width="10"
+                [attr.stroke-dasharray]="seg.length + ' ' + (339.29 - seg.length)"
+                [attr.stroke-dashoffset]="-seg.offset"
+                stroke-linecap="round"
+                transform="rotate(-90 60 60)"/>
+            }
+          </svg>
+          <div class="chart-center">
+            <div class="chart-total">{{ dashboard.totalInstances }}</div>
+            <div class="chart-label">total</div>
+          </div>
+        </div>
+        <div class="status-legend">
+          @for (item of dashboard.statusBreakdown; track item.status) {
+            <div class="legend-item">
+              <span class="legend-dot" [style.background]="item.color"></span>
+              <span class="legend-label">{{ item.status }}</span>
+              <span class="legend-count">{{ item.count }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Definitions Summary -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Process Definitions</h3>
+        <a routerLink="/definitions" class="btn btn-ghost btn-sm">View All</a>
+      </div>
+      <div class="card-body table-container">
+        @if (dashboard.definitionSummaries.length === 0) {
+          <div class="empty-state">
+            <h4>No definitions loaded</h4>
+            <p>Register ProcessDefinition instances in your DI container</p>
+          </div>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Version</th>
+                <th>Nodes</th>
+                <th>Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (def of dashboard.definitionSummaries; track def.name) {
+                <tr>
+                  <td><a [routerLink]="['/definitions', def.name]">{{ def.name }}</a></td>
+                  <td class="mono">{{ def.version }}</td>
+                  <td>{{ def.nodeCount }}</td>
+                  <td>
+                    <span class="badge" [class.badge-running]="def.activeInstances > 0">{{ def.activeInstances }}</span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <!-- Recent Failed -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Recent Failures</h3>
+        <a routerLink="/instances" [queryParams]="{status: 'Failed'}" class="btn btn-ghost btn-sm">View All</a>
+      </div>
+      <div class="card-body table-container">
+        @if (dashboard.recentFailed.length === 0) {
+          <div class="empty-state">
+            <h4>No failures</h4>
+            <p>All processes are running normally</p>
+          </div>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>Instance ID</th>
+                <th>Definition</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (inst of dashboard.recentFailed; track inst.id) {
+                <tr>
+                  <td><a [routerLink]="['/instances', inst.id]" class="mono">{{ truncateId(inst.id) }}</a></td>
+                  <td>{{ inst.definitionName }}</td>
+                  <td class="error-text">{{ inst.errorMessage || 'Unknown error' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+
+    <!-- Long Running -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Long Running Instances</h3>
+        <a routerLink="/instances" [queryParams]="{status: 'Running'}" class="btn btn-ghost btn-sm">View All</a>
+      </div>
+      <div class="card-body table-container">
+        @if (dashboard.longRunning.length === 0) {
+          <div class="empty-state">
+            <h4>No active instances</h4>
+          </div>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>Instance ID</th>
+                <th>Definition</th>
+                <th>Status</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (inst of dashboard.longRunning; track inst.id) {
+                <tr>
+                  <td><a [routerLink]="['/instances', inst.id]" class="mono">{{ truncateId(inst.id) }}</a></td>
+                  <td>{{ inst.definitionName }}</td>
+                  <td><span [class]="getStatusBadgeClass(inst.status)">{{ inst.status }}</span></td>
+                  <td>{{ inst.duration }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+  </div>
+}

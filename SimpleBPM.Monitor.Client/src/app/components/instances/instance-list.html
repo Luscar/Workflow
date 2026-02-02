@@ -1,0 +1,90 @@
+<div class="page-header">
+  <h1>Process Instances</h1>
+  <button class="btn btn-ghost btn-sm" (click)="loadInstances()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    Refresh
+  </button>
+</div>
+
+<!-- Filters -->
+<div class="filters-bar">
+  <div class="filter-group">
+    <input type="search" [(ngModel)]="searchTerm" (input)="onSearch()" placeholder="Search by ID, aggregate, definition..." />
+  </div>
+  <div class="filter-group">
+    <select [(ngModel)]="statusFilter" (change)="onFilterChange()">
+      @for (s of statuses; track s) {
+        <option [value]="s">{{ s || 'All statuses' }}</option>
+      }
+    </select>
+  </div>
+  <div class="filter-group">
+    <input type="text" [(ngModel)]="definitionFilter" (input)="onFilterChange()" placeholder="Definition name..." />
+  </div>
+</div>
+
+@if (loading && !response) {
+  <div class="loading-container">
+    <span class="spinner"></span>
+    <span>Loading instances...</span>
+  </div>
+} @else if (error) {
+  <div class="alert alert-error">{{ error }}</div>
+} @else if (response) {
+  <div class="card">
+    <div class="card-header">
+      <h3>{{ response.totalCount }} instance{{ response.totalCount !== 1 ? 's' : '' }}</h3>
+      <div class="pagination">
+        <button class="btn btn-ghost btn-sm" (click)="prevPage()" [disabled]="page <= 1">Prev</button>
+        <span class="page-info">{{ page }} / {{ totalPages }}</span>
+        <button class="btn btn-ghost btn-sm" (click)="nextPage()" [disabled]="page >= totalPages">Next</button>
+      </div>
+    </div>
+    <div class="table-container">
+      @if (response.items.length === 0) {
+        <div class="empty-state">
+          <h4>No instances found</h4>
+          <p>Try adjusting your filters</p>
+        </div>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Definition</th>
+              <th>Status</th>
+              <th>Current Node</th>
+              <th>Started</th>
+              <th>Duration</th>
+              <th>Steps</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (inst of response.items; track inst.id) {
+              <tr class="clickable-row">
+                <td>
+                  <a [routerLink]="['/instances', inst.id]" class="mono instance-link">
+                    {{ truncateId(inst.id) }}
+                  </a>
+                </td>
+                <td>{{ inst.definitionName || '-' }}</td>
+                <td><span [class]="getStatusBadgeClass(inst.status)">{{ inst.status }}</span></td>
+                <td class="mono">{{ inst.currentNodeName || inst.currentNodeId?.substring(0, 8) || '-' }}</td>
+                <td>{{ formatDate(inst.startedAt) }}</td>
+                <td>{{ inst.duration || '-' }}</td>
+                <td>
+                  <span class="steps">
+                    <span class="step-ok">{{ inst.completedSteps }}</span>
+                    @if (inst.failedSteps > 0) {
+                      / <span class="step-fail">{{ inst.failedSteps }}</span>
+                    }
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </div>
+}

@@ -1,0 +1,39 @@
+.page-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
+  h1 { font-size: 24px; font-weight: 700; }
+}
+
+.filters-bar {
+  display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+
+  .filter-group {
+    flex: 1; min-width: 180px;
+  }
+}
+
+.pagination {
+  display: flex; align-items: center; gap: 8px;
+
+  .page-info {
+    font-size: 13px; color: var(--color-text-secondary);
+    min-width: 60px; text-align: center;
+  }
+}
+
+.clickable-row {
+  cursor: pointer;
+  &:hover td { background: rgba(59,130,246,0.04); }
+}
+
+.instance-link {
+  color: var(--color-primary);
+  &:hover { text-decoration: underline; }
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+.steps {
+  font-family: monospace; font-size: 12px;
+  .step-ok { color: var(--color-success); }
+  .step-fail { color: var(--color-danger); }
+}
