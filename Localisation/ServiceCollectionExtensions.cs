@@ -1,6 +1,4 @@
-using System.Data;
 using Microsoft.Extensions.DependencyInjection;
-using Oracle.ManagedDataAccess.Client;
 using SimpleBPM.Abstractions;
 using SimpleBPM.Handlers;
 using SimpleBPM.Persistence;
@@ -11,24 +9,17 @@ public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Enregistre les services SimpleBPM dans le conteneur DI.
-    /// Le client doit enregistrer <see cref="ICommandExecutor"/> (requis) et
+    /// Le client doit enregistrer <see cref="ICommandExecutor"/> (requis),
+    /// <see cref="System.Data.IDbConnection"/> (requis), et
     /// optionnellement <see cref="IGestionTache"/> avant cet appel.
     /// Les <see cref="ProcessDefinition"/> doivent aussi être enregistrées par le client.
     /// </summary>
     public static IServiceCollection AddSimpleBPM(
         this IServiceCollection services,
-        string connectionString,
         string tablePrefix)
     {
         // Infrastructure Oracle
-        services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(connectionString, tablePrefix));
-        services.AddScoped<IDbConnection>(sp =>
-        {
-            var config = sp.GetRequiredService<OracleConfiguration>();
-            var conn = new OracleConnection(config.ConnectionString);
-            conn.Open();
-            return conn;
-        });
+        services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(tablePrefix));
         services.AddScoped<IProcessRepository, OracleProcessRepository>();
 
         // Node handlers (sauf SubProcessNodeHandler qui est auto-enregistré par le moteur)

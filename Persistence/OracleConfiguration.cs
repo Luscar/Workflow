@@ -21,6 +21,10 @@ public class OracleConfiguration
         TablePrefix = tablePrefix.ToUpper();
     }
 
+    public OracleConfiguration(string tablePrefix) : this("", tablePrefix)
+    {
+    }
+
     public string GetTableName(string baseName)
     {
         return $"{TablePrefix}_{baseName}";

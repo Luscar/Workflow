@@ -11,6 +11,8 @@ Historique des modifications du projet SimpleBPM.
 - Ce fichier `CHANGELOG.md`
 
 ### Modifié
+- `AddSimpleBPM` ne prend plus que `tablePrefix` ; la connexion `IDbConnection` est enregistrée par le client
+- Constructeur `OracleConfiguration(string tablePrefix)` ajouté (sans connection string)
 - Consolidation de `ExampleWithHistory` dans `ExampleWithOracle` (suppression du doublon)
 - Mise à jour du `README.md` (structure du projet, section DI, section tests)
 
