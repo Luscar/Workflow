@@ -7,23 +7,21 @@ public class OracleConfigurationTests
     [Fact]
     public void Constructor_ValidPrefix_Accepted()
     {
-        var config = new OracleConfiguration("conn", "BPM");
-
+        var config = new OracleConfiguration("BPM");
         Assert.Equal("BPM", config.TablePrefix);
-        Assert.Equal("conn", config.ConnectionString);
     }
 
     [Fact]
     public void Constructor_PrefixAutoUppercased()
     {
-        var config = new OracleConfiguration("conn", "bpm");
+        var config = new OracleConfiguration("bpm");
         Assert.Equal("BPM", config.TablePrefix);
     }
 
     [Fact]
     public void Constructor_MixedCasePrefix_Uppercased()
     {
-        var config = new OracleConfiguration("conn", "AbCdEf");
+        var config = new OracleConfiguration("AbCdEf");
         Assert.Equal("ABCDEF", config.TablePrefix);
     }
 
@@ -34,27 +32,27 @@ public class OracleConfigurationTests
     public void Constructor_PrefixTooShort_Throws(string prefix)
     {
         Assert.Throws<ArgumentException>(
-            () => new OracleConfiguration("conn", prefix));
+            () => new OracleConfiguration(prefix));
     }
 
     [Fact]
     public void Constructor_PrefixTooLong_Throws()
     {
         Assert.Throws<ArgumentException>(
-            () => new OracleConfiguration("conn", "ABCDEFGHIJK"));
+            () => new OracleConfiguration("ABCDEFGHIJK"));
     }
 
     [Fact]
     public void Constructor_PrefixExactlyThreeChars_Accepted()
     {
-        var config = new OracleConfiguration("conn", "ABC");
+        var config = new OracleConfiguration("ABC");
         Assert.Equal("ABC", config.TablePrefix);
     }
 
     [Fact]
     public void Constructor_PrefixExactlyTenChars_Accepted()
     {
-        var config = new OracleConfiguration("conn", "ABCDEFGHIJ");
+        var config = new OracleConfiguration("ABCDEFGHIJ");
         Assert.Equal("ABCDEFGHIJ", config.TablePrefix);
     }
 
@@ -65,7 +63,7 @@ public class OracleConfigurationTests
     public void Constructor_PrefixWithNumbers_Throws(string prefix)
     {
         Assert.Throws<ArgumentException>(
-            () => new OracleConfiguration("conn", prefix));
+            () => new OracleConfiguration(prefix));
     }
 
     [Theory]
@@ -76,20 +74,20 @@ public class OracleConfigurationTests
     public void Constructor_PrefixWithSpecialChars_Throws(string prefix)
     {
         Assert.Throws<ArgumentException>(
-            () => new OracleConfiguration("conn", prefix));
+            () => new OracleConfiguration(prefix));
     }
 
     [Fact]
     public void Constructor_NullPrefix_Throws()
     {
         Assert.Throws<ArgumentException>(
-            () => new OracleConfiguration("conn", null!));
+            () => new OracleConfiguration(null!));
     }
 
     [Fact]
     public void GetTableName_ReturnsCorrectFormat()
     {
-        var config = new OracleConfiguration("conn", "ABC");
+        var config = new OracleConfiguration("ABC");
 
         Assert.Equal("ABC_PROCESS_CONTEXT", config.GetTableName("PROCESS_CONTEXT"));
         Assert.Equal("ABC_HISTORIQUE", config.GetTableName("HISTORIQUE"));

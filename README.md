@@ -188,13 +188,11 @@ La librairie supporte la persistance dans Oracle avec préfixe de tables personn
 Le repository accepte une `IDbConnection` injectée par le client, compatible avec les containers DI.
 
 ```csharp
-var oracleConfig = new OracleConfiguration(
-    connectionString: "User Id=myuser;Password=mypass;Data Source=localhost:1521/XEPDB1",
-    tablePrefix: "ABC" // Préfixe de 3 à 10 lettres
-);
+var connectionString = "User Id=myuser;Password=mypass;Data Source=localhost:1521/XEPDB1";
+var oracleConfig = new OracleConfiguration(tablePrefix: "ABC"); // Préfixe de 3 à 10 lettres
 
 // Connexion gérée par le client
-using var connection = new OracleConnection(oracleConfig.ConnectionString);
+using var connection = new OracleConnection(connectionString);
 connection.Open();
 
 var repository = new OracleProcessRepository(oracleConfig, connection);

@@ -2,10 +2,9 @@ namespace SimpleBPM.Persistence;
 
 public class OracleConfiguration
 {
-    public string ConnectionString { get; set; }
     public string TablePrefix { get; set; }
 
-    public OracleConfiguration(string connectionString, string tablePrefix)
+    public OracleConfiguration(string tablePrefix)
     {
         if (string.IsNullOrWhiteSpace(tablePrefix) || tablePrefix.Length < 3 || tablePrefix.Length > 10)
         {
@@ -17,12 +16,7 @@ public class OracleConfiguration
             throw new ArgumentException("Table prefix must contain only letters", nameof(tablePrefix));
         }
 
-        ConnectionString = connectionString;
         TablePrefix = tablePrefix.ToUpper();
-    }
-
-    public OracleConfiguration(string tablePrefix) : this("", tablePrefix)
-    {
     }
 
     public string GetTableName(string baseName)
