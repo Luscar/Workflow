@@ -212,12 +212,20 @@ using SimpleBPM.Localisation;
 services.AddSingleton<ICommandExecutor, MyCommandExecutor>();
 services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
 
-// 2. Enregistrer les définitions de processus
+// 2. Enregistrer la connexion (gérée par le client)
+services.AddScoped<IDbConnection>(sp =>
+{
+    var conn = new OracleConnection(connectionString);
+    conn.Open();
+    return conn;
+});
+
+// 3. Enregistrer les définitions de processus
 services.AddSingleton(orderProcessDefinition);
 services.AddSingleton(invoiceProcessDefinition);
 
-// 3. Enregistrer SimpleBPM (Oracle, handlers, FlowService)
-services.AddSimpleBPM(connectionString, tablePrefix: "BPM");
+// 4. Enregistrer SimpleBPM (Oracle, handlers, FlowService)
+services.AddSimpleBPM(tablePrefix: "BPM");
 ```
 
 ### Préfixe de tables
