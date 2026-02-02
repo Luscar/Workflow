@@ -68,19 +68,66 @@ instance = await engine.ExecuteAsync(instance);
 Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
 // L'instance est automatiquement sauvegardée dans Oracle avec le préfixe ABC_PROCESS_CONTEXT
 
+// Historique d'exécution détaillé
+Console.WriteLine("\n=== Historique d'exécution ===");
+foreach (var history in instance.ExecutionHistory)
+{
+    Console.WriteLine($"Nœud: {history.NodeName} ({history.NodeType})");
+    Console.WriteLine($"  Début: {history.StartedAt:yyyy-MM-dd HH:mm:ss.fff}");
+    Console.WriteLine($"  Fin: {history.CompletedAt:yyyy-MM-dd HH:mm:ss.fff}");
+    Console.WriteLine($"  Durée: {history.Duration.TotalMilliseconds:F2} ms");
+    Console.WriteLine($"  Succès: {history.Success}");
+    if (!string.IsNullOrEmpty(history.ErrorMessage))
+    {
+        Console.WriteLine($"  Erreur: {history.ErrorMessage}");
+    }
+    Console.WriteLine($"  Prochain nœud: {history.NextNodeId ?? "Aucun"}");
+    Console.WriteLine();
+}
+
+// Envoyer un signal
+instance = await engine.SignalAsync(instance, "PaymentReceived");
+Console.WriteLine("=== Après signal ===");
+Console.WriteLine($"Status: {instance.Status}");
+Console.WriteLine($"Étapes exécutées: {instance.ExecutionHistory.Count}");
+
+// Continuer l'exécution
+instance = await engine.ContinueAsync(instance);
+Console.WriteLine($"\n=== Final ===");
+Console.WriteLine($"Status: {instance.Status}");
+
 // Plus tard, charger le processus depuis la base de données
 var loadedInstance = await engine.LoadProcessAsync("order-123");
 if (loadedInstance != null)
 {
-    Console.WriteLine($"Loaded process - Status: {loadedInstance.Status}");
+    Console.WriteLine("\n=== Instance rechargée depuis Oracle ===");
+    Console.WriteLine($"Process ID: {loadedInstance.ProcessId}");
+    Console.WriteLine($"Démarré le: {loadedInstance.StartedAt}");
+    Console.WriteLine($"Dernière exécution: {loadedInstance.LastExecutedAt}");
+    if (loadedInstance.CompletedAt.HasValue)
+    {
+        Console.WriteLine($"Complété le: {loadedInstance.CompletedAt}");
+        Console.WriteLine($"Durée totale: {loadedInstance.TotalDuration?.TotalSeconds:F2} secondes");
+    }
 
-    // Envoyer un signal
-    loadedInstance = await engine.SignalAsync(loadedInstance, "PaymentReceived");
-    Console.WriteLine($"After signal - Status: {loadedInstance.Status}");
+    // Résumé par type de nœud
+    var summary = loadedInstance.ExecutionHistory
+        .GroupBy(h => h.NodeType)
+        .Select(g => new
+        {
+            Type = g.Key,
+            Count = g.Count(),
+            AvgDuration = g.Average(h => h.Duration.TotalMilliseconds),
+            TotalDuration = g.Sum(h => h.Duration.TotalMilliseconds)
+        });
 
-    // Continuer l'exécution
-    loadedInstance = await engine.ContinueAsync(loadedInstance);
-    Console.WriteLine($"Final - Status: {loadedInstance.Status}");
+    Console.WriteLine("\n=== Résumé par type de nœud ===");
+    foreach (var item in summary)
+    {
+        Console.WriteLine($"{item.Type}: {item.Count} exécutions");
+        Console.WriteLine($"  Durée moyenne: {item.AvgDuration:F2} ms");
+        Console.WriteLine($"  Durée totale: {item.TotalDuration:F2} ms");
+    }
 }
 
 // Exemple d'implémentation d'un exécuteur

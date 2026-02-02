@@ -85,9 +85,11 @@ Définition déclarative, idéale pour la configuration externe.
 ```csharp
 using SimpleBPM.Definition;
 
-// Charger depuis JSON
+// Charger depuis une chaîne JSON
 var process = ProcessJsonLoader.FromJson(json);
-var process = ProcessJsonLoader.FromJsonFile("process.json");
+
+// Charger depuis un fichier
+var processFromFile = ProcessJsonLoader.FromJsonFile("process.json");
 
 // Exporter en JSON
 var json = ProcessJsonLoader.ToJson(process);
@@ -202,23 +204,21 @@ await repository.InitializeDatabaseAsync();
 ### Avec Dependency Injection
 
 ```csharp
-// Program.cs / Startup.cs
-services.AddScoped<IDbConnection>(sp =>
-{
-    var conn = new OracleConnection(connectionString);
-    conn.Open();
-    return conn;
-});
-services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(connectionString, "BPM"));
-services.AddScoped<IProcessRepository, OracleProcessRepository>();
-services.AddSingleton<ICommandExecutor, MyCommandExecutor>();
-services.AddSingleton<INodeHandler>(sp => new BusinessNodeHandler(sp.GetRequiredService<ICommandExecutor>()));
-services.AddSingleton<INodeHandler>(sp => new DecisionNodeHandler(sp.GetRequiredService<ICommandExecutor>()));
-services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
-services.AddSingleton<INodeHandler>(sp => new InteractiveNodeHandler(sp.GetService<IGestionTache>()));
-```
+using SimpleBPM.Localisation;
 
-**Note** : Le repository ne gère pas le cycle de vie de la connexion. C'est la responsabilité du client (ou du container DI) de l'ouvrir et la fermer.
+// Program.cs / Startup.cs
+
+// 1. Enregistrer les implémentations client (requis)
+services.AddSingleton<ICommandExecutor, MyCommandExecutor>();
+services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
+
+// 2. Enregistrer les définitions de processus
+services.AddSingleton(orderProcessDefinition);
+services.AddSingleton(invoiceProcessDefinition);
+
+// 3. Enregistrer SimpleBPM (Oracle, handlers, FlowService)
+services.AddSimpleBPM(connectionString, tablePrefix: "BPM");
+```
 
 ### Préfixe de tables
 
@@ -265,27 +265,13 @@ var enfants = await flowService.ObtenirEnfants(processId);
 var noeud = await flowService.Obtenir(nodeInstanceId);
 ```
 
-### Avec Dependency Injection
-
-```csharp
-services.AddScoped<IFlowService>(sp => new FlowService(
-    sp.GetServices<ProcessDefinition>(),  // Toutes les définitions et versions
-    sp.GetRequiredService<IProcessRepository>(),
-    sp.GetServices<INodeHandler>()
-));
-```
-
 ### Sans persistance (usage direct du moteur)
 
 Voir `Examples/Example.cs` pour un exemple simple sans base de données.
 
 ### Avec persistance Oracle
 
-Voir `Examples/ExampleWithOracle.cs` pour un exemple complet avec Oracle.
-
-### Avec historique
-
-Voir `Examples/ExampleWithHistory.cs` pour voir comment analyser l'historique d'exécution.
+Voir `Examples/ExampleWithOracle.cs` pour un exemple complet avec Oracle, incluant l'analyse de l'historique d'exécution.
 
 ## Migration de version
 
@@ -408,23 +394,45 @@ Le cycle de vie est :
 ## Structure du projet
 
 ```
-SimpleBPM/
-├── Abstractions/      # Interfaces client (ICommandExecutor, IGestionTache)
-├── Definition/        # Fluent Builder et chargeur JSON
-├── Examples/          # Exemples d'utilisation
-├── Handlers/          # Handlers par type de nœud (logique d'exécution)
-├── Migration/         # Migration de version (ProcessMigration, Runner, Result)
-├── Nodes/             # Définitions des nœuds (données seulement)
-├── Persistence/       # Repository Oracle et configuration
-├── IFlowService.cs    # Interface client (compatible BPM existant)
-├── FlowService.cs     # Implémentation (multi-définitions, multi-versions)
-├── FlowEngine.cs      # Moteur d'exécution (multi-définitions, multi-versions)
-├── Processus.cs       # Vue externe d'une instance de processus
-├── InstanceNode.cs    # Vue externe d'une instance de nœud
-├── ProcessInstance.cs # Instance de processus interne
-├── ProcessNode.cs     # Classe de base des nœuds
-└── ProcessDefinition.cs # Définition d'un processus (nom + version)
+SimpleBPM.sln
+├── SimpleBPM/                # Projet principal
+│   ├── Abstractions/         # Interfaces client (ICommandExecutor, IGestionTache)
+│   ├── Definition/           # Fluent Builder et chargeur JSON
+│   ├── Examples/             # Exemples d'utilisation
+│   ├── Handlers/             # Handlers par type de nœud (logique d'exécution)
+│   ├── Localisation/         # Enregistrement DI (extension AddSimpleBPM)
+│   ├── Migration/            # Migration de version (ProcessMigration, Runner, Result)
+│   ├── Nodes/                # Définitions des nœuds (données seulement)
+│   ├── Persistence/          # Repository Oracle et configuration
+│   ├── FlowEngine.cs         # Moteur d'exécution (multi-définitions, multi-versions)
+│   ├── FlowService.cs        # Implémentation (multi-définitions, multi-versions)
+│   ├── IFlowService.cs       # Interface client (compatible BPM existant)
+│   ├── ProcessDefinition.cs  # Définition d'un processus (nom + version)
+│   ├── ProcessInstance.cs    # Instance de processus interne
+│   ├── ProcessNode.cs        # Classe de base des nœuds
+│   ├── Processus.cs          # Vue externe d'une instance de processus
+│   └── InstanceNode.cs       # Vue externe d'une instance de nœud
+├── SimpleBPM.Tests/          # Tests unitaires (xUnit)
+│   ├── Helpers/              # Fakes (FakeCommandExecutor, InMemoryProcessRepository)
+│   ├── FlowEngineTests.cs
+│   ├── ProcessBuilderTests.cs
+│   ├── ProcessJsonLoaderTests.cs
+│   ├── MigrationTests.cs
+│   ├── OracleConfigurationTests.cs
+│   └── HandlerTests.cs
+└── schema.sql                # Script SQL Oracle (création manuelle des tables)
 ```
+
+## Tests
+
+Le projet `SimpleBPM.Tests` contient des tests unitaires xUnit couvrant l'ensemble des composants :
+
+- **FlowEngineTests** : Exécution, continuation, signaux, historique, cas d'erreur
+- **ProcessBuilderTests** : API fluide, chaînage, décisions, sous-processus
+- **ProcessJsonLoaderTests** : Sérialisation aller-retour JSON, tous les types de nœuds
+- **MigrationTests** : Runner de migration, transformations de variables
+- **OracleConfigurationTests** : Validation du préfixe de tables
+- **HandlerTests** : Tous les handlers (Business, Decision, Interactive, WaitForSignal, WaitUntilDate)
 
 ## Script SQL
 
