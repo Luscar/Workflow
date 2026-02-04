@@ -3,6 +3,7 @@ namespace SimpleBPM;
 public class ProcessInstance
 {
     public long ProcessId { get; set; }
+    public long? ParentProcessId { get; set; }
     public string? AggregateId { get; set; }
     public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }

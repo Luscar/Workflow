@@ -24,6 +24,7 @@ public class OracleProcessRepository : IProcessRepository
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE TABLE {_processContextTable} (
                     ID_PROCESSUS NUMBER(10) PRIMARY KEY,
+                    ID_PROCESSUS_PARENT NUMBER(10),
                     ID_AGREGAT VARCHAR2(255),
                     DONNEES CLOB,
                     DATE_DEBUT TIMESTAMP,
@@ -94,13 +95,14 @@ public class OracleProcessRepository : IProcessRepository
     {
         var sql = $@"
             INSERT INTO {_processContextTable}
-            (ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT)
+            (ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT)
             VALUES
-            (:IdProcessus, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :SousProcessus, :Statut)";
+            (:IdProcessus, :IdProcessusParent, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :SousProcessus, :Statut)";
 
         var parameters = new
         {
             IdProcessus = instance.ProcessId,
+            IdProcessusParent = instance.ParentProcessId,
             IdAgregat = instance.AggregateId,
             Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
             DateDebut = instance.StartedAt,
@@ -121,7 +123,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetProcessInstanceAsync(long processId)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS = :IdProcessus";
 
@@ -189,7 +191,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<List<ProcessInstance>> SearchByVariableAsync(Dictionary<string, object> variablesFiltre)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT
             FROM {_processContextTable}
             WHERE DONNEES IS NOT NULL";
 
@@ -226,6 +228,7 @@ public class OracleProcessRepository : IProcessRepository
     {
         return new ProcessInstance(result.ID_PROCESSUS)
         {
+            ParentProcessId = result.ID_PROCESSUS_PARENT,
             AggregateId = result.ID_AGREGAT,
             DefinitionName = result.NOM_DEFINITION,
             DefinitionVersion = result.VERSION_DEFINITION,
@@ -246,6 +249,7 @@ public class OracleProcessRepository : IProcessRepository
     private class ProcessInstanceDto
     {
         public long ID_PROCESSUS { get; set; }
+        public long? ID_PROCESSUS_PARENT { get; set; }
         public string? ID_AGREGAT { get; set; }
         public string DONNEES { get; set; } = string.Empty;
         public DateTime DATE_DEBUT { get; set; }

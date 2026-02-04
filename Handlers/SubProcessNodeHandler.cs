@@ -52,7 +52,10 @@ public class SubProcessNodeHandler : INodeHandler
                 subInstance = new ProcessInstance(
                     subProcessId,
                     subNode.InheritAggregateId ? instance.AggregateId : null
-                );
+                )
+                {
+                    ParentProcessId = instance.ProcessId
+                };
 
                 // Copier les variables d'entrée via le mapping explicite
                 foreach (var mapping in subNode.InputMapping)
