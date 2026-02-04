@@ -6,13 +6,13 @@ using SimpleBPM.Handlers;
 // Exemple d'implémentation d'un exécuteur
 public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
+    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId)
     {
         Console.WriteLine($"Executing Command: {commandName} for Process: {processId}, Aggregate: {aggregateId}");
         return Task.CompletedTask;
     }
 
-    public Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
+    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId)
     {
         Console.WriteLine($"Executing Decision: {decisionName} for Process: {processId}, Aggregate: {aggregateId}");
         // Retourne une condition (ex: "approved", "rejected", etc.)
@@ -62,7 +62,7 @@ processDefinition
 
 // Exécution
 var engine = new FlowEngine(new[] { processDefinition }, handlers: handlers);
-var instance = new ProcessInstance("order-123", "aggregate-456");
+var instance = new ProcessInstance(123, "aggregate-456");
 
 // Première exécution - s'arrêtera au premier nœud d'attente/interactif
 instance = await engine.ExecuteAsync(instance);

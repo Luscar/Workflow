@@ -2,8 +2,8 @@ namespace SimpleBPM;
 
 public class InstanceNode
 {
-    public string Id { get; set; } = string.Empty;
-    public string ProcessId { get; set; } = string.Empty;
+    public long Id { get; set; }
+    public long ProcessId { get; set; }
     public string NodeId { get; set; } = string.Empty;
     public string NodeName { get; set; } = string.Empty;
     public NodeType NodeType { get; set; }

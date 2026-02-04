@@ -68,7 +68,7 @@ mainProcessDefinition
 // ========================================
 var engine = new FlowEngine(new[] { mainProcessDefinition }, handlers: handlers);
 
-var instance = new ProcessInstance("order-456", "aggregate-789");
+var instance = new ProcessInstance(456, "aggregate-789");
 
 // Ajouter des variables d'entrée (noms normaux, le mapping se charge du transfert)
 instance.Variables["OrderAmount"] = 1500.00;
@@ -118,13 +118,13 @@ if (instance.CompletedAt.HasValue)
 
 public class SampleExecutor : ICommandExecutor
 {
-    public async Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
+    public async Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 150));
         Console.WriteLine($"  Exécution: {commandName}");
     }
 
-    public async Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
+    public async Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 100));
         Console.WriteLine($"  Décision: {decisionName}");

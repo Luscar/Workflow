@@ -215,7 +215,7 @@ public class FlowEngine
         return instance;
     }
 
-    public async Task<ProcessInstance?> LoadProcessAsync(string processId)
+    public async Task<ProcessInstance?> LoadProcessAsync(long processId)
     {
         if (_repository is NullProcessRepository)
         {

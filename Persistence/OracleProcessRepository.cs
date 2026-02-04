@@ -23,7 +23,7 @@ public class OracleProcessRepository : IProcessRepository
         var createTableSql = $@"
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE TABLE {_processContextTable} (
-                    ID_PROCESSUS VARCHAR2(255) PRIMARY KEY,
+                    ID_PROCESSUS NUMBER(10) PRIMARY KEY,
                     ID_AGREGAT VARCHAR2(255),
                     DONNEES CLOB,
                     DATE_DEBUT TIMESTAMP,
@@ -118,7 +118,7 @@ public class OracleProcessRepository : IProcessRepository
         await _connection.ExecuteAsync(sql, parameters);
     }
 
-    public async Task<ProcessInstance?> GetProcessInstanceAsync(string processId)
+    public async Task<ProcessInstance?> GetProcessInstanceAsync(long processId)
     {
         var sql = $@"
             SELECT ID_PROCESSUS, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT
@@ -180,7 +180,7 @@ public class OracleProcessRepository : IProcessRepository
         }
     }
 
-    public async Task DeleteProcessInstanceAsync(string processId)
+    public async Task DeleteProcessInstanceAsync(long processId)
     {
         var sql = $@"DELETE FROM {_processContextTable} WHERE ID_PROCESSUS = :IdProcessus";
         await _connection.ExecuteAsync(sql, new { IdProcessus = processId });
@@ -217,7 +217,7 @@ public class OracleProcessRepository : IProcessRepository
         return matches;
     }
 
-    public async Task<(NodeExecutionHistory History, string ProcessId)?> GetNodeHistoryByIdAsync(string historyId)
+    public async Task<(NodeExecutionHistory History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId)
     {
         return await _historyRepository.GetByIdAsync(historyId);
     }
@@ -233,8 +233,8 @@ public class OracleProcessRepository : IProcessRepository
                 ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>(),
             SubProcessIds = string.IsNullOrEmpty(result.SOUS_PROCESSUS)
-                ? new Dictionary<string, string>()
-                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(result.SOUS_PROCESSUS) ?? new Dictionary<string, string>(),
+                ? new Dictionary<string, long>()
+                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, long>>(result.SOUS_PROCESSUS) ?? new Dictionary<string, long>(),
             StartedAt = result.DATE_DEBUT,
             LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
             CompletedAt = result.DATE_COMPLETION,
@@ -245,7 +245,7 @@ public class OracleProcessRepository : IProcessRepository
 
     private class ProcessInstanceDto
     {
-        public string ID_PROCESSUS { get; set; } = string.Empty;
+        public long ID_PROCESSUS { get; set; }
         public string? ID_AGREGAT { get; set; }
         public string DONNEES { get; set; } = string.Empty;
         public DateTime DATE_DEBUT { get; set; }
