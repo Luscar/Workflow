@@ -5,12 +5,12 @@ namespace SimpleBPM.Handlers;
 
 public class SubProcessNodeHandler : INodeHandler
 {
-    private readonly IProcessRepository? _repository;
+    private readonly IProcessRepository _repository;
     private readonly Dictionary<NodeType, INodeHandler> _handlers;
 
     public NodeType NodeType => NodeType.SubProcess;
 
-    internal SubProcessNodeHandler(IProcessRepository? repository, Dictionary<NodeType, INodeHandler> handlers)
+    internal SubProcessNodeHandler(IProcessRepository repository, Dictionary<NodeType, INodeHandler> handlers)
     {
         _repository = repository;
         _handlers = handlers;
@@ -23,9 +23,7 @@ public class SubProcessNodeHandler : INodeHandler
         try
         {
             // Vérifier si un sous-processus existe déjà (reprise après arrêt)
-            var existingSubProcess = _repository != null
-                ? await _repository.GetChildProcessAsync(instance.ProcessId, node.Name)
-                : null;
+            var existingSubProcess = await _repository.GetChildProcessAsync(instance.ProcessId, node.Name);
 
             ProcessInstance subInstance;
 
@@ -37,9 +35,7 @@ public class SubProcessNodeHandler : INodeHandler
             else
             {
                 // Créer un nouveau sous-processus
-                var subProcessId = _repository != null
-                    ? await _repository.ObtenirSequenceAsync("SEQ_PROCESSUS")
-                    : Random.Shared.NextInt64(1, 10_000_000_000L);
+                var subProcessId = await _repository.ObtenirSequenceAsync("SEQ_PROCESSUS");
                 subInstance = new ProcessInstance(
                     subProcessId,
                     subNode.InheritAggregateId ? instance.AggregateId : null
@@ -106,7 +102,7 @@ public class SubProcessNodeHandler : INodeHandler
             }
 
             // Supprimer le contexte du sous-processus de la base de données
-            if (_repository != null && existingSubProcess != null)
+            if (existingSubProcess != null)
             {
                 await _repository.DeleteProcessInstanceAsync(subInstance.ProcessId);
             }
