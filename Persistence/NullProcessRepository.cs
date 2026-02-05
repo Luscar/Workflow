@@ -7,9 +7,11 @@ internal sealed class NullProcessRepository : IProcessRepository
     private NullProcessRepository() { }
 
     public Task SaveProcessInstanceAsync(ProcessInstance instance) => Task.CompletedTask;
-    public Task<ProcessInstance?> GetProcessInstanceAsync(string processId) => Task.FromResult<ProcessInstance?>(null);
+    public Task<ProcessInstance?> GetProcessInstanceAsync(long processId) => Task.FromResult<ProcessInstance?>(null);
     public Task UpdateProcessInstanceAsync(ProcessInstance instance) => Task.CompletedTask;
-    public Task DeleteProcessInstanceAsync(string processId) => Task.CompletedTask;
+    public Task DeleteProcessInstanceAsync(long processId) => Task.CompletedTask;
     public Task<List<ProcessInstance>> SearchByVariableAsync(Dictionary<string, object> variablesFiltre) => Task.FromResult(new List<ProcessInstance>());
-    public Task<(NodeExecutionHistory History, string ProcessId)?> GetNodeHistoryByIdAsync(string historyId) => Task.FromResult<(NodeExecutionHistory History, string ProcessId)?>(null);
+    public Task<(NodeExecutionHistory History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId) => Task.FromResult<(NodeExecutionHistory History, long ProcessId)?>(null);
+    public Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId) => Task.FromResult<ProcessInstance?>(null);
+    public Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId) => Task.FromResult(new List<ProcessInstance>());
 }

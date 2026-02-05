@@ -15,12 +15,12 @@ var handlers = new INodeHandler[]
 // ========================================
 var subProcessDefinition = new ProcessDefinition("ValidationSubProcess");
 
-var validateDataNode = new BusinessNode("ValidateData") { Name = "Valider les données" };
-var checkRulesNode = new BusinessNode("CheckBusinessRules") { Name = "Vérifier les règles" };
-var approveNode = new InteractiveNode() { Name = "Approbation manuelle" };
+var validateDataNode = new BusinessNode("ValidateData") { Name = "ValidateData", DisplayName = "Valider les données" };
+var checkRulesNode = new BusinessNode("CheckBusinessRules") { Name = "CheckBusinessRules", DisplayName = "Vérifier les règles" };
+var approveNode = new InteractiveNode() { Name = "Approve", DisplayName = "Approbation manuelle" };
 
-validateDataNode.NextNodeIds.Add(checkRulesNode.Id);
-checkRulesNode.NextNodeIds.Add(approveNode.Id);
+validateDataNode.NextNodeIds.Add(checkRulesNode.Name);
+checkRulesNode.NextNodeIds.Add(approveNode.Name);
 
 subProcessDefinition
     .AddNode(validateDataNode)
@@ -32,12 +32,13 @@ subProcessDefinition
 // ========================================
 var mainProcessDefinition = new ProcessDefinition("OrderProcessWithSubProcess");
 
-var startNode = new BusinessNode("StartOrder") { Name = "Démarrer la commande" };
+var startNode = new BusinessNode("StartOrder") { Name = "StartOrder", DisplayName = "Démarrer la commande" };
 
 // Nœud de sous-processus avec mapping explicite
 var validationSubProcessNode = new SubProcessNode(subProcessDefinition)
 {
-    Name = "Validation complète",
+    Name = "Validation",
+    DisplayName = "Validation complète",
     InheritAggregateId = true,
     InputMapping = new()
     {
@@ -50,12 +51,12 @@ var validationSubProcessNode = new SubProcessNode(subProcessDefinition)
     }
 };
 
-var processPaymentNode = new BusinessNode("ProcessPayment") { Name = "Traiter le paiement" };
-var completeNode = new BusinessNode("CompleteOrder") { Name = "Compléter la commande" };
+var processPaymentNode = new BusinessNode("ProcessPayment") { Name = "ProcessPayment", DisplayName = "Traiter le paiement" };
+var completeNode = new BusinessNode("CompleteOrder") { Name = "CompleteOrder", DisplayName = "Compléter la commande" };
 
-startNode.NextNodeIds.Add(validationSubProcessNode.Id);
-validationSubProcessNode.NextNodeIds.Add(processPaymentNode.Id);
-processPaymentNode.NextNodeIds.Add(completeNode.Id);
+startNode.NextNodeIds.Add(validationSubProcessNode.Name);
+validationSubProcessNode.NextNodeIds.Add(processPaymentNode.Name);
+processPaymentNode.NextNodeIds.Add(completeNode.Name);
 
 mainProcessDefinition
     .AddNode(startNode)
@@ -68,7 +69,7 @@ mainProcessDefinition
 // ========================================
 var engine = new FlowEngine(new[] { mainProcessDefinition }, handlers: handlers);
 
-var instance = new ProcessInstance("order-456", "aggregate-789");
+var instance = new ProcessInstance(456, "aggregate-789");
 
 // Ajouter des variables d'entrée (noms normaux, le mapping se charge du transfert)
 instance.Variables["OrderAmount"] = 1500.00;
@@ -118,13 +119,13 @@ if (instance.CompletedAt.HasValue)
 
 public class SampleExecutor : ICommandExecutor
 {
-    public async Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
+    public async Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 150));
         Console.WriteLine($"  Exécution: {commandName}");
     }
 
-    public async Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
+    public async Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId)
     {
         await Task.Delay(Random.Shared.Next(50, 100));
         Console.WriteLine($"  Décision: {decisionName}");

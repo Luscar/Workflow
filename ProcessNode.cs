@@ -12,15 +12,14 @@ public enum NodeType
 
 public class ProcessNode
 {
-    public string Id { get; set; }
     public string Name { get; set; }
+    public string DisplayName { get; set; }
     public NodeType Type { get; }
     public List<string> NextNodeIds { get; set; } = new();
 
     public ProcessNode(NodeType type)
     {
         Type = type;
-        Id = Guid.NewGuid().ToString();
     }
 }
 

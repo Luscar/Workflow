@@ -21,8 +21,8 @@ public class OracleHistoryRepository
         var createTableSql = $@"
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE TABLE {_historyTable} (
-                    ID_HISTORIQUE VARCHAR2(50) PRIMARY KEY,
-                    ID_PROCESSUS VARCHAR2(255) NOT NULL,
+                    ID_HISTORIQUE NUMBER(10) PRIMARY KEY,
+                    ID_PROCESSUS NUMBER(10) NOT NULL,
                     ID_NOEUD VARCHAR2(255) NOT NULL,
                     NOM_NOEUD VARCHAR2(500),
                     TYPE_NOEUD NUMBER(10) NOT NULL,
@@ -89,7 +89,7 @@ public class OracleHistoryRepository
         await _connection.ExecuteAsync(createIndex03Sql);
     }
 
-    public async Task SaveHistoryAsync(string processId, NodeExecutionHistory history)
+    public async Task SaveHistoryAsync(long processId, NodeExecutionHistory history)
     {
         var sql = $@"
             INSERT INTO {_historyTable}
@@ -99,7 +99,7 @@ public class OracleHistoryRepository
 
         var parameters = new
         {
-            IdHistorique = Guid.NewGuid().ToString(),
+            IdHistorique = Random.Shared.NextInt64(1, 10_000_000_000L),
             IdProcessus = processId,
             IdNoeud = history.NodeId,
             NomNoeud = history.NodeName,
@@ -115,7 +115,7 @@ public class OracleHistoryRepository
         await _connection.ExecuteAsync(sql, parameters);
     }
 
-    public async Task SaveHistoryBatchAsync(string processId, List<NodeExecutionHistory> histories)
+    public async Task SaveHistoryBatchAsync(long processId, List<NodeExecutionHistory> histories)
     {
         if (histories.Count == 0) return;
 
@@ -127,7 +127,7 @@ public class OracleHistoryRepository
 
         var parametersList = histories.Select(history => new
         {
-            IdHistorique = Guid.NewGuid().ToString(),
+            IdHistorique = Random.Shared.NextInt64(1, 10_000_000_000L),
             IdProcessus = processId,
             IdNoeud = history.NodeId,
             NomNoeud = history.NodeName,
@@ -143,7 +143,7 @@ public class OracleHistoryRepository
         await _connection.ExecuteAsync(sql, parametersList);
     }
 
-    public async Task<List<NodeExecutionHistory>> GetHistoryAsync(string processId)
+    public async Task<List<NodeExecutionHistory>> GetHistoryAsync(long processId)
     {
         var sql = $@"
             SELECT ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DATE_DEBUT, DATE_FIN, SUCCES, MESSAGE_ERREUR, ID_NOEUD_SUIVANT
@@ -176,7 +176,7 @@ public class OracleHistoryRepository
         return histories;
     }
 
-    public async Task<(NodeExecutionHistory History, string ProcessId)?> GetByIdAsync(string historyId)
+    public async Task<(NodeExecutionHistory History, long ProcessId)?> GetByIdAsync(long historyId)
     {
         var sql = $@"
             SELECT ID_PROCESSUS, ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DATE_DEBUT, DATE_FIN, SUCCES, MESSAGE_ERREUR, ID_NOEUD_SUIVANT
@@ -207,7 +207,7 @@ public class OracleHistoryRepository
 
     private class NodeHistoryWithProcessDto
     {
-        public string ID_PROCESSUS { get; set; } = string.Empty;
+        public long ID_PROCESSUS { get; set; }
         public string ID_NOEUD { get; set; } = string.Empty;
         public string? NOM_NOEUD { get; set; }
         public int TYPE_NOEUD { get; set; }

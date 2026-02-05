@@ -15,7 +15,7 @@ public class FlowService : IFlowService
         _engine = new FlowEngine(definitions, repository, handlers);
     }
 
-    public async Task<Processus> ObtenirAsync(string instanceProcessId)
+    public async Task<Processus> ObtenirAsync(long instanceProcessId)
     {
         var instance = await _repository.GetProcessInstanceAsync(instanceProcessId)
             ?? throw new InvalidOperationException($"Process '{instanceProcessId}' not found");
@@ -23,11 +23,11 @@ public class FlowService : IFlowService
         return Processus.FromInstance(instance);
     }
 
-    public async Task<string> CreateProcessInstance(string definitionId, Dictionary<string, object>? variables = null)
+    public async Task<long> CreateProcessInstance(string definitionName, Dictionary<string, object>? variables = null)
     {
-        var processId = Guid.NewGuid().ToString();
+        var processId = Random.Shared.NextInt64(1, 10_000_000_000L);
         var instance = new ProcessInstance(processId);
-        instance.DefinitionName = definitionId;
+        instance.DefinitionName = definitionName;
 
         if (variables != null)
         {
@@ -45,22 +45,13 @@ public class FlowService : IFlowService
         return instances.Select(Processus.FromInstance).ToList();
     }
 
-    public async Task<List<Processus>> ObtenirEnfants(string idInstanceParent)
+    public async Task<List<Processus>> ObtenirEnfants(long idInstanceParent)
     {
-        var parent = await _repository.GetProcessInstanceAsync(idInstanceParent)
-            ?? throw new InvalidOperationException($"Process '{idInstanceParent}' not found");
-
-        var children = new List<Processus>();
-        foreach (var subProcessId in parent.SubProcessIds.Values)
-        {
-            var child = await _repository.GetProcessInstanceAsync(subProcessId);
-            if (child != null)
-                children.Add(Processus.FromInstance(child));
-        }
-        return children;
+        var children = await _repository.GetChildrenAsync(idInstanceParent);
+        return children.Select(Processus.FromInstance).ToList();
     }
 
-    public async Task<IEnumerable<string>> ObtenirSignauxEnAttente(string idInstanceProcessus)
+    public async Task<IEnumerable<string>> ObtenirSignauxEnAttente(long idInstanceProcessus)
     {
         var instance = await _repository.GetProcessInstanceAsync(idInstanceProcessus)
             ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");
@@ -74,7 +65,7 @@ public class FlowService : IFlowService
         return Enumerable.Empty<string>();
     }
 
-    public async Task<InstanceNode> Obtenir(string idInstanceNoeud)
+    public async Task<InstanceNode> Obtenir(long idInstanceNoeud)
     {
         var result = await _repository.GetNodeHistoryByIdAsync(idInstanceNoeud)
             ?? throw new InvalidOperationException($"Node instance '{idInstanceNoeud}' not found");
@@ -93,7 +84,7 @@ public class FlowService : IFlowService
         };
     }
 
-    public async Task TerminerEtape(string idInstanceNoeud, object contenu)
+    public async Task TerminerEtape(long idInstanceNoeud, object contenu)
     {
         var nodeResult = await _repository.GetNodeHistoryByIdAsync(idInstanceNoeud)
             ?? throw new InvalidOperationException($"Node instance '{idInstanceNoeud}' not found");
@@ -110,7 +101,7 @@ public class FlowService : IFlowService
         await _engine.ContinueAsync(instance);
     }
 
-    public async Task<MigrationResult> MigrateAsync(string processId, ProcessDefinition targetDefinition, ProcessMigration migration)
+    public async Task<MigrationResult> MigrateAsync(long processId, ProcessDefinition targetDefinition, ProcessMigration migration)
     {
         var instance = await _repository.GetProcessInstanceAsync(processId)
             ?? throw new InvalidOperationException($"Process '{processId}' not found");

@@ -123,7 +123,7 @@ public class FlowEngine
             }
 
             // Créer l'entrée d'historique
-            var historyEntry = new NodeExecutionHistory(node.Id, node.Name, node.Type);
+            var historyEntry = new NodeExecutionHistory(node.Name, node.DisplayName, node.Type);
 
             var result = await handler.HandleAsync(node, instance);
 
@@ -134,7 +134,7 @@ public class FlowEngine
             if (!result.IsCompleted)
             {
                 instance.Status = ProcessStatus.Failed;
-                instance.ErrorMessage = result.ErrorMessage ?? $"Node '{node.Name}' (type: {node.Type}) failed";
+                instance.ErrorMessage = result.ErrorMessage ?? $"Node '{node.DisplayName}' (type: {node.Type}) failed";
                 await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
@@ -215,7 +215,7 @@ public class FlowEngine
         return instance;
     }
 
-    public async Task<ProcessInstance?> LoadProcessAsync(string processId)
+    public async Task<ProcessInstance?> LoadProcessAsync(long processId)
     {
         if (_repository is NullProcessRepository)
         {

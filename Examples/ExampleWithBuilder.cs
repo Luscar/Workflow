@@ -116,7 +116,7 @@ Console.WriteLine();
 Console.WriteLine("=== Exécution du processus ===\n");
 
 var engine = new FlowEngine(new[] { processFromBuilder }, handlers: handlers);
-var instance = new ProcessInstance("order-789", "aggregate-123");
+var instance = new ProcessInstance(789, "aggregate-123");
 
 instance = await engine.ExecuteAsync(instance);
 
@@ -150,13 +150,13 @@ Console.WriteLine($"Nombre de nœuds: {processWithSubProcess.Nodes.Count}");
 
 public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
+    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId)
     {
         Console.WriteLine($"    Exécution: {commandName}");
         return Task.CompletedTask;
     }
 
-    public Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
+    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId)
     {
         Console.WriteLine($"    Décision: {decisionName} -> approved");
         return Task.FromResult("approved");

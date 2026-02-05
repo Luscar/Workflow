@@ -2,7 +2,7 @@ namespace SimpleBPM;
 
 public class Processus
 {
-    public string Id { get; set; } = string.Empty;
+    public long Id { get; set; }
     public string? AggregateId { get; set; }
     public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }

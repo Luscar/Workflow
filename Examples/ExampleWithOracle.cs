@@ -32,23 +32,23 @@ var handlers = new INodeHandler[]
 // Définition du processus
 var processDefinition = new ProcessDefinition("OrderProcess");
 
-var validateOrderNode = new BusinessNode("ValidateOrder") { Name = "Validate Order" };
-var checkInventoryNode = new BusinessNode("CheckInventory") { Name = "Check Inventory" };
-var decisionNode = new DecisionNode("DecideApproval") { Name = "Approval Decision" };
-var approvedNode = new BusinessNode("ProcessApprovedOrder") { Name = "Process Approved" };
-var rejectedNode = new BusinessNode("ProcessRejectedOrder") { Name = "Process Rejected" };
-var waitNode = new WaitForSignalNode("PaymentReceived") { Name = "Wait Payment" };
-var interactiveNode = new InteractiveNode() { Name = "Manual Review" };
+var validateOrderNode = new BusinessNode("ValidateOrder") { Name = "ValidateOrder", DisplayName = "Validate Order" };
+var checkInventoryNode = new BusinessNode("CheckInventory") { Name = "CheckInventory", DisplayName = "Check Inventory" };
+var decisionNode = new DecisionNode("DecideApproval") { Name = "DecideApproval", DisplayName = "Approval Decision" };
+var approvedNode = new BusinessNode("ProcessApprovedOrder") { Name = "ProcessApproved", DisplayName = "Process Approved" };
+var rejectedNode = new BusinessNode("ProcessRejectedOrder") { Name = "ProcessRejected", DisplayName = "Process Rejected" };
+var waitNode = new WaitForSignalNode("PaymentReceived") { Name = "WaitPayment", DisplayName = "Wait Payment" };
+var interactiveNode = new InteractiveNode() { Name = "ManualReview", DisplayName = "Manual Review" };
 
-validateOrderNode.NextNodeIds.Add(checkInventoryNode.Id);
-checkInventoryNode.NextNodeIds.Add(decisionNode.Id);
+validateOrderNode.NextNodeIds.Add(checkInventoryNode.Name);
+checkInventoryNode.NextNodeIds.Add(decisionNode.Name);
 
 decisionNode
-    .AddRoute("approved", approvedNode.Id)
-    .AddRoute("rejected", rejectedNode.Id);
+    .AddRoute("approved", approvedNode.Name)
+    .AddRoute("rejected", rejectedNode.Name);
 
-approvedNode.NextNodeIds.Add(waitNode.Id);
-waitNode.NextNodeIds.Add(interactiveNode.Id);
+approvedNode.NextNodeIds.Add(waitNode.Name);
+waitNode.NextNodeIds.Add(interactiveNode.Name);
 
 processDefinition
     .AddNode(validateOrderNode)
@@ -63,7 +63,7 @@ processDefinition
 var engine = new FlowEngine(new[] { processDefinition }, repository, handlers);
 
 // Démarrer un nouveau processus
-var instance = new ProcessInstance("order-123", "aggregate-456");
+var instance = new ProcessInstance(123, "aggregate-456");
 instance = await engine.ExecuteAsync(instance);
 Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
 // L'instance est automatiquement sauvegardée dans Oracle avec le préfixe ABC_PROCESS_CONTEXT
@@ -97,7 +97,7 @@ Console.WriteLine($"\n=== Final ===");
 Console.WriteLine($"Status: {instance.Status}");
 
 // Plus tard, charger le processus depuis la base de données
-var loadedInstance = await engine.LoadProcessAsync("order-123");
+var loadedInstance = await engine.LoadProcessAsync(123);
 if (loadedInstance != null)
 {
     Console.WriteLine("\n=== Instance rechargée depuis Oracle ===");
@@ -133,13 +133,13 @@ if (loadedInstance != null)
 // Exemple d'implémentation d'un exécuteur
 public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId)
+    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId)
     {
         Console.WriteLine($"Executing Command: {commandName}");
         return Task.CompletedTask;
     }
 
-    public Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId)
+    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId)
     {
         Console.WriteLine($"Executing Decision: {decisionName}");
         return Task.FromResult("approved");

@@ -42,7 +42,7 @@ public static class ProcessMigrationRunner
         var targetNodeName = migration.ResolveNodeName(sourceNode.Name);
 
         // Find target node by name
-        var targetNode = targetDefinition.GetNodeByName(targetNodeName);
+        var targetNode = targetDefinition.GetNode(targetNodeName);
         if (targetNode == null)
         {
             return MigrationResult.Failed(previousVersion, newVersion,
@@ -55,9 +55,9 @@ public static class ProcessMigrationRunner
         migration.ApplyVariableTransforms(instance.Variables);
 
         // Update instance
-        instance.CurrentNodeId = targetNode.Id;
+        instance.CurrentNodeId = targetNode.Name;
         instance.DefinitionVersion = targetDefinition.Version;
 
-        return MigrationResult.Succeeded(previousVersion, newVersion, previousNodeId, targetNode.Id);
+        return MigrationResult.Succeeded(previousVersion, newVersion, previousNodeId, targetNode.Name);
     }
 }

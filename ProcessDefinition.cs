@@ -2,7 +2,6 @@ namespace SimpleBPM;
 
 public class ProcessDefinition
 {
-    public string Id { get; set; }
     public string Name { get; set; }
     public string Version { get; set; }
     public Dictionary<string, ProcessNode> Nodes { get; set; } = new();
@@ -10,41 +9,35 @@ public class ProcessDefinition
 
     public ProcessDefinition(string name, string version = "1.0")
     {
-        Id = Guid.NewGuid().ToString();
         Name = name;
         Version = version;
     }
 
     public ProcessDefinition AddNode(ProcessNode node)
     {
-        Nodes[node.Id] = node;
-        
+        Nodes[node.Name] = node;
+
         if (string.IsNullOrEmpty(StartNodeId))
         {
-            StartNodeId = node.Id;
+            StartNodeId = node.Name;
         }
-        
+
         return this;
     }
 
-    public ProcessDefinition SetStartNode(string nodeId)
+    public ProcessDefinition SetStartNode(string nodeName)
     {
-        if (!Nodes.ContainsKey(nodeId))
+        if (!Nodes.ContainsKey(nodeName))
         {
-            throw new ArgumentException($"Node {nodeId} not found in process definition");
+            throw new ArgumentException($"Node {nodeName} not found in process definition");
         }
-        
-        StartNodeId = nodeId;
+
+        StartNodeId = nodeName;
         return this;
     }
 
-    public ProcessNode? GetNode(string nodeId)
+    public ProcessNode? GetNode(string nodeName)
     {
-        return Nodes.TryGetValue(nodeId, out var node) ? node : null;
-    }
-
-    public ProcessNode? GetNodeByName(string name)
-    {
-        return Nodes.Values.FirstOrDefault(n => n.Name == name);
+        return Nodes.TryGetValue(nodeName, out var node) ? node : null;
     }
 }

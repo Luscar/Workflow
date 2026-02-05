@@ -21,7 +21,7 @@ public class ProcessBuilder
     /// </summary>
     public ProcessBuilder Business(string commandName, string? displayName = null)
     {
-        var node = new BusinessNode(commandName) { Name = displayName ?? commandName };
+        var node = new BusinessNode(commandName) { Name = commandName, DisplayName = displayName ?? commandName };
         return AddNode(commandName, node);
     }
 
@@ -30,8 +30,8 @@ public class ProcessBuilder
     /// </summary>
     public ProcessBuilder Decision(string queryName, string? displayName, Action<DecisionRouteBuilder> configureRoutes)
     {
-        var node = new DecisionNode(queryName) { Name = displayName ?? queryName };
-        var routeBuilder = new DecisionRouteBuilder(node, _nodesByName);
+        var node = new DecisionNode(queryName) { Name = queryName, DisplayName = displayName ?? queryName };
+        var routeBuilder = new DecisionRouteBuilder(node);
         configureRoutes(routeBuilder);
         return AddNode(queryName, node);
     }
@@ -47,7 +47,7 @@ public class ProcessBuilder
     /// </summary>
     public ProcessBuilder Interactive(string name, string? displayName = null)
     {
-        var node = new InteractiveNode { Name = displayName ?? name };
+        var node = new InteractiveNode { Name = name, DisplayName = displayName ?? name };
         return AddNode(name, node);
     }
 
@@ -56,7 +56,7 @@ public class ProcessBuilder
     /// </summary>
     public ProcessBuilder WaitForSignal(string signalName, string? displayName = null)
     {
-        var node = new WaitForSignalNode(signalName) { Name = displayName ?? signalName };
+        var node = new WaitForSignalNode(signalName) { Name = signalName, DisplayName = displayName ?? signalName };
         return AddNode(signalName, node);
     }
 
@@ -65,7 +65,7 @@ public class ProcessBuilder
     /// </summary>
     public ProcessBuilder WaitUntilDate(string name, string dateKey, string? displayName = null)
     {
-        var node = new WaitUntilDateNode(dateKey) { Name = displayName ?? name };
+        var node = new WaitUntilDateNode(dateKey) { Name = name, DisplayName = displayName ?? name };
         return AddNode(name, node);
     }
 
@@ -79,7 +79,8 @@ public class ProcessBuilder
     {
         var node = new SubProcessNode(subProcessDefinition)
         {
-            Name = displayName ?? name,
+            Name = name,
+            DisplayName = displayName ?? name,
             InheritAggregateId = inheritAggregateId,
             InputMapping = inputMapping ?? new(),
             OutputMapping = outputMapping ?? new()
@@ -101,7 +102,8 @@ public class ProcessBuilder
 
         var node = new SubProcessNode(subDefinition)
         {
-            Name = displayName ?? name,
+            Name = name,
+            DisplayName = displayName ?? name,
             InheritAggregateId = inheritAggregateId,
             InputMapping = inputMapping ?? new(),
             OutputMapping = outputMapping ?? new()
@@ -117,8 +119,7 @@ public class ProcessBuilder
         if (_lastNode == null)
             throw new InvalidOperationException("No current node to connect from");
 
-        // La connexion sera résolue à Build()
-        _lastNode.NextNodeIds.Add($"@@{nextNodeName}");
+        _lastNode.NextNodeIds.Add(nextNodeName);
         return this;
     }
 
@@ -133,9 +134,8 @@ public class ProcessBuilder
         }
         else
         {
-            // Sera résolu à Build()
             _startNode = null;
-            _definition.StartNodeId = $"@@{nodeName}";
+            _definition.StartNodeId = nodeName;
         }
         return this;
     }
@@ -145,76 +145,32 @@ public class ProcessBuilder
     /// </summary>
     public ProcessDefinition Build()
     {
-        // Résoudre toutes les références par nom
+        // Valider les références et ajouter les nœuds
         foreach (var node in _nodesByName.Values)
         {
-            // Résoudre NextNodeIds
-            for (int i = 0; i < node.NextNodeIds.Count; i++)
+            // Valider NextNodeIds
+            foreach (var nextName in node.NextNodeIds)
             {
-                var nextId = node.NextNodeIds[i];
-                if (nextId.StartsWith("@@"))
-                {
-                    var nodeName = nextId[2..];
-                    if (_nodesByName.TryGetValue(nodeName, out var targetNode))
-                    {
-                        node.NextNodeIds[i] = targetNode.Id;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"Node '{nodeName}' not found");
-                    }
-                }
+                if (!_nodesByName.ContainsKey(nextName))
+                    throw new InvalidOperationException($"Node '{nextName}' not found");
             }
 
-            // Résoudre les routes des DecisionNode
+            // Valider les routes des DecisionNode
             if (node is DecisionNode decisionNode)
             {
-                var resolvedRoutes = new Dictionary<string, string>();
                 foreach (var kvp in decisionNode.ConditionToNodeId)
                 {
-                    if (kvp.Value.StartsWith("@@"))
-                    {
-                        var nodeName = kvp.Value[2..];
-                        if (_nodesByName.TryGetValue(nodeName, out var targetNode))
-                        {
-                            resolvedRoutes[kvp.Key] = targetNode.Id;
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException($"Node '{nodeName}' not found for route '{kvp.Key}'");
-                        }
-                    }
-                    else
-                    {
-                        resolvedRoutes[kvp.Key] = kvp.Value;
-                    }
-                }
-                decisionNode.ConditionToNodeId = resolvedRoutes;
-
-                // Mettre à jour NextNodeIds pour DecisionNode
-                decisionNode.NextNodeIds.Clear();
-                foreach (var targetId in resolvedRoutes.Values)
-                {
-                    if (!decisionNode.NextNodeIds.Contains(targetId))
-                        decisionNode.NextNodeIds.Add(targetId);
+                    if (!_nodesByName.ContainsKey(kvp.Value))
+                        throw new InvalidOperationException($"Node '{kvp.Value}' not found for route '{kvp.Key}'");
                 }
             }
 
             _definition.AddNode(node);
         }
 
-        // Résoudre le StartNodeId si nécessaire
-        if (_definition.StartNodeId?.StartsWith("@@") == true)
+        if (_startNode != null)
         {
-            var nodeName = _definition.StartNodeId[2..];
-            if (_nodesByName.TryGetValue(nodeName, out var startNode))
-            {
-                _definition.StartNodeId = startNode.Id;
-            }
-        }
-        else if (_startNode != null)
-        {
-            _definition.StartNodeId = _startNode.Id;
+            _definition.StartNodeId = _startNode.Name;
         }
 
         return _definition;
@@ -227,14 +183,14 @@ public class ProcessBuilder
         // Connecter automatiquement au nœud précédent (sauf pour les décisions qui ont leurs propres routes)
         if (_lastNode != null && _lastNode is not DecisionNode)
         {
-            _lastNode.NextNodeIds.Add(node.Id);
+            _lastNode.NextNodeIds.Add(node.Name);
         }
 
         // Le premier nœud devient le nœud de départ
         if (_startNode == null && _definition.StartNodeId == null)
         {
             _startNode = node;
-            _definition.StartNodeId = node.Id;
+            _definition.StartNodeId = node.Name;
         }
 
         _lastNode = node;
@@ -245,18 +201,15 @@ public class ProcessBuilder
 public class DecisionRouteBuilder
 {
     private readonly DecisionNode _node;
-    private readonly Dictionary<string, ProcessNode> _nodesByName;
 
-    internal DecisionRouteBuilder(DecisionNode node, Dictionary<string, ProcessNode> nodesByName)
+    internal DecisionRouteBuilder(DecisionNode node)
     {
         _node = node;
-        _nodesByName = nodesByName;
     }
 
     public DecisionRouteBuilder When(string condition, string targetNodeName)
     {
-        // Utiliser le marqueur @@ pour résolution ultérieure
-        _node.AddRoute(condition, $"@@{targetNodeName}");
+        _node.AddRoute(condition, targetNodeName);
         return this;
     }
 }
