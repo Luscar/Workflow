@@ -24,7 +24,7 @@ public class SubProcessNodeHandler : INodeHandler
         {
             // Vérifier si un sous-processus existe déjà (reprise après arrêt)
             var existingSubProcess = _repository != null
-                ? await _repository.GetChildProcessAsync(instance.ProcessId, node.Id)
+                ? await _repository.GetChildProcessAsync(instance.ProcessId, node.Name)
                 : null;
 
             ProcessInstance subInstance;
@@ -44,7 +44,7 @@ public class SubProcessNodeHandler : INodeHandler
                 )
                 {
                     ParentProcessId = instance.ProcessId,
-                    ParentNodeId = node.Id
+                    ParentNodeId = node.Name
                 };
 
                 // Copier les variables d'entrée via le mapping explicite

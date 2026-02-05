@@ -16,13 +16,13 @@ public class InteractiveNodeHandler : INodeHandler
     public async Task<NodeExecutionResult> HandleAsync(ProcessNode node, ProcessInstance instance)
     {
         instance.Status = ProcessStatus.WaitingInteraction;
-        instance.CurrentNodeId = node.Id;
+        instance.CurrentNodeId = node.Name;
 
         if (_gestionTache != null)
         {
             await _gestionTache.CreerTacheAsync(
                 instance.ProcessId, instance.AggregateId,
-                instance.DefinitionName ?? "", node.Name);
+                instance.DefinitionName ?? "", node.DisplayName);
         }
 
         return new NodeExecutionResult
@@ -39,7 +39,7 @@ public class InteractiveNodeHandler : INodeHandler
         {
             await _gestionTache.FermerTacheAsync(
                 instance.ProcessId, instance.AggregateId,
-                instance.DefinitionName ?? "", node.Name);
+                instance.DefinitionName ?? "", node.DisplayName);
         }
     }
 }

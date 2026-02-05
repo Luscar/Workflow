@@ -43,7 +43,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
         }
 
         instance.Status = ProcessStatus.WaitingDate;
-        instance.CurrentNodeId = node.Id;
+        instance.CurrentNodeId = node.Name;
         instance.InternalState["WaitUntilDate"] = targetDate.Value;
 
         return Task.FromResult(new NodeExecutionResult
