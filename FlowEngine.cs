@@ -32,7 +32,7 @@ public class FlowEngine
         _handlers.TryAdd(NodeType.Interactive, new InteractiveNodeHandler());
         _handlers.TryAdd(NodeType.WaitUntilDate, new WaitUntilDateNodeHandler());
         _handlers.TryAdd(NodeType.WaitForSignal, new WaitForSignalNodeHandler());
-        _handlers.TryAdd(NodeType.SubProcess, new SubProcessNodeHandler(repository, _handlers));
+        _handlers.TryAdd(NodeType.SubProcess, new SubProcessNodeHandler(_repository, _handlers));
     }
 
     /// <summary>
