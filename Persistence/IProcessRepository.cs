@@ -2,6 +2,7 @@ namespace SimpleBPM.Persistence;
 
 public interface IProcessRepository
 {
+    Task<long> ObtenirSequenceAsync(string nomSequence);
     Task SaveProcessInstanceAsync(ProcessInstance instance);
     Task<ProcessInstance?> GetProcessInstanceAsync(long processId);
     Task UpdateProcessInstanceAsync(ProcessInstance instance);

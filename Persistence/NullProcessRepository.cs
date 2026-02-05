@@ -4,7 +4,12 @@ internal sealed class NullProcessRepository : IProcessRepository
 {
     public static readonly NullProcessRepository Instance = new();
 
+    private long _sequence;
+
     private NullProcessRepository() { }
+
+    public Task<long> ObtenirSequenceAsync(string nomSequence) =>
+        Task.FromResult(Interlocked.Increment(ref _sequence));
 
     public Task SaveProcessInstanceAsync(ProcessInstance instance) => Task.CompletedTask;
     public Task<ProcessInstance?> GetProcessInstanceAsync(long processId) => Task.FromResult<ProcessInstance?>(null);

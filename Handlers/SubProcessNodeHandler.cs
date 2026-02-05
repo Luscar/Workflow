@@ -37,7 +37,9 @@ public class SubProcessNodeHandler : INodeHandler
             else
             {
                 // Créer un nouveau sous-processus
-                var subProcessId = Random.Shared.NextInt64(1, 10_000_000_000L);
+                var subProcessId = _repository != null
+                    ? await _repository.ObtenirSequenceAsync("SEQ_PROCESSUS")
+                    : Random.Shared.NextInt64(1, 10_000_000_000L);
                 subInstance = new ProcessInstance(
                     subProcessId,
                     subNode.InheritAggregateId ? instance.AggregateId : null

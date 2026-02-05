@@ -18,8 +18,42 @@ public class OracleProcessRepository : IProcessRepository
         _historyRepository = new OracleHistoryRepository(config, connection);
     }
 
+    public async Task<long> ObtenirSequenceAsync(string nomSequence)
+    {
+        var sequenceName = _config.GetTableName(nomSequence);
+        var sql = $"SELECT {sequenceName}.NEXTVAL FROM DUAL";
+        return await _connection.ExecuteScalarAsync<long>(sql);
+    }
+
     public async Task InitializeDatabaseAsync()
     {
+        var createSequenceProcessusSql = $@"
+            BEGIN
+                EXECUTE IMMEDIATE 'CREATE SEQUENCE {_config.GetTableName("SEQ_PROCESSUS")} START WITH 1 INCREMENT BY 1 NOCACHE';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    IF SQLCODE = -955 THEN
+                        NULL;
+                    ELSE
+                        RAISE;
+                    END IF;
+            END;";
+
+        var createSequenceHistoriqueSql = $@"
+            BEGIN
+                EXECUTE IMMEDIATE 'CREATE SEQUENCE {_config.GetTableName("SEQ_HISTORIQUE")} START WITH 1 INCREMENT BY 1 NOCACHE';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    IF SQLCODE = -955 THEN
+                        NULL;
+                    ELSE
+                        RAISE;
+                    END IF;
+            END;";
+
+        await _connection.ExecuteAsync(createSequenceProcessusSql);
+        await _connection.ExecuteAsync(createSequenceHistoriqueSql);
+
         var createTableSql = $@"
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE TABLE {_processContextTable} (

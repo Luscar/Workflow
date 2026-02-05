@@ -1,6 +1,10 @@
 -- Script de création manuelle des tables Oracle
 -- Remplacer {PREFIX} par votre préfixe de système (3 à 10 lettres)
 
+-- Séquences pour la génération des identifiants
+CREATE SEQUENCE {PREFIX}_SEQ_PROCESSUS START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE SEQUENCE {PREFIX}_SEQ_HISTORIQUE START WITH 1 INCREMENT BY 1 NOCACHE;
+
 -- Table pour stocker les contextes de processus
 CREATE TABLE {PREFIX}_PROCESS_CONTEXT (
     ID_PROCESSUS NUMBER(10) PRIMARY KEY,
@@ -46,6 +50,9 @@ CREATE INDEX IX_{PREFIX}_02_HISTORIQUE_EXECUTION_NOEUD ON {PREFIX}_HISTORIQUE_EX
 CREATE INDEX IX_{PREFIX}_03_HISTORIQUE_EXECUTION_NOEUD ON {PREFIX}_HISTORIQUE_EXECUTION_NOEUD(DATE_DEBUT);
 
 -- Commentaires sur PROCESS_CONTEXT
+COMMENT ON SEQUENCE {PREFIX}_SEQ_PROCESSUS IS 'Séquence pour la génération des identifiants de processus';
+COMMENT ON SEQUENCE {PREFIX}_SEQ_HISTORIQUE IS 'Séquence pour la génération des identifiants d''historique';
+
 COMMENT ON TABLE {PREFIX}_PROCESS_CONTEXT IS 'Table stockant les contextes d''exécution des processus BPM';
 COMMENT ON COLUMN {PREFIX}_PROCESS_CONTEXT.ID_PROCESSUS IS 'Identifiant unique du processus';
 COMMENT ON COLUMN {PREFIX}_PROCESS_CONTEXT.ID_PROCESSUS_PARENT IS 'Identifiant du processus parent (NULL si processus racine)';
