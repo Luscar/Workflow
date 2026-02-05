@@ -23,11 +23,11 @@ public class FlowService : IFlowService
         return Processus.FromInstance(instance);
     }
 
-    public async Task<long> CreateProcessInstance(string definitionId, Dictionary<string, object>? variables = null)
+    public async Task<long> CreateProcessInstance(string definitionName, Dictionary<string, object>? variables = null)
     {
         var processId = Random.Shared.NextInt64(1, 10_000_000_000L);
         var instance = new ProcessInstance(processId);
-        instance.DefinitionName = definitionId;
+        instance.DefinitionName = definitionName;
 
         if (variables != null)
         {

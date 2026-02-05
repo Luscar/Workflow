@@ -2,7 +2,6 @@ namespace SimpleBPM;
 
 public class ProcessDefinition
 {
-    public string Id { get; set; }
     public string Name { get; set; }
     public string Version { get; set; }
     public Dictionary<string, ProcessNode> Nodes { get; set; } = new();
@@ -10,7 +9,6 @@ public class ProcessDefinition
 
     public ProcessDefinition(string name, string version = "1.0")
     {
-        Id = Guid.NewGuid().ToString();
         Name = name;
         Version = version;
     }
