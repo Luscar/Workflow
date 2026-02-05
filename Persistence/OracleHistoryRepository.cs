@@ -8,12 +8,20 @@ public class OracleHistoryRepository
     private readonly OracleConfiguration _config;
     private readonly IDbConnection _connection;
     private readonly string _historyTable;
+    private readonly string _sequenceName;
 
     public OracleHistoryRepository(OracleConfiguration config, IDbConnection connection)
     {
         _config = config;
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         _historyTable = _config.GetTableName("HISTORIQUE_EXECUTION_NOEUD");
+        _sequenceName = _config.GetTableName("SEQ_HISTORIQUE");
+    }
+
+    private async Task<long> ObtenirSequenceAsync()
+    {
+        var sql = $"SELECT {_sequenceName}.NEXTVAL FROM DUAL";
+        return await _connection.ExecuteScalarAsync<long>(sql);
     }
 
     public async Task InitializeDatabaseAsync()
@@ -99,7 +107,7 @@ public class OracleHistoryRepository
 
         var parameters = new
         {
-            IdHistorique = Random.Shared.NextInt64(1, 10_000_000_000L),
+            IdHistorique = await ObtenirSequenceAsync(),
             IdProcessus = processId,
             IdNoeud = history.NodeId,
             NomNoeud = history.NodeName,
@@ -125,20 +133,24 @@ public class OracleHistoryRepository
             VALUES
             (:IdHistorique, :IdProcessus, :IdNoeud, :NomNoeud, :TypeNoeud, :DateDebut, :DateFin, :DureeMs, :Succes, :MessageErreur, :IdNoeudSuivant)";
 
-        var parametersList = histories.Select(history => new
+        var parametersList = new List<object>();
+        foreach (var history in histories)
         {
-            IdHistorique = Random.Shared.NextInt64(1, 10_000_000_000L),
-            IdProcessus = processId,
-            IdNoeud = history.NodeId,
-            NomNoeud = history.NodeName,
-            TypeNoeud = (int)history.NodeType,
-            DateDebut = history.StartedAt,
-            DateFin = history.CompletedAt,
-            DureeMs = (long)history.Duration.TotalMilliseconds,
-            Succes = history.Success ? 1 : 0,
-            MessageErreur = history.ErrorMessage,
-            IdNoeudSuivant = history.NextNodeId
-        }).ToList();
+            parametersList.Add(new
+            {
+                IdHistorique = await ObtenirSequenceAsync(),
+                IdProcessus = processId,
+                IdNoeud = history.NodeId,
+                NomNoeud = history.NodeName,
+                TypeNoeud = (int)history.NodeType,
+                DateDebut = history.StartedAt,
+                DateFin = history.CompletedAt,
+                DureeMs = (long)history.Duration.TotalMilliseconds,
+                Succes = history.Success ? 1 : 0,
+                MessageErreur = history.ErrorMessage,
+                IdNoeudSuivant = history.NextNodeId
+            });
+        }
 
         await _connection.ExecuteAsync(sql, parametersList);
     }

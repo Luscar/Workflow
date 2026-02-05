@@ -25,7 +25,7 @@ public class FlowService : IFlowService
 
     public async Task<long> CreateProcessInstance(string definitionName, Dictionary<string, object>? variables = null)
     {
-        var processId = Random.Shared.NextInt64(1, 10_000_000_000L);
+        var processId = await _repository.ObtenirSequenceAsync("SEQ_PROCESSUS");
         var instance = new ProcessInstance(processId);
         instance.DefinitionName = definitionName;
 
