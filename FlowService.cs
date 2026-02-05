@@ -47,17 +47,8 @@ public class FlowService : IFlowService
 
     public async Task<List<Processus>> ObtenirEnfants(long idInstanceParent)
     {
-        var parent = await _repository.GetProcessInstanceAsync(idInstanceParent)
-            ?? throw new InvalidOperationException($"Process '{idInstanceParent}' not found");
-
-        var children = new List<Processus>();
-        foreach (var subProcessId in parent.SubProcessIds.Values)
-        {
-            var child = await _repository.GetProcessInstanceAsync(subProcessId);
-            if (child != null)
-                children.Add(Processus.FromInstance(child));
-        }
-        return children;
+        var children = await _repository.GetChildrenAsync(idInstanceParent);
+        return children.Select(Processus.FromInstance).ToList();
     }
 
     public async Task<IEnumerable<string>> ObtenirSignauxEnAttente(long idInstanceProcessus)

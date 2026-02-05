@@ -23,38 +23,28 @@ public class SubProcessNodeHandler : INodeHandler
         try
         {
             // Vérifier si un sous-processus existe déjà (reprise après arrêt)
-            instance.SubProcessIds.TryGetValue(node.Id, out var existingSubProcessId);
+            var existingSubProcess = _repository != null
+                ? await _repository.GetChildProcessAsync(instance.ProcessId, node.Id)
+                : null;
 
             ProcessInstance subInstance;
-            long subProcessId;
 
-            if (existingSubProcessId != 0 && _repository != null)
+            if (existingSubProcess != null)
             {
                 // Reprendre un sous-processus existant
-                var loadedInstance = await _repository.GetProcessInstanceAsync(existingSubProcessId);
-
-                if (loadedInstance == null)
-                {
-                    return new NodeExecutionResult
-                    {
-                        IsCompleted = false,
-                        ErrorMessage = $"Sub-process {existingSubProcessId} not found"
-                    };
-                }
-
-                subInstance = loadedInstance;
-                subProcessId = existingSubProcessId;
+                subInstance = existingSubProcess;
             }
             else
             {
                 // Créer un nouveau sous-processus
-                subProcessId = Random.Shared.NextInt64(1, 10_000_000_000L);
+                var subProcessId = Random.Shared.NextInt64(1, 10_000_000_000L);
                 subInstance = new ProcessInstance(
                     subProcessId,
                     subNode.InheritAggregateId ? instance.AggregateId : null
                 )
                 {
-                    ParentProcessId = instance.ProcessId
+                    ParentProcessId = instance.ProcessId,
+                    ParentNodeId = node.Id
                 };
 
                 // Copier les variables d'entrée via le mapping explicite
@@ -71,7 +61,7 @@ public class SubProcessNodeHandler : INodeHandler
             var subEngine = new FlowEngine(subNode.SubProcessDefinition, _repository, _handlers);
 
             // Exécuter ou continuer le sous-processus
-            if (existingSubProcessId == 0)
+            if (existingSubProcess == null)
             {
                 subInstance = await subEngine.ExecuteAsync(subInstance);
             }
@@ -95,9 +85,6 @@ public class SubProcessNodeHandler : INodeHandler
                 subInstance.Status == ProcessStatus.WaitingDate ||
                 subInstance.Status == ProcessStatus.WaitingSignal)
             {
-                // Sauvegarder l'ID du sous-processus dans le dictionnaire dédié
-                instance.SubProcessIds[node.Id] = subProcessId;
-
                 return new NodeExecutionResult
                 {
                     IsCompleted = true,
@@ -116,13 +103,10 @@ public class SubProcessNodeHandler : INodeHandler
                 }
             }
 
-            // Nettoyer l'ID du sous-processus
-            instance.SubProcessIds.Remove(node.Id);
-
             // Supprimer le contexte du sous-processus de la base de données
-            if (_repository != null && existingSubProcessId != 0)
+            if (_repository != null && existingSubProcess != null)
             {
-                await _repository.DeleteProcessInstanceAsync(existingSubProcessId);
+                await _repository.DeleteProcessInstanceAsync(subInstance.ProcessId);
             }
 
             return new NodeExecutionResult

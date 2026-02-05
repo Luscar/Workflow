@@ -4,12 +4,12 @@ public class ProcessInstance
 {
     public long ProcessId { get; set; }
     public long? ParentProcessId { get; set; }
+    public string? ParentNodeId { get; set; }
     public string? AggregateId { get; set; }
     public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }
     public Dictionary<string, object> Variables { get; set; } = new();
     public Dictionary<string, object> InternalState { get; set; } = new();
-    public Dictionary<string, long> SubProcessIds { get; set; } = new();
     public DateTime StartedAt { get; set; }
     public DateTime? LastExecutedAt { get; set; }
     public DateTime? CompletedAt { get; set; }

@@ -25,6 +25,7 @@ public class OracleProcessRepository : IProcessRepository
                 EXECUTE IMMEDIATE 'CREATE TABLE {_processContextTable} (
                     ID_PROCESSUS NUMBER(10) PRIMARY KEY,
                     ID_PROCESSUS_PARENT NUMBER(10),
+                    ID_NOEUD_PARENT VARCHAR2(255),
                     ID_AGREGAT VARCHAR2(255),
                     DONNEES CLOB,
                     DATE_DEBUT TIMESTAMP,
@@ -33,7 +34,6 @@ public class OracleProcessRepository : IProcessRepository
                     ID_NOEUD_COURANT VARCHAR2(255),
                     NOM_DEFINITION VARCHAR2(255),
                     VERSION_DEFINITION VARCHAR2(50),
-                    SOUS_PROCESSUS CLOB,
                     STATUT NUMBER(10),
                     CONSTRAINT CHK_{_config.TablePrefix}_STATUT CHECK (STATUT BETWEEN 0 AND 5)
                 )';
@@ -95,14 +95,15 @@ public class OracleProcessRepository : IProcessRepository
     {
         var sql = $@"
             INSERT INTO {_processContextTable}
-            (ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT)
+            (ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT)
             VALUES
-            (:IdProcessus, :IdProcessusParent, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :SousProcessus, :Statut)";
+            (:IdProcessus, :IdProcessusParent, :IdNoeudParent, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :Statut)";
 
         var parameters = new
         {
             IdProcessus = instance.ProcessId,
             IdProcessusParent = instance.ParentProcessId,
+            IdNoeudParent = instance.ParentNodeId,
             IdAgregat = instance.AggregateId,
             Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
             DateDebut = instance.StartedAt,
@@ -111,9 +112,6 @@ public class OracleProcessRepository : IProcessRepository
             IdNoeudCourant = instance.CurrentNodeId,
             NomDefinition = instance.DefinitionName,
             VersionDefinition = instance.DefinitionVersion,
-            SousProcessus = instance.SubProcessIds.Count > 0
-                ? System.Text.Json.JsonSerializer.Serialize(instance.SubProcessIds)
-                : null,
             Statut = (int)instance.Status
         };
 
@@ -123,7 +121,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetProcessInstanceAsync(long processId)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS = :IdProcessus";
 
@@ -151,7 +149,6 @@ public class OracleProcessRepository : IProcessRepository
                 ID_NOEUD_COURANT = :IdNoeudCourant,
                 NOM_DEFINITION = :NomDefinition,
                 VERSION_DEFINITION = :VersionDefinition,
-                SOUS_PROCESSUS = :SousProcessus,
                 STATUT = :Statut
             WHERE ID_PROCESSUS = :IdProcessus";
 
@@ -164,9 +161,6 @@ public class OracleProcessRepository : IProcessRepository
             IdNoeudCourant = instance.CurrentNodeId,
             NomDefinition = instance.DefinitionName,
             VersionDefinition = instance.DefinitionVersion,
-            SousProcessus = instance.SubProcessIds.Count > 0
-                ? System.Text.Json.JsonSerializer.Serialize(instance.SubProcessIds)
-                : null,
             Statut = (int)instance.Status,
             IdProcessus = instance.ProcessId
         };
@@ -191,7 +185,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<List<ProcessInstance>> SearchByVariableAsync(Dictionary<string, object> variablesFiltre)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, SOUS_PROCESSUS, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
             FROM {_processContextTable}
             WHERE DONNEES IS NOT NULL";
 
@@ -224,20 +218,55 @@ public class OracleProcessRepository : IProcessRepository
         return await _historyRepository.GetByIdAsync(historyId);
     }
 
+    public async Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId)
+    {
+        var sql = $@"
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            FROM {_processContextTable}
+            WHERE ID_PROCESSUS_PARENT = :IdProcessusParent AND ID_NOEUD_PARENT = :IdNoeudParent";
+
+        var result = await _connection.QueryFirstOrDefaultAsync<ProcessInstanceDto>(sql, new { IdProcessusParent = parentProcessId, IdNoeudParent = parentNodeId });
+
+        if (result == null)
+            return null;
+
+        var instance = MapToInstance(result);
+        instance.ExecutionHistory = await _historyRepository.GetHistoryAsync(result.ID_PROCESSUS);
+        return instance;
+    }
+
+    public async Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId)
+    {
+        var sql = $@"
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            FROM {_processContextTable}
+            WHERE ID_PROCESSUS_PARENT = :IdProcessusParent";
+
+        var results = await _connection.QueryAsync<ProcessInstanceDto>(sql, new { IdProcessusParent = parentProcessId });
+        var children = new List<ProcessInstance>();
+
+        foreach (var result in results)
+        {
+            var instance = MapToInstance(result);
+            instance.ExecutionHistory = await _historyRepository.GetHistoryAsync(result.ID_PROCESSUS);
+            children.Add(instance);
+        }
+
+        return children;
+    }
+
     private ProcessInstance MapToInstance(ProcessInstanceDto result)
     {
         return new ProcessInstance(result.ID_PROCESSUS)
         {
             ParentProcessId = result.ID_PROCESSUS_PARENT,
+            ParentNodeId = result.ID_NOEUD_PARENT,
             AggregateId = result.ID_AGREGAT,
             DefinitionName = result.NOM_DEFINITION,
             DefinitionVersion = result.VERSION_DEFINITION,
             Variables = string.IsNullOrEmpty(result.DONNEES)
                 ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>(),
-            SubProcessIds = string.IsNullOrEmpty(result.SOUS_PROCESSUS)
-                ? new Dictionary<string, long>()
-                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, long>>(result.SOUS_PROCESSUS) ?? new Dictionary<string, long>(),
             StartedAt = result.DATE_DEBUT,
             LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
             CompletedAt = result.DATE_COMPLETION,
@@ -250,6 +279,7 @@ public class OracleProcessRepository : IProcessRepository
     {
         public long ID_PROCESSUS { get; set; }
         public long? ID_PROCESSUS_PARENT { get; set; }
+        public string? ID_NOEUD_PARENT { get; set; }
         public string? ID_AGREGAT { get; set; }
         public string DONNEES { get; set; } = string.Empty;
         public DateTime DATE_DEBUT { get; set; }
@@ -258,7 +288,6 @@ public class OracleProcessRepository : IProcessRepository
         public string? ID_NOEUD_COURANT { get; set; }
         public string? NOM_DEFINITION { get; set; }
         public string? VERSION_DEFINITION { get; set; }
-        public string? SOUS_PROCESSUS { get; set; }
         public int STATUT { get; set; }
     }
 }
