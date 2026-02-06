@@ -107,13 +107,13 @@ public static class ProcessJsonLoader
 
     private static ProcessNode CreateNode(NodeJsonDefinition nodeDef)
     {
-        return nodeDef.Type switch
+        var node = nodeDef.Type switch
         {
             NodeType.Business => new BusinessNode(nodeDef.Command ?? nodeDef.Name)
             {
                 Name = nodeDef.Name,
                 DisplayName = nodeDef.DisplayName ?? nodeDef.Name
-            },
+            } as ProcessNode,
             NodeType.Decision => new DecisionNode(nodeDef.Query ?? nodeDef.Name)
             {
                 Name = nodeDef.Name,
@@ -137,6 +137,16 @@ public static class ProcessJsonLoader
             NodeType.SubProcess => CreateSubProcessNode(nodeDef),
             _ => throw new InvalidOperationException($"Unknown node type: {nodeDef.Type}")
         };
+
+        if (nodeDef.Parameters != null)
+        {
+            foreach (var kvp in nodeDef.Parameters)
+            {
+                node.Parameters[kvp.Key] = kvp.Value;
+            }
+        }
+
+        return node;
     }
 
     private static ProcessNode CreateSubProcessNode(NodeJsonDefinition nodeDef)
@@ -199,6 +209,11 @@ public static class ProcessJsonLoader
                     break;
             }
 
+            if (node.Parameters.Count > 0)
+            {
+                nodeDef.Parameters = new Dictionary<string, object>(node.Parameters);
+            }
+
             if (node.NextNodeIds.Count > 0 && node is not DecisionNode)
             {
                 nodeDef.Next = new List<string>(node.NextNodeIds);
@@ -245,6 +260,9 @@ public class NodeJsonDefinition
     public bool? InheritAggregateId { get; set; }
     public Dictionary<string, string>? InputMapping { get; set; }
     public Dictionary<string, string>? OutputMapping { get; set; }
+
+    // Paramètres du nœud
+    public Dictionary<string, object>? Parameters { get; set; }
 
     // Connexions
     public List<string>? Next { get; set; }

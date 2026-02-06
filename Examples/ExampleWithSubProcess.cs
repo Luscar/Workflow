@@ -119,13 +119,13 @@ if (instance.CompletedAt.HasValue)
 
 public class SampleExecutor : ICommandExecutor
 {
-    public async Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId)
+    public async Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
     {
         await Task.Delay(Random.Shared.Next(50, 150));
         Console.WriteLine($"  Exécution: {commandName}");
     }
 
-    public async Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId)
+    public async Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
     {
         await Task.Delay(Random.Shared.Next(50, 100));
         Console.WriteLine($"  Décision: {decisionName}");
