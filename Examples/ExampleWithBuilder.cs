@@ -150,13 +150,13 @@ Console.WriteLine($"Nombre de nœuds: {processWithSubProcess.Nodes.Count}");
 
 public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId)
+    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"    Exécution: {commandName}");
         return Task.CompletedTask;
     }
 
-    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId)
+    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"    Décision: {decisionName} -> approved");
         return Task.FromResult("approved");

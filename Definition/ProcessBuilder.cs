@@ -112,6 +112,33 @@ public class ProcessBuilder
     }
 
     /// <summary>
+    /// Définit les paramètres du nœud courant
+    /// </summary>
+    public ProcessBuilder WithParameters(Dictionary<string, object> parameters)
+    {
+        if (_lastNode == null)
+            throw new InvalidOperationException("No current node to set parameters on");
+
+        foreach (var kvp in parameters)
+        {
+            _lastNode.Parameters[kvp.Key] = kvp.Value;
+        }
+        return this;
+    }
+
+    /// <summary>
+    /// Définit un paramètre sur le nœud courant
+    /// </summary>
+    public ProcessBuilder WithParameter(string key, object value)
+    {
+        if (_lastNode == null)
+            throw new InvalidOperationException("No current node to set parameter on");
+
+        _lastNode.Parameters[key] = value;
+        return this;
+    }
+
+    /// <summary>
     /// Connecte le nœud courant au nœud spécifié
     /// </summary>
     public ProcessBuilder Then(string nextNodeName)
