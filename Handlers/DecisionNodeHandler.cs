@@ -5,9 +5,11 @@ namespace SimpleBPM.Handlers;
 
 public class DecisionNodeHandler : INodeHandler
 {
-    private readonly ICommandExecutor _executor;
+    private readonly ICommandExecutor? _executor;
 
     public NodeType NodeType => NodeType.Decision;
+
+    public DecisionNodeHandler() { }
 
     public DecisionNodeHandler(ICommandExecutor executor)
     {
@@ -20,23 +22,12 @@ public class DecisionNodeHandler : INodeHandler
 
         try
         {
-            var decisionResult = await _executor.EvaluateDecisionAsync(decisionNode.QueryName, instance.ProcessId, instance.AggregateId);
-
-            if (decisionNode.ConditionToNodeId.TryGetValue(decisionResult, out var nextNodeId))
+            if (decisionNode.Conditions.Count > 0)
             {
-                return new NodeExecutionResult
-                {
-                    IsCompleted = true,
-                    RequiresStop = false,
-                    NextNodeId = nextNodeId
-                };
+                return EvaluerConditions(decisionNode, instance);
             }
 
-            return new NodeExecutionResult
-            {
-                IsCompleted = false,
-                ErrorMessage = $"No route found for decision result: {decisionResult}"
-            };
+            return await EvaluerParQuery(decisionNode, instance);
         }
         catch (Exception ex)
         {
@@ -46,5 +37,67 @@ public class DecisionNodeHandler : INodeHandler
                 ErrorMessage = ex.Message
             };
         }
+    }
+
+    private NodeExecutionResult EvaluerConditions(DecisionNode decisionNode, ProcessInstance instance)
+    {
+        foreach (var condition in decisionNode.Conditions)
+        {
+            if (condition.Evaluer(instance.Variables))
+            {
+                return new NodeExecutionResult
+                {
+                    IsCompleted = true,
+                    RequiresStop = false,
+                    NextNodeId = condition.NoeudCible
+                };
+            }
+        }
+
+        if (!string.IsNullOrEmpty(decisionNode.NoeudParDefaut))
+        {
+            return new NodeExecutionResult
+            {
+                IsCompleted = true,
+                RequiresStop = false,
+                NextNodeId = decisionNode.NoeudParDefaut
+            };
+        }
+
+        return new NodeExecutionResult
+        {
+            IsCompleted = false,
+            ErrorMessage = "Aucune condition ne correspond et aucun nœud par défaut n'est défini"
+        };
+    }
+
+    private async Task<NodeExecutionResult> EvaluerParQuery(DecisionNode decisionNode, ProcessInstance instance)
+    {
+        if (_executor == null)
+        {
+            return new NodeExecutionResult
+            {
+                IsCompleted = false,
+                ErrorMessage = "Aucun executor configuré pour évaluer la requête de décision"
+            };
+        }
+
+        var decisionResult = await _executor.EvaluateDecisionAsync(decisionNode.QueryName!, instance.ProcessId, instance.AggregateId);
+
+        if (decisionNode.ConditionToNodeId.TryGetValue(decisionResult, out var nextNodeId))
+        {
+            return new NodeExecutionResult
+            {
+                IsCompleted = true,
+                RequiresStop = false,
+                NextNodeId = nextNodeId
+            };
+        }
+
+        return new NodeExecutionResult
+        {
+            IsCompleted = false,
+            ErrorMessage = $"No route found for decision result: {decisionResult}"
+        };
     }
 }

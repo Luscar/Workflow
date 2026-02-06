@@ -216,7 +216,7 @@ public class OracleProcessRepository : IProcessRepository
         await _connection.ExecuteAsync(sql, new { IdProcessus = processId });
     }
 
-    public async Task<List<ProcessInstance>> SearchByVariableAsync(Dictionary<string, object> variablesFiltre)
+    public async Task<List<ProcessInstance>> SearchByVariableAsync(List<FiltreVariable> filtres)
     {
         var sql = $@"
             SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
@@ -232,9 +232,9 @@ public class OracleProcessRepository : IProcessRepository
                 ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>();
 
-            var allMatch = variablesFiltre.All(filter =>
-                variables.TryGetValue(filter.Key, out var value) &&
-                value?.ToString() == filter.Value?.ToString());
+            var allMatch = filtres.All(filtre =>
+                variables.TryGetValue(filtre.NomVariable, out var valeur) &&
+                filtre.Correspond(valeur));
 
             if (allMatch)
             {

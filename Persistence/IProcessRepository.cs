@@ -7,7 +7,7 @@ public interface IProcessRepository
     Task<ProcessInstance?> GetProcessInstanceAsync(long processId);
     Task UpdateProcessInstanceAsync(ProcessInstance instance);
     Task DeleteProcessInstanceAsync(long processId);
-    Task<List<ProcessInstance>> SearchByVariableAsync(Dictionary<string, object> variablesFiltre);
+    Task<List<ProcessInstance>> SearchByVariableAsync(List<FiltreVariable> filtres);
     Task<(NodeExecutionHistory History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId);
     Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId);
     Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId);

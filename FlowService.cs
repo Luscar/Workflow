@@ -39,9 +39,9 @@ public class FlowService : IFlowService
         return processId;
     }
 
-    public async Task<List<Processus>> RechercherParVariable(Dictionary<string, object> variablesFiltre)
+    public async Task<List<Processus>> RechercherParVariable(List<FiltreVariable> filtres)
     {
-        var instances = await _repository.SearchByVariableAsync(variablesFiltre);
+        var instances = await _repository.SearchByVariableAsync(filtres);
         return instances.Select(Processus.FromInstance).ToList();
     }
 

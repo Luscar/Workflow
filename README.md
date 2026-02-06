@@ -5,7 +5,7 @@ Une librairie légère pour gérer des processus métier (BPM) avec différents 
 ## Types de nœuds
 
 - **BusinessNode** : Exécute une commande métier
-- **DecisionNode** : Permet de router vers différents nœuds selon le résultat d'une évaluation
+- **DecisionNode** : Permet de router vers différents nœuds selon des conditions sur les variables ou le résultat d'une évaluation externe
 - **InteractiveNode** : Arrête le processus en attente d'interaction utilisateur
 - **WaitUntilDateNode** : Arrête le processus jusqu'à une date précise
 - **WaitForSignalNode** : Arrête le processus en attente d'un signal spécifique
@@ -96,6 +96,62 @@ var json = ProcessJsonLoader.ToJson(process);
 ```
 
 Voir `Examples/ExampleWithBuilder.cs` pour un exemple complet.
+
+## Nœuds de décision
+
+Les nœuds de décision permettent de router le flux vers différents nœuds selon des conditions.
+
+### Deux modes de fonctionnement
+
+1. **Conditions sur variables** (recommandé) : Évalue directement les variables du processus
+2. **Query externe** : Délègue l'évaluation à `ICommandExecutor.EvaluateDecisionAsync`
+
+### Opérateurs disponibles
+
+| Opérateur | Description | Types supportés |
+|-----------|-------------|-----------------|
+| `Egal` | Égalité | Tous |
+| `Different` | Différence | Tous |
+| `Superieur` | Strictement supérieur | Nombre, Date, Texte |
+| `SuperieurOuEgal` | Supérieur ou égal | Nombre, Date, Texte |
+| `Inferieur` | Strictement inférieur | Nombre, Date, Texte |
+| `InferieurOuEgal` | Inférieur ou égal | Nombre, Date, Texte |
+| `Contient` | Contient la sous-chaîne | Texte |
+| `CommencePar` | Commence par | Texte |
+| `FinitPar` | Finit par | Texte |
+
+### Types de données
+
+- `Texte` : Comparaison de chaînes
+- `Nombre` : Comparaison numérique (int, long, double, decimal)
+- `Date` : Comparaison de dates
+- `Booleen` : Comparaison booléenne
+
+### Exemple avec conditions
+
+```csharp
+var decisionNode = new DecisionNode()
+{
+    Id = "VerifierMontant",
+    Name = "Vérifier le montant"
+};
+
+decisionNode
+    .AddCondition("Montant", 10000, OperateurFiltre.SuperieurOuEgal, TypeDonnee.Nombre, "TraitementVIP")
+    .AddCondition("Montant", 1000, OperateurFiltre.Superieur, TypeDonnee.Nombre, "TraitementPrioritaire")
+    .AddCondition("TypeClient", "Premium", OperateurFiltre.Egal, TypeDonnee.Texte, "TraitementPremium")
+    .SetNoeudParDefaut("TraitementStandard");
+```
+
+Les conditions sont évaluées dans l'ordre. La première condition vraie détermine le nœud suivant. Si aucune condition ne correspond, le `NoeudParDefaut` est utilisé.
+
+### Exemple avec query externe
+
+```csharp
+var decisionNode = new DecisionNode("EvaluerEligibilite")
+    .AddRoute("eligible", "TraiterDemande")
+    .AddRoute("non_eligible", "RejeterDemande");
+```
 
 ## Sous-processus
 
@@ -263,8 +319,13 @@ await flowService.TerminerEtape(nodeInstanceId, new Dictionary<string, object>
 // Obtenir les signaux en attente
 var signaux = await flowService.ObtenirSignauxEnAttente(processId);
 
-// Rechercher par variable
-var resultats = await flowService.RechercherParVariable(new() { ["OrderAmount"] = 1500.00 });
+// Rechercher par variable avec filtres
+var filtres = new List<FiltreVariable>
+{
+    new("OrderAmount", 1000, OperateurFiltre.Superieur, TypeDonnee.Nombre),
+    new("Status", "Active", OperateurFiltre.Egal, TypeDonnee.Texte)
+};
+var resultats = await flowService.RechercherParVariable(filtres);
 
 // Obtenir les sous-processus enfants
 var enfants = await flowService.ObtenirEnfants(processId);
@@ -272,6 +333,30 @@ var enfants = await flowService.ObtenirEnfants(processId);
 // Obtenir un nœud d'instance
 var noeud = await flowService.Obtenir(nodeInstanceId);
 ```
+
+### Recherche par variable
+
+La méthode `RechercherParVariable` permet de rechercher des instances de processus selon leurs variables avec des opérateurs de comparaison.
+
+```csharp
+// Recherche simple (égalité)
+var filtres = new List<FiltreVariable>
+{
+    new("ClientId", "12345", OperateurFiltre.Egal, TypeDonnee.Texte)
+};
+
+// Recherche avec plusieurs conditions (AND)
+var filtres = new List<FiltreVariable>
+{
+    new("Montant", 5000, OperateurFiltre.SuperieurOuEgal, TypeDonnee.Nombre),
+    new("DateCreation", DateTime.Today.AddDays(-30), OperateurFiltre.Superieur, TypeDonnee.Date),
+    new("Statut", "EnCours", OperateurFiltre.Egal, TypeDonnee.Texte)
+};
+
+var resultats = await flowService.RechercherParVariable(filtres);
+```
+
+Les mêmes opérateurs et types de données que pour les nœuds de décision sont disponibles (voir section "Nœuds de décision").
 
 ### Sans persistance (usage direct du moteur)
 
@@ -412,6 +497,8 @@ SimpleBPM.sln
 │   ├── Migration/            # Migration de version (ProcessMigration, Runner, Result)
 │   ├── Nodes/                # Définitions des nœuds (données seulement)
 │   ├── Persistence/          # Repository Oracle et configuration
+│   ├── ConditionDecision.cs  # Condition pour nœuds de décision avec opérateurs
+│   ├── FiltreVariable.cs     # Filtre pour recherche par variable avec opérateurs
 │   ├── FlowEngine.cs         # Moteur d'exécution (multi-définitions, multi-versions)
 │   ├── FlowService.cs        # Implémentation (multi-définitions, multi-versions)
 │   ├── IFlowService.cs       # Interface client (compatible BPM existant)
