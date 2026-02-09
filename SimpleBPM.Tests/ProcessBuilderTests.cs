@@ -1,0 +1,221 @@
+using SimpleBPM;
+using SimpleBPM.Definition;
+using SimpleBPM.Nodes;
+
+namespace SimpleBPM.Tests;
+
+public class ProcessBuilderTests
+{
+    [Fact]
+    public void Build_SimpleLinearProcess()
+    {
+        var def = ProcessBuilder.Create("OrderProcess", "1.0")
+            .Business("CreateOrder", "Créer commande")
+            .Business("ValidateOrder", "Valider commande")
+            .Business("ShipOrder", "Expédier commande")
+            .Build();
+
+        Assert.Equal("OrderProcess", def.Name);
+        Assert.Equal("1.0", def.Version);
+        Assert.Equal(3, def.Nodes.Count);
+        Assert.Equal("CreateOrder", def.StartNodeId);
+    }
+
+    [Fact]
+    public void Build_AutoConnectsSequentialNodes()
+    {
+        var def = ProcessBuilder.Create("Test")
+            .Business("Step1")
+            .Business("Step2")
+            .Business("Step3")
+            .Build();
+
+        var step1 = def.GetNode("Step1");
+        var step2 = def.GetNode("Step2");
+
+        Assert.Contains("Step2", step1!.NextNodeIds);
+        Assert.Contains("Step3", step2!.NextNodeIds);
+    }
+
+    [Fact]
+    public void Build_WithInteractiveNode()
+    {
+        var def = ProcessBuilder.Create("ApprovalProcess")
+            .Business("Prepare")
+            .Interactive("Review", "Revue manuelle")
+            .Business("Complete")
+            .Build();
+
+        Assert.Equal(3, def.Nodes.Count);
+        var reviewNode = def.GetNode("Review");
+        Assert.NotNull(reviewNode);
+        Assert.Equal(NodeType.Interactive, reviewNode.Type);
+    }
+
+    [Fact]
+    public void Build_WithDecisionNode()
+    {
+        var def = ProcessBuilder.Create("DecisionProcess")
+            .Business("Prepare")
+            .Decision("CheckStatus", routes =>
+            {
+                routes.When("approved", "Approve");
+                routes.When("rejected", "Reject");
+            })
+            .Business("Approve", "Approuver")
+            .Business("Reject", "Rejeter")
+            .Build();
+
+        var decisionNode = def.GetNode("CheckStatus") as DecisionNode;
+        Assert.NotNull(decisionNode);
+        Assert.Equal("Approve", decisionNode.ConditionToNodeId["approved"]);
+        Assert.Equal("Reject", decisionNode.ConditionToNodeId["rejected"]);
+    }
+
+    [Fact]
+    public void Build_WithWaitForSignal()
+    {
+        var def = ProcessBuilder.Create("SignalProcess")
+            .Business("Init")
+            .WaitForSignal("approval-signal", "Attente approbation")
+            .Business("Finalize")
+            .Build();
+
+        var signalNode = def.GetNode("approval-signal") as WaitForSignalNode;
+        Assert.NotNull(signalNode);
+        Assert.Equal("approval-signal", signalNode.SignalName);
+    }
+
+    [Fact]
+    public void Build_WithWaitUntilDate()
+    {
+        var def = ProcessBuilder.Create("DateProcess")
+            .Business("Init")
+            .WaitUntilDate("WaitDue", "DueDate", "Attente échéance")
+            .Business("Finalize")
+            .Build();
+
+        var waitNode = def.GetNode("WaitDue") as WaitUntilDateNode;
+        Assert.NotNull(waitNode);
+        Assert.Equal("DueDate", waitNode.DateKey);
+    }
+
+    [Fact]
+    public void Build_WithParameters()
+    {
+        var def = ProcessBuilder.Create("Test")
+            .Business("Step1")
+            .WithParameter("key1", "value1")
+            .WithParameter("key2", 42)
+            .Build();
+
+        var node = def.GetNode("Step1");
+        Assert.Equal("value1", node!.Parameters["key1"]);
+        Assert.Equal(42, node.Parameters["key2"]);
+    }
+
+    [Fact]
+    public void Build_WithParametersDictionary()
+    {
+        var def = ProcessBuilder.Create("Test")
+            .Business("Step1")
+            .WithParameters(new Dictionary<string, object>
+            {
+                { "param1", "a" },
+                { "param2", "b" }
+            })
+            .Build();
+
+        var node = def.GetNode("Step1");
+        Assert.Equal(2, node!.Parameters.Count);
+    }
+
+    [Fact]
+    public void Build_WithThen_ConnectsNodes()
+    {
+        var def = ProcessBuilder.Create("Test")
+            .Business("Start")
+            .Business("End")
+            .Then("Start")
+            .Build();
+
+        var endNode = def.GetNode("End");
+        Assert.Contains("Start", endNode!.NextNodeIds);
+    }
+
+    [Fact]
+    public void Build_WithStartWith_SetsStartNode()
+    {
+        var def = ProcessBuilder.Create("Test")
+            .Business("Step1")
+            .Business("Step2")
+            .StartWith("Step2")
+            .Build();
+
+        Assert.Equal("Step2", def.StartNodeId);
+    }
+
+    [Fact]
+    public void Build_WithSubProcess()
+    {
+        var subDef = ProcessBuilder.Create("SubProcess")
+            .Business("SubStep1")
+            .Business("SubStep2")
+            .Build();
+
+        var def = ProcessBuilder.Create("MainProcess")
+            .Business("Init")
+            .SubProcess("RunSub", subDef,
+                inputMapping: new() { { "parentVar", "subVar" } },
+                outputMapping: new() { { "subResult", "parentResult" } })
+            .Business("Finalize")
+            .Build();
+
+        var subNode = def.GetNode("RunSub") as SubProcessNode;
+        Assert.NotNull(subNode);
+        Assert.Equal("subVar", subNode.InputMapping["parentVar"]);
+        Assert.Equal("parentResult", subNode.OutputMapping["subResult"]);
+    }
+
+    [Fact]
+    public void Build_WithInlineSubProcess()
+    {
+        var def = ProcessBuilder.Create("MainProcess")
+            .Business("Init")
+            .SubProcess("RunSub", sub =>
+            {
+                sub.Business("SubStep1");
+                sub.Business("SubStep2");
+            })
+            .Business("Finalize")
+            .Build();
+
+        var subNode = def.GetNode("RunSub") as SubProcessNode;
+        Assert.NotNull(subNode);
+        Assert.Equal(2, subNode.SubProcessDefinition.Nodes.Count);
+    }
+
+    [Fact]
+    public void Build_InvalidReference_Throws()
+    {
+        var builder = ProcessBuilder.Create("Test")
+            .Business("Step1")
+            .Then("NonExistent");
+
+        Assert.Throws<InvalidOperationException>(() => builder.Build());
+    }
+
+    [Fact]
+    public void WithParameter_NoCurrentNode_Throws()
+    {
+        var builder = ProcessBuilder.Create("Test");
+        Assert.Throws<InvalidOperationException>(() => builder.WithParameter("key", "val"));
+    }
+
+    [Fact]
+    public void Then_NoCurrentNode_Throws()
+    {
+        var builder = ProcessBuilder.Create("Test");
+        Assert.Throws<InvalidOperationException>(() => builder.Then("node"));
+    }
+}
