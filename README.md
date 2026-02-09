@@ -25,6 +25,7 @@ using SimpleBPM.Definition;
 var process = ProcessBuilder.Create("OrderProcess")
     .Business("ValidateOrder", "Valider la commande")
     .Business("CheckInventory", "Vérifier le stock")
+        .WithParameter("WarehouseId", "WH-001")
     .Decision("DecideApproval", "Décision", routes => routes
         .When("approved", "ProcessApproved")
         .When("rejected", "ProcessRejected"))
@@ -67,6 +68,7 @@ Définition déclarative, idéale pour la configuration externe.
             "name": "CheckInventory",
             "type": "Business",
             "command": "CheckInventory",
+            "parameters": { "WarehouseId": "WH-001" },
             "next": ["DecideApproval"]
         },
         {
@@ -132,8 +134,8 @@ Les nœuds de décision permettent de router le flux vers différents nœuds sel
 ```csharp
 var decisionNode = new DecisionNode()
 {
-    Id = "VerifierMontant",
-    Name = "Vérifier le montant"
+    Name = "VerifierMontant",
+    DisplayName = "Vérifier le montant"
 };
 
 decisionNode
@@ -153,6 +155,53 @@ var decisionNode = new DecisionNode("EvaluerEligibilite")
     .AddRoute("non_eligible", "RejeterDemande");
 ```
 
+## Paramètres de nœuds
+
+Chaque nœud peut porter des paramètres statiques (`Dictionary<string, object>`) définis à la conception. Ces paramètres sont transmis automatiquement à `ICommandExecutor` lors de l'exécution.
+
+### Avec le Fluent Builder
+
+```csharp
+var process = ProcessBuilder.Create("OrderProcess")
+    .Business("SendEmail", "Envoyer courriel")
+        .WithParameter("Template", "OrderConfirmation")
+        .WithParameter("Priority", "High")
+    .Business("Archive", "Archiver")
+        .WithParameters(new() { ["RetentionDays"] = 90, ["Compress"] = true })
+    .Build();
+```
+
+### Avec JSON
+
+```json
+{
+    "name": "SendEmail",
+    "type": "Business",
+    "command": "SendEmail",
+    "parameters": {
+        "Template": "OrderConfirmation",
+        "Priority": "High"
+    },
+    "next": ["Archive"]
+}
+```
+
+### Réception côté client
+
+Les paramètres sont passés en dernier argument de `ICommandExecutor` :
+
+```csharp
+public class MyCommandExecutor : ICommandExecutor
+{
+    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId,
+        Dictionary<string, object>? parameters = null)
+    {
+        var template = parameters?["Template"]?.ToString();
+        // ...
+    }
+}
+```
+
 ## Sous-processus
 
 Les sous-processus permettent de décomposer des processus complexes en sous-unités réutilisables.
@@ -163,7 +212,7 @@ Les sous-processus permettent de décomposer des processus complexes en sous-uni
 - **Mapping explicite** : Les variables sont transférées via `InputMapping` (parent → sous-processus) et `OutputMapping` (sous-processus → parent)
 - **Gestion d'état** : Sauvegarde automatique de l'état du sous-processus en cas d'arrêt
 - **Reprise** : Capacité à reprendre un sous-processus après une pause
-- **Suivi dédié** : Les IDs de sous-processus sont stockés dans `SubProcessIds` (séparé des variables)
+- **Suivi dédié** : Les sous-processus sont liés au parent via `ParentProcessId` et récupérables via `ObtenirEnfants`
 
 ### Mapping de variables
 
@@ -301,8 +350,8 @@ services.AddSimpleBPM(tablePrefix: "BPM");
 Le client interagit avec la librairie via l'interface `IFlowService`.
 
 ```csharp
-// Créer une instance de processus
-var processId = await flowService.CreateProcessInstance("OrderProcess", new()
+// Créer une instance de processus (retourne un long)
+long processId = await flowService.CreateProcessInstance("OrderProcess", new()
 {
     ["OrderAmount"] = 1500.00
 });
@@ -311,6 +360,7 @@ var processId = await flowService.CreateProcessInstance("OrderProcess", new()
 var processus = await flowService.ObtenirAsync(processId);
 
 // Terminer une étape (nœud interactif) avec du contenu
+long nodeInstanceId = /* ... */;
 await flowService.TerminerEtape(nodeInstanceId, new Dictionary<string, object>
 {
     ["Decision"] = "approved"
@@ -449,8 +499,8 @@ Exécute les commandes métier et évalue les décisions. Implémenté côté cl
 ```csharp
 public interface ICommandExecutor
 {
-    Task ExecuteCommandAsync(string commandName, string processId, string? aggregateId);
-    Task<string> EvaluateDecisionAsync(string decisionName, string processId, string? aggregateId);
+    Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null);
+    Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null);
 }
 ```
 
@@ -508,13 +558,18 @@ SimpleBPM.sln
 │   ├── Processus.cs          # Vue externe d'une instance de processus
 │   └── InstanceNode.cs       # Vue externe d'une instance de nœud
 ├── SimpleBPM.Tests/          # Tests unitaires (xUnit)
-│   ├── Helpers/              # Fakes (FakeCommandExecutor, InMemoryProcessRepository)
+│   ├── ConditionDecisionTests.cs
+│   ├── FiltreVariableTests.cs
 │   ├── FlowEngineTests.cs
-│   ├── ProcessBuilderTests.cs
-│   ├── ProcessJsonLoaderTests.cs
-│   ├── MigrationTests.cs
+│   ├── HandlersTests.cs
+│   ├── NodeExecutionHistoryTests.cs
 │   ├── OracleConfigurationTests.cs
-│   └── HandlerTests.cs
+│   ├── ProcessBuilderTests.cs
+│   ├── ProcessDefinitionTests.cs
+│   ├── ProcessInstanceTests.cs
+│   ├── ProcessJsonLoaderTests.cs
+│   ├── ProcessNodeTests.cs
+│   └── ProcessusTests.cs
 └── schema.sql                # Script SQL Oracle (création manuelle des tables)
 ```
 
@@ -523,11 +578,17 @@ SimpleBPM.sln
 Le projet `SimpleBPM.Tests` contient des tests unitaires xUnit couvrant l'ensemble des composants :
 
 - **FlowEngineTests** : Exécution, continuation, signaux, historique, cas d'erreur
-- **ProcessBuilderTests** : API fluide, chaînage, décisions, sous-processus
-- **ProcessJsonLoaderTests** : Sérialisation aller-retour JSON, tous les types de nœuds
-- **MigrationTests** : Runner de migration, transformations de variables
+- **ProcessBuilderTests** : API fluide, chaînage, décisions, sous-processus, paramètres
+- **ProcessJsonLoaderTests** : Sérialisation aller-retour JSON, tous les types de nœuds, paramètres
+- **ProcessDefinitionTests** : Ajout de nœuds, versions, nœud de départ
+- **ProcessInstanceTests** : Statut, variables, durée, historique
+- **ProcessNodeTests** : Types de nœuds, paramètres, NextNodeIds
+- **ProcessusTests** : Vue externe d'une instance
+- **ConditionDecisionTests** : Opérateurs, types de données, évaluation des conditions
+- **FiltreVariableTests** : Filtres de recherche, opérateurs, types
+- **HandlersTests** : Tous les handlers (Business, Decision, Interactive, WaitForSignal, WaitUntilDate, SubProcess)
+- **NodeExecutionHistoryTests** : Historique d'exécution, durée
 - **OracleConfigurationTests** : Validation du préfixe de tables
-- **HandlerTests** : Tous les handlers (Business, Decision, Interactive, WaitForSignal, WaitUntilDate)
 
 ## Script SQL
 
