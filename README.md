@@ -308,12 +308,44 @@ await repository.InitializeDatabaseAsync();
 
 ### Avec Dependency Injection
 
+#### Avec injection de handlers (recommandé)
+
+```csharp
+using System.Reflection;
+using SimpleBPM.Localisation;
+
+// Program.cs / Startup.cs
+
+// 1. Auto-découvrir et enregistrer les ICommandHandler / IQueryHandler
+services.AddCommandHandlers(Assembly.GetExecutingAssembly());
+
+// 2. Enregistrer les services optionnels
+services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
+
+// 3. Enregistrer la connexion (gérée par le client)
+services.AddScoped<IDbConnection>(sp =>
+{
+    var conn = new OracleConnection(connectionString);
+    conn.Open();
+    return conn;
+});
+
+// 4. Enregistrer les définitions de processus
+services.AddSingleton(orderProcessDefinition);
+services.AddSingleton(invoiceProcessDefinition);
+
+// 5. Enregistrer SimpleBPM (Oracle, handlers, FlowService)
+services.AddSimpleBPM(tablePrefix: "BPM");
+```
+
+#### Avec ICommandExecutor direct
+
 ```csharp
 using SimpleBPM.Localisation;
 
 // Program.cs / Startup.cs
 
-// 1. Enregistrer les implémentations client (requis)
+// 1. Enregistrer l'implémentation ICommandExecutor (requis)
 services.AddSingleton<ICommandExecutor, MyCommandExecutor>();
 services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
 
@@ -490,11 +522,59 @@ var migration = new ProcessMigration("1.0", "2.0")
 
 ## Interfaces client (Abstractions)
 
-La librairie définit deux interfaces dans `Abstractions/` que l'application client doit implémenter :
+La librairie définit plusieurs interfaces dans `Abstractions/` que l'application client peut implémenter.
 
-### ICommandExecutor
+### ICommandHandler / IQueryHandler (recommandé)
 
-Exécute les commandes métier et évalue les décisions. Implémenté côté client.
+Approche par **injection de handlers** : chaque commande ou décision est un handler individuel, découvert et enregistré automatiquement par réflexion.
+
+```csharp
+public interface ICommandHandler
+{
+    string CommandName { get; }
+    Task HandleAsync(long processId, string? aggregateId, Dictionary<string, object>? parameters = null);
+}
+
+public interface IQueryHandler
+{
+    string QueryName { get; }
+    Task<string> HandleAsync(long processId, string? aggregateId, Dictionary<string, object>? parameters = null);
+}
+```
+
+Le client implémente un handler par commande/décision :
+
+```csharp
+public class ValidateApplicationHandler : ICommandHandler
+{
+    public string CommandName => "ValidateApplication";
+
+    public Task HandleAsync(long processId, string? aggregateId,
+        Dictionary<string, object>? parameters = null)
+    {
+        // Logique métier de validation
+        return Task.CompletedTask;
+    }
+}
+
+public class CreditDecisionHandler : IQueryHandler
+{
+    public string QueryName => "CreditDecision";
+
+    public Task<string> HandleAsync(long processId, string? aggregateId,
+        Dictionary<string, object>? parameters = null)
+    {
+        // Logique de décision, retourne le nom de la route
+        return Task.FromResult("approved");
+    }
+}
+```
+
+Les handlers sont découverts automatiquement via `AddCommandHandlers()` (voir section [Injection de handlers](#injection-de-handlers)).
+
+### ICommandExecutor (approche directe)
+
+Alternative à l'injection de handlers : une seule classe qui gère toutes les commandes et décisions. Utile pour les cas simples ou quand une logique centralisée est préférée.
 
 ```csharp
 public interface ICommandExecutor
@@ -503,6 +583,8 @@ public interface ICommandExecutor
     Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null);
 }
 ```
+
+> **Note** : Les deux approches sont mutuellement exclusives. `AddCommandHandlers()` enregistre automatiquement un `CommandHandlerExecutor` comme `ICommandExecutor`, qui dispatche vers les handlers individuels. Si vous utilisez l'injection de handlers, vous n'avez pas besoin d'implémenter `ICommandExecutor` directement.
 
 ### IGestionTache
 
@@ -520,6 +602,46 @@ Le cycle de vie est :
 1. **Entrée** dans un nœud interactif → `CreerTacheAsync` (l'utilisateur voit la tâche)
 2. **Sortie** du nœud (via `ContinueAsync`) → `FermerTacheAsync` (la tâche est fermée)
 
+## Injection de handlers
+
+L'injection de handlers permet de découper la logique métier en handlers individuels (`ICommandHandler` pour les commandes, `IQueryHandler` pour les décisions) qui sont découverts et enregistrés automatiquement via réflexion.
+
+### Fonctionnement
+
+1. Le client implémente un `ICommandHandler` par commande métier et un `IQueryHandler` par décision
+2. `AddCommandHandlers(Assembly.GetExecutingAssembly())` scanne les assemblies et enregistre tous les handlers trouvés
+3. Un `CommandHandlerExecutor` est automatiquement enregistré comme `ICommandExecutor`
+4. Au runtime, les commandes sont dispatchées vers le bon handler selon le `CommandName` / `QueryName`
+
+### Enregistrement
+
+```csharp
+using System.Reflection;
+using SimpleBPM.Localisation;
+
+// Auto-découverte et enregistrement de tous les ICommandHandler / IQueryHandler
+services.AddCommandHandlers(Assembly.GetExecutingAssembly());
+
+// Optionnel : scanner plusieurs assemblies
+services.AddCommandHandlers(
+    Assembly.GetExecutingAssembly(),
+    typeof(SharedHandlers.SomeHandler).Assembly
+);
+```
+
+### Dispatch
+
+Le `CommandHandlerExecutor` maintient un dictionnaire interne indexé par `CommandName` / `QueryName` pour un dispatch en O(1) :
+
+- `ExecuteCommandAsync("ValidateApplication", ...)` → `ValidateApplicationHandler.HandleAsync(...)`
+- `EvaluateDecisionAsync("CreditDecision", ...)` → `CreditDecisionHandler.HandleAsync(...)`
+
+Si aucun handler n'est enregistré pour une commande ou décision donnée, une `InvalidOperationException` est levée.
+
+### Exemple complet
+
+Voir `SimpleBPM.ExampleClient/` pour un projet client complet utilisant l'injection de handlers avec un workflow d'approbation de prêt.
+
 ## Architecture
 
 - Le `FlowService` gère l'ensemble des définitions de processus et de leurs versions
@@ -528,8 +650,9 @@ Le cycle de vie est :
 - Le processus s'exécute nœud par nœud jusqu'à rencontrer un nœud d'arrêt ou la fin naturelle
 - Les nœuds métier appellent des commandes via `ICommandExecutor`
 - Les décisions sont évaluées via `ICommandExecutor.EvaluateDecisionAsync`
-- Chaque type de nœud a un handler dédié injecté avec ses propres dépendances
+- Chaque type de nœud a un handler dédié (`INodeHandler`) injecté avec ses propres dépendances
 - Les handlers par défaut (Interactive, WaitForSignal, WaitUntilDate, SubProcess) sont auto-enregistrés
+- **Injection de handlers** : les commandes métier et décisions peuvent être implémentées comme des handlers individuels (`ICommandHandler` / `IQueryHandler`), découverts automatiquement via `AddCommandHandlers()` et dispatchés par `CommandHandlerExecutor`
 - Les variables d'instance (`Variables`) stockent l'état partagé entre les nœuds
 - L'instance est automatiquement sauvegardée/mise à jour dans Oracle après chaque exécution
 - Les sous-processus peuvent être imbriqués et sont gérés de manière transparente
@@ -539,7 +662,7 @@ Le cycle de vie est :
 ```
 SimpleBPM.sln
 ├── SimpleBPM/                # Projet principal
-│   ├── Abstractions/         # Interfaces client (ICommandExecutor, IGestionTache)
+│   ├── Abstractions/         # Interfaces client (ICommandHandler, IQueryHandler, ICommandExecutor, IGestionTache)
 │   ├── Definition/           # Fluent Builder et chargeur JSON
 │   ├── Examples/             # Exemples d'utilisation
 │   ├── Handlers/             # Handlers par type de nœud (logique d'exécution)
@@ -547,6 +670,7 @@ SimpleBPM.sln
 │   ├── Migration/            # Migration de version (ProcessMigration, Runner, Result)
 │   ├── Nodes/                # Définitions des nœuds (données seulement)
 │   ├── Persistence/          # Repository Oracle et configuration
+│   ├── CommandHandlerExecutor.cs # Dispatcher vers ICommandHandler/IQueryHandler
 │   ├── ConditionDecision.cs  # Condition pour nœuds de décision avec opérateurs
 │   ├── FiltreVariable.cs     # Filtre pour recherche par variable avec opérateurs
 │   ├── FlowEngine.cs         # Moteur d'exécution (multi-définitions, multi-versions)
@@ -557,7 +681,11 @@ SimpleBPM.sln
 │   ├── ProcessNode.cs        # Classe de base des nœuds
 │   ├── Processus.cs          # Vue externe d'une instance de processus
 │   └── InstanceNode.cs       # Vue externe d'une instance de nœud
-├── SimpleBPM.Tests/          # Tests unitaires (xUnit)
+├── SimpleBPM.ExampleClient/   # Exemple client complet (injection de handlers)
+│   ├── CommandHandlers/       # Implémentations ICommandHandler
+│   ├── QueryHandlers/         # Implémentations IQueryHandler
+│   └── Program.cs             # Point d'entrée avec setup DI
+├── SimpleBPM.Tests/           # Tests unitaires (xUnit)
 │   ├── ConditionDecisionTests.cs
 │   ├── FiltreVariableTests.cs
 │   ├── FlowEngineTests.cs
@@ -570,7 +698,7 @@ SimpleBPM.sln
 │   ├── ProcessJsonLoaderTests.cs
 │   ├── ProcessNodeTests.cs
 │   └── ProcessusTests.cs
-└── schema.sql                # Script SQL Oracle (création manuelle des tables)
+└── schema.sql                 # Script SQL Oracle (création manuelle des tables)
 ```
 
 ## Tests

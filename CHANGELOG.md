@@ -16,6 +16,7 @@ Historique des modifications du projet SimpleBPM.
 - Ce fichier `CHANGELOG.md`
 
 ### Modifié
+- Mise à jour du `README.md` : documentation de l'injection de handlers (`ICommandHandler` / `IQueryHandler`), `AddCommandHandlers()`, `CommandHandlerExecutor`, exemples DI avec les deux approches, structure du projet mise à jour
 - `ICommandExecutor.ExecuteCommandAsync` et `EvaluateDecisionAsync` acceptent un paramètre optionnel `Dictionary<string, object>? parameters`
 - IDs de processus et nœuds passés de `string` à `long` (NUMBER(10) en Oracle, séquences via `ObtenirSequenceAsync`)
 - `ProcessNode.Id` supprimé : `Name` sert d'identifiant, `DisplayName` pour l'affichage
