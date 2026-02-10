@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SimpleBPM.Abstractions;
@@ -35,6 +36,38 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IProcessRepository>(),
             sp.GetServices<INodeHandler>()
         ));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Scans the given assemblies for all <see cref="ICommandHandler"/> and
+    /// <see cref="IQueryHandler"/> implementations and registers them in the DI container.
+    /// Also registers <see cref="CommandHandlerExecutor"/> as the <see cref="ICommandExecutor"/>,
+    /// so the client no longer needs to implement <see cref="ICommandExecutor"/> directly.
+    /// </summary>
+    public static IServiceCollection AddCommandHandlers(
+        this IServiceCollection services,
+        params Assembly[] assemblies)
+    {
+        foreach (var assembly in assemblies)
+        {
+            var commandHandlerTypes = assembly.GetTypes()
+                .Where(t => t is { IsAbstract: false, IsInterface: false }
+                         && typeof(ICommandHandler).IsAssignableFrom(t));
+
+            foreach (var type in commandHandlerTypes)
+                services.AddSingleton(typeof(ICommandHandler), type);
+
+            var queryHandlerTypes = assembly.GetTypes()
+                .Where(t => t is { IsAbstract: false, IsInterface: false }
+                         && typeof(IQueryHandler).IsAssignableFrom(t));
+
+            foreach (var type in queryHandlerTypes)
+                services.AddSingleton(typeof(IQueryHandler), type);
+        }
+
+        services.TryAddSingleton<ICommandExecutor, CommandHandlerExecutor>();
 
         return services;
     }

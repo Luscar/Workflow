@@ -1,0 +1,20 @@
+using SimpleBPM.Abstractions;
+
+namespace SimpleBPM.ExampleClient.CommandHandlers;
+
+public class ValidateApplicationHandler : ICommandHandler
+{
+    public string CommandName => "ValidateApplication";
+
+    public Task HandleAsync(long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    {
+        Console.WriteLine($"  [{processId}] Validating loan application for aggregate '{aggregateId}'");
+        if (parameters != null)
+        {
+            foreach (var p in parameters)
+                Console.WriteLine($"           Parameter: {p.Key} = {p.Value}");
+        }
+
+        return Task.CompletedTask;
+    }
+}
