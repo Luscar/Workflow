@@ -9,4 +9,6 @@ public interface IFlowService
     Task<IEnumerable<string>> ObtenirSignauxEnAttente(long idInstanceProcessus);
     Task<InstanceNode> Obtenir(long idInstanceNoeud);
     Task TerminerEtape(long idInstanceNoeud, object contenu);
+    Task TerminerEtapeEnCours(long idInstanceProcessus, Dictionary<string, object>? contenu = null);
+    Task EnvoyerSignalAsync(long idInstanceProcessus, string signalName);
 }

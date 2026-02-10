@@ -9,16 +9,15 @@ namespace SimpleBPM.Localisation;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Enregistre les services SimpleBPM dans le conteneur DI sans persistance.
-    /// Utilise un <see cref="IProcessRepository"/> nul par défaut (aucune sauvegarde).
+    /// Enregistre les services SimpleBPM dans le conteneur DI avec stockage en mémoire.
     /// Le client doit enregistrer <see cref="ICommandExecutor"/> (requis) et
     /// optionnellement <see cref="IGestionTache"/> avant cet appel.
     /// Les <see cref="ProcessDefinition"/> doivent aussi être enregistrées par le client.
     /// </summary>
     public static IServiceCollection AddSimpleBPM(this IServiceCollection services)
     {
-        // Repository par défaut si aucun n'est enregistré
-        services.TryAddSingleton<IProcessRepository>(NullProcessRepository.Instance);
+        // Repository en mémoire par défaut si aucun n'est enregistré
+        services.TryAddSingleton<IProcessRepository, InMemoryProcessRepository>();
 
         // Node handlers (sauf SubProcessNodeHandler qui est auto-enregistré par le moteur)
         services.AddSingleton<INodeHandler>(sp =>

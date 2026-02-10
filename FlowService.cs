@@ -101,6 +101,28 @@ public class FlowService : IFlowService
         await _engine.ContinueAsync(instance);
     }
 
+    public async Task TerminerEtapeEnCours(long idInstanceProcessus, Dictionary<string, object>? contenu = null)
+    {
+        var instance = await _repository.GetProcessInstanceAsync(idInstanceProcessus)
+            ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");
+
+        if (contenu != null)
+        {
+            foreach (var kvp in contenu)
+                instance.Variables[kvp.Key] = kvp.Value;
+        }
+
+        await _engine.ContinueAsync(instance);
+    }
+
+    public async Task EnvoyerSignalAsync(long idInstanceProcessus, string signalName)
+    {
+        var instance = await _repository.GetProcessInstanceAsync(idInstanceProcessus)
+            ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");
+
+        await _engine.SignalAsync(instance, signalName);
+    }
+
     public async Task<MigrationResult> MigrateAsync(long processId, ProcessDefinition targetDefinition, ProcessMigration migration)
     {
         var instance = await _repository.GetProcessInstanceAsync(processId)
