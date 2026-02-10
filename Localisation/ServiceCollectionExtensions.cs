@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SimpleBPM.Abstractions;
 using SimpleBPM.Handlers;
 using SimpleBPM.Persistence;
@@ -8,19 +9,16 @@ namespace SimpleBPM.Localisation;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Enregistre les services SimpleBPM dans le conteneur DI.
-    /// Le client doit enregistrer <see cref="ICommandExecutor"/> (requis),
-    /// <see cref="System.Data.IDbConnection"/> (requis), et
+    /// Enregistre les services SimpleBPM dans le conteneur DI sans persistance.
+    /// Utilise un <see cref="IProcessRepository"/> nul par défaut (aucune sauvegarde).
+    /// Le client doit enregistrer <see cref="ICommandExecutor"/> (requis) et
     /// optionnellement <see cref="IGestionTache"/> avant cet appel.
     /// Les <see cref="ProcessDefinition"/> doivent aussi être enregistrées par le client.
     /// </summary>
-    public static IServiceCollection AddSimpleBPM(
-        this IServiceCollection services,
-        string tablePrefix)
+    public static IServiceCollection AddSimpleBPM(this IServiceCollection services)
     {
-        // Infrastructure Oracle
-        services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(tablePrefix));
-        services.AddScoped<IProcessRepository, OracleProcessRepository>();
+        // Repository par défaut si aucun n'est enregistré
+        services.TryAddSingleton<IProcessRepository>(NullProcessRepository.Instance);
 
         // Node handlers (sauf SubProcessNodeHandler qui est auto-enregistré par le moteur)
         services.AddSingleton<INodeHandler>(sp =>
@@ -40,5 +38,23 @@ public static class ServiceCollectionExtensions
         ));
 
         return services;
+    }
+
+    /// <summary>
+    /// Enregistre les services SimpleBPM avec persistance Oracle.
+    /// Le client doit enregistrer <see cref="ICommandExecutor"/> (requis),
+    /// <see cref="System.Data.IDbConnection"/> (requis), et
+    /// optionnellement <see cref="IGestionTache"/> avant cet appel.
+    /// Les <see cref="ProcessDefinition"/> doivent aussi être enregistrées par le client.
+    /// </summary>
+    public static IServiceCollection AddSimpleBPM(
+        this IServiceCollection services,
+        string tablePrefix)
+    {
+        // Infrastructure Oracle
+        services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(tablePrefix));
+        services.AddScoped<IProcessRepository, OracleProcessRepository>();
+
+        return services.AddSimpleBPM();
     }
 }

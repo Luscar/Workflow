@@ -1,7 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
 using SimpleBPM;
 using SimpleBPM.Abstractions;
 using SimpleBPM.ExampleClient;
 using SimpleBPM.Handlers;
+using SimpleBPM.Localisation;
 
 // ============================================================
 // SimpleBPM Example Client - Loan Approval Workflow
@@ -11,7 +13,7 @@ using SimpleBPM.Handlers;
 //   1. Implement ICommandExecutor for business logic
 //   2. Implement IGestionTache for task management (optional)
 //   3. Define processes using the fluent ProcessBuilder API
-//   4. Execute workflows with the FlowEngine
+//   4. Register everything via DI with AddSimpleBPM()
 //
 // The loan approval workflow includes:
 //   - Business nodes (validate, credit check, disburse)
@@ -24,21 +26,28 @@ using SimpleBPM.Handlers;
 Console.WriteLine("=== SimpleBPM Example Client: Loan Approval Workflow ===");
 Console.WriteLine();
 
-// --- Setup ---
-var executor = new LoanCommandExecutor();
-var taskManager = new LoanTaskManager();
+// --- Dependency Injection Setup ---
+var services = new ServiceCollection();
 
-var handlers = new INodeHandler[]
-{
-    new BusinessNodeHandler(executor),
-    new DecisionNodeHandler(executor),
-    new InteractiveNodeHandler(taskManager),
-    new WaitForSignalNodeHandler(),
-    new WaitUntilDateNodeHandler()
-};
+// 1. Register client implementations
+services.AddSingleton<ICommandExecutor, LoanCommandExecutor>();
+services.AddSingleton<IGestionTache, LoanTaskManager>();
 
-// --- Define the process ---
-var loanProcess = LoanProcessDefinitions.CreateLoanApprovalProcess();
+// 2. Register process definitions
+services.AddSingleton(LoanProcessDefinitions.CreateLoanApprovalProcess());
+
+// 3. Register SimpleBPM services (handlers, engine, etc.)
+//    - Use AddSimpleBPM() for in-memory (no persistence)
+//    - Use AddSimpleBPM("PREFIX") for Oracle persistence
+services.AddSimpleBPM();
+
+var provider = services.BuildServiceProvider();
+
+// --- Resolve from DI ---
+// Handlers and definitions are wired automatically by the container.
+// The client never needs to know about BusinessNodeHandler, DecisionNodeHandler, etc.
+var handlers = provider.GetServices<INodeHandler>();
+var loanProcess = provider.GetRequiredService<ProcessDefinition>();
 
 Console.WriteLine($"Process: {loanProcess.Name} v{loanProcess.Version}");
 Console.WriteLine($"Nodes:   {loanProcess.Nodes.Count}");
