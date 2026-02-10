@@ -89,4 +89,43 @@ public static class ServiceCollectionExtensions
 
         return services.AddSimpleBPM();
     }
+
+    /// <summary>
+    /// Point d'entrée unifié qui consolide toute la configuration SimpleBPM
+    /// en un seul appel côté client.
+    /// <example>
+    /// <code>
+    /// services.AddSimpleBPM(options =>
+    /// {
+    ///     options.ScanHandlers(Assembly.GetExecutingAssembly());
+    ///     options.UseTaskManager&lt;LoanTaskManager&gt;();
+    ///     options.AddProcess(LoanProcessDefinitions.CreateLoanApprovalProcess());
+    /// });
+    /// </code>
+    /// </example>
+    /// </summary>
+    public static IServiceCollection AddSimpleBPM(
+        this IServiceCollection services,
+        Action<SimpleBPMBuilder> configure)
+    {
+        var builder = new SimpleBPMBuilder(services);
+        configure(builder);
+
+        // 1. Scan and register command/query handlers
+        if (builder.HandlerAssemblies.Count > 0)
+            services.AddCommandHandlers(builder.HandlerAssemblies.ToArray());
+
+        // 2. Register process definitions
+        foreach (var definition in builder.ProcessDefinitions)
+            services.AddSingleton(definition);
+
+        // 3. Register infrastructure and core services
+        if (builder.OracleTablePrefix is not null)
+        {
+            services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(builder.OracleTablePrefix));
+            services.AddScoped<IProcessRepository, OracleProcessRepository>();
+        }
+
+        return services.AddSimpleBPM();
+    }
 }

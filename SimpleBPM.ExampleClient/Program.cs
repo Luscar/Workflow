@@ -1,7 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using SimpleBPM;
-using SimpleBPM.Abstractions;
 using SimpleBPM.ExampleClient;
 using SimpleBPM.Localisation;
 
@@ -13,7 +12,7 @@ using SimpleBPM.Localisation;
 //   1. Implement ICommandHandler / IQueryHandler for business logic
 //   2. Implement IGestionTache for task management (optional)
 //   3. Define processes using the fluent ProcessBuilder API
-//   4. Register handlers via AddCommandHandlers() and services via AddSimpleBPM()
+//   4. Register everything via a single AddSimpleBPM(options => ...) call
 //   5. Interact exclusively through IFlowService
 //
 // The client never references handlers or the engine directly.
@@ -25,19 +24,13 @@ Console.WriteLine();
 // --- Dependency Injection Setup ---
 var services = new ServiceCollection();
 
-// 1. Auto-discover and register all ICommandHandler / IQueryHandler implementations
-//    from this assembly via reflection. This also registers the ICommandExecutor
-//    that dispatches to the individual handlers.
-services.AddCommandHandlers(Assembly.GetExecutingAssembly());
-
-// 2. Register client implementations (optional services)
-services.AddSingleton<IGestionTache, LoanTaskManager>();
-
-// 3. Register process definitions
-services.AddSingleton(LoanProcessDefinitions.CreateLoanApprovalProcess());
-
-// 4. Register SimpleBPM services (in-memory by default, or AddSimpleBPM("PREFIX") for Oracle)
-services.AddSimpleBPM();
+// Single call registers handlers, task manager, process definitions, and SimpleBPM services.
+services.AddSimpleBPM(options =>
+{
+    options.ScanHandlers(Assembly.GetExecutingAssembly());
+    options.UseTaskManager<LoanTaskManager>();
+    options.AddProcess(LoanProcessDefinitions.CreateLoanApprovalProcess());
+});
 
 var provider = services.BuildServiceProvider();
 var flowService = provider.GetRequiredService<IFlowService>();
