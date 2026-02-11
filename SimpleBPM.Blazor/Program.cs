@@ -1,3 +1,5 @@
+using Autofac;
+using Autofac.Extensions.DependencyInjection;
 using SimpleBPM.Blazor.Components;
 using SimpleBPM.Localisation;
 
@@ -6,9 +8,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Monitoring-only registration: no execution engine or ICommandExecutor needed.
-// Register process definitions before this call if you want them visible in the dashboard.
-builder.Services.AddProcessMonitoring();
+// Use Autofac as the DI container.
+builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
+builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
+{
+    // Monitoring-only registration: no execution engine or ICommandExecutor needed.
+    // Register process definitions before this call if you want them visible in the dashboard.
+    containerBuilder.RegisterModule(new ProcessMonitoringAutofacModule());
+});
 
 var app = builder.Build();
 
