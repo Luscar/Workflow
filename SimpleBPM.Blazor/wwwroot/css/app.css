@@ -401,10 +401,59 @@ body {
     text-decoration: underline;
 }
 
-/* Node graph */
-.definition-nodes {
+/* Definition graph */
+.definition-graph {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #fafbfc;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow-x: auto;
+    min-height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.definition-graph svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Graph legend */
+.graph-legend-card {
+    padding: 0.75rem 1.25rem;
+}
+
+.graph-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 2px solid;
+}
+
+.legend-diamond {
+    transform: rotate(45deg);
+    border-radius: 2px;
+    width: 12px;
+    height: 12px;
+}
+
+.legend-start {
+    border-width: 3px;
 }

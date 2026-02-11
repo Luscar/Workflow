@@ -1,5 +1,6 @@
 @page "/definitions"
 @inject IProcessMonitor Monitor
+@inject IJSRuntime JS
 
 <div class="page-header">
     <h1>Process Definitions</h1>
@@ -14,8 +15,42 @@
 }
 else
 {
-    @foreach (var definition in _definitions)
+    <div class="card graph-legend-card">
+        <div class="graph-legend">
+            <div class="legend-item">
+                <span class="legend-swatch" style="background:#dbeafe;border-color:#3b82f6;"></span>
+                Business
+            </div>
+            <div class="legend-item">
+                <span class="legend-swatch legend-diamond" style="background:#fef3c7;border-color:#f59e0b;"></span>
+                Decision
+            </div>
+            <div class="legend-item">
+                <span class="legend-swatch" style="background:#dcfce7;border-color:#22c55e;border-radius:8px;"></span>
+                Interactive
+            </div>
+            <div class="legend-item">
+                <span class="legend-swatch" style="background:#cffafe;border-color:#06b6d4;"></span>
+                Wait Signal
+            </div>
+            <div class="legend-item">
+                <span class="legend-swatch" style="background:#ede9fe;border-color:#8b5cf6;"></span>
+                Wait Date
+            </div>
+            <div class="legend-item">
+                <span class="legend-swatch" style="background:#fce7f3;border-color:#ec4899;"></span>
+                Sub-Process
+            </div>
+            <div class="legend-item">
+                <span class="legend-swatch legend-start" style="background:#dcfce7;border-color:#22c55e;"></span>
+                Start node
+            </div>
+        </div>
+    </div>
+
+    @for (var i = 0; i < _definitions.Count; i++)
     {
+        var definition = _definitions[i];
         <div class="card">
             <div class="card-header">
                 <span class="card-title">@definition.Name</span>
@@ -32,6 +67,13 @@ else
                     <span>@definition.Nodes.Count</span>
                 </div>
             </div>
+
+            @if (definition.Nodes.Count > 0)
+            {
+                <div class="definition-graph" id="graph-@i">
+                    <div class="loading">Rendering graph...</div>
+                </div>
+            }
 
             <table class="data-table">
                 <thead>
@@ -94,4 +136,134 @@ else
     {
         _definitions = Monitor.GetDefinitions();
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _definitions.Count > 0)
+        {
+            for (var i = 0; i < _definitions.Count; i++)
+            {
+                if (_definitions[i].Nodes.Count > 0)
+                {
+                    var syntax = GenerateMermaidSyntax(_definitions[i]);
+                    await JS.InvokeVoidAsync("renderMermaid", $"graph-{i}", syntax);
+                }
+            }
+        }
+    }
+
+    private string GenerateMermaidSyntax(ProcessDefinition definition)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("graph TD");
+
+        // Declare nodes with type-specific shapes
+        foreach (var (id, node) in definition.Nodes)
+        {
+            var safeId = SanitizeId(id);
+            var label = EscapeLabel(!string.IsNullOrEmpty(node.DisplayName) ? node.DisplayName : id);
+            sb.AppendLine(MermaidNodeDeclaration(safeId, label, node.Type));
+        }
+
+        // Declare edges
+        foreach (var (id, node) in definition.Nodes)
+        {
+            var safeId = SanitizeId(id);
+
+            if (node is DecisionNode decision)
+            {
+                var handled = new HashSet<string>();
+
+                foreach (var (condition, targetId) in decision.ConditionToNodeId)
+                {
+                    sb.AppendLine($"    {safeId} -->|\"{EscapeLabel(condition)}\"| {SanitizeId(targetId)}");
+                    handled.Add(targetId);
+                }
+
+                foreach (var cond in decision.Conditions)
+                {
+                    if (handled.Contains(cond.NoeudCible)) continue;
+                    var condLabel = $"{cond.NomVariable} {FormatOperator(cond.Operateur)} {cond.Valeur}";
+                    sb.AppendLine($"    {safeId} -->|\"{EscapeLabel(condLabel)}\"| {SanitizeId(cond.NoeudCible)}");
+                    handled.Add(cond.NoeudCible);
+                }
+
+                if (decision.NoeudParDefaut != null && !handled.Contains(decision.NoeudParDefaut))
+                {
+                    sb.AppendLine($"    {safeId} -->|\"default\"| {SanitizeId(decision.NoeudParDefaut)}");
+                    handled.Add(decision.NoeudParDefaut);
+                }
+
+                foreach (var nextId in node.NextNodeIds.Where(n => !handled.Contains(n)))
+                    sb.AppendLine($"    {safeId} --> {SanitizeId(nextId)}");
+            }
+            else
+            {
+                foreach (var nextId in node.NextNodeIds)
+                    sb.AppendLine($"    {safeId} --> {SanitizeId(nextId)}");
+            }
+        }
+
+        // Style classes per node type
+        sb.AppendLine("    classDef business fill:#dbeafe,stroke:#3b82f6,color:#1e293b");
+        sb.AppendLine("    classDef decision fill:#fef3c7,stroke:#f59e0b,color:#1e293b");
+        sb.AppendLine("    classDef interactive fill:#dcfce7,stroke:#22c55e,color:#1e293b");
+        sb.AppendLine("    classDef waitSignal fill:#cffafe,stroke:#06b6d4,color:#1e293b");
+        sb.AppendLine("    classDef waitDate fill:#ede9fe,stroke:#8b5cf6,color:#1e293b");
+        sb.AppendLine("    classDef subProcess fill:#fce7f3,stroke:#ec4899,color:#1e293b");
+
+        foreach (var (id, node) in definition.Nodes)
+        {
+            var cls = node.Type switch
+            {
+                NodeType.Business => "business",
+                NodeType.Decision => "decision",
+                NodeType.Interactive => "interactive",
+                NodeType.WaitForSignal => "waitSignal",
+                NodeType.WaitUntilDate => "waitDate",
+                NodeType.SubProcess => "subProcess",
+                _ => "business"
+            };
+            sb.AppendLine($"    class {SanitizeId(id)} {cls}");
+        }
+
+        // Highlight start node with a thick green border
+        if (definition.StartNodeId != null)
+            sb.AppendLine($"    style {SanitizeId(definition.StartNodeId)} stroke:#16a34a,stroke-width:3px");
+
+        return sb.ToString();
+    }
+
+    private static string MermaidNodeDeclaration(string id, string label, NodeType type)
+    {
+        return type switch
+        {
+            NodeType.Decision      => $"    {id}{{\"{label}\"}}",
+            NodeType.Interactive   => $"    {id}([\"{label}\"])",
+            NodeType.WaitForSignal => "    " + id + "{{\"" + label + "\"}}",
+            NodeType.WaitUntilDate => $"    {id}[/\"{label}\"/]",
+            NodeType.SubProcess    => $"    {id}[[\"{label}\"]]",
+            _                      => $"    {id}[\"{label}\"]"
+        };
+    }
+
+    private static string SanitizeId(string id)
+        => new string(id.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray());
+
+    private static string EscapeLabel(string text)
+        => text.Replace("\"", "#quot;").Replace("<", "#lt;").Replace(">", "#gt;");
+
+    private static string FormatOperator(OperateurFiltre op) => op switch
+    {
+        OperateurFiltre.Egal => "=",
+        OperateurFiltre.Different => "!=",
+        OperateurFiltre.Superieur => ">",
+        OperateurFiltre.SuperieurOuEgal => ">=",
+        OperateurFiltre.Inferieur => "<",
+        OperateurFiltre.InferieurOuEgal => "<=",
+        OperateurFiltre.Contient => "contains",
+        OperateurFiltre.CommencePar => "starts with",
+        OperateurFiltre.FinitPar => "ends with",
+        _ => op.ToString()
+    };
 }
