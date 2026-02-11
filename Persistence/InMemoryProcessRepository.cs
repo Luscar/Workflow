@@ -71,6 +71,9 @@ public class InMemoryProcessRepository : IProcessRepository
         return Task.FromResult(children);
     }
 
+    public Task<List<ProcessInstance>> GetAllProcessInstancesAsync() =>
+        Task.FromResult(_processes.Values.ToList());
+
     private void SyncNodeHistories(ProcessInstance instance)
     {
         var tracked = new HashSet<NodeExecutionHistory>(

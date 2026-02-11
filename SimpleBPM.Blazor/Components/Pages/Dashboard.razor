@@ -1,0 +1,139 @@
+@page "/"
+@inject IProcessMonitor Monitor
+
+<div class="page-header">
+    <h1>Process Monitor Dashboard</h1>
+    <p>Overview of process definitions and instance status</p>
+</div>
+
+@if (_loading)
+{
+    <div class="loading">Loading...</div>
+}
+else
+{
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-value">@_definitions.Count</div>
+            <div class="summary-label">Definitions</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">@_totalInstances</div>
+            <div class="summary-label">Total Instances</div>
+        </div>
+        @foreach (var kvp in _statusSummary.Where(s => s.Value > 0))
+        {
+            <div class="summary-card">
+                <div class="summary-value">@kvp.Value</div>
+                <div class="summary-label">
+                    <span class="status-badge status-@kvp.Key">@FormatStatus(kvp.Key)</span>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Registered Definitions</span>
+        </div>
+        @if (_definitions.Count == 0)
+        {
+            <div class="empty-state">No process definitions registered</div>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Version</th>
+                        <th>Nodes</th>
+                        <th>Start Node</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var def in _definitions)
+                    {
+                        <tr>
+                            <td><a href="definitions">@def.Name</a></td>
+                            <td>@def.Version</td>
+                            <td>@def.Nodes.Count</td>
+                            <td>@def.StartNodeId</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Recent Instances</span>
+            <a href="instances" class="back-link">View all</a>
+        </div>
+        @if (_recentInstances.Count == 0)
+        {
+            <div class="empty-state">No process instances found</div>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Definition</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Current Node</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inst in _recentInstances)
+                    {
+                        <tr>
+                            <td><a href="instances/@inst.Id">@inst.Id</a></td>
+                            <td>@inst.DefinitionName @inst.DefinitionVersion</td>
+                            <td><span class="status-badge status-@inst.Status">@FormatStatus(inst.Status)</span></td>
+                            <td>@inst.StartedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@(inst.CurrentNodeId ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<ProcessDefinition> _definitions = new();
+    private List<Processus> _recentInstances = new();
+    private Dictionary<ProcessStatus, int> _statusSummary = new();
+    private int _totalInstances;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _definitions = Monitor.GetDefinitions();
+        _statusSummary = await Monitor.GetStatusSummaryAsync();
+        _totalInstances = _statusSummary.Values.Sum();
+
+        var allInstances = await Monitor.GetAllInstancesAsync();
+        _recentInstances = allInstances
+            .OrderByDescending(i => i.StartedAt)
+            .Take(10)
+            .ToList();
+
+        _loading = false;
+    }
+
+    private static string FormatStatus(ProcessStatus status) => status switch
+    {
+        ProcessStatus.Running => "Running",
+        ProcessStatus.WaitingInteraction => "Waiting Interaction",
+        ProcessStatus.WaitingDate => "Waiting Date",
+        ProcessStatus.WaitingSignal => "Waiting Signal",
+        ProcessStatus.Completed => "Completed",
+        ProcessStatus.Failed => "Failed",
+        _ => status.ToString()
+    };
+}

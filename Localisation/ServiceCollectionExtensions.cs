@@ -37,6 +37,29 @@ public static class ServiceCollectionExtensions
             sp.GetServices<INodeHandler>()
         ));
 
+        // Monitoring
+        services.AddScoped<IProcessMonitor>(sp => new ProcessMonitor(
+            sp.GetServices<ProcessDefinition>(),
+            sp.GetRequiredService<IProcessRepository>()
+        ));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers only the read-only monitoring services (IProcessMonitor) without
+    /// the execution engine or node handlers. Use this in monitoring-only clients
+    /// (e.g. Blazor dashboards) that do not need ICommandExecutor.
+    /// </summary>
+    public static IServiceCollection AddProcessMonitoring(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IProcessRepository, InMemoryProcessRepository>();
+
+        services.AddScoped<IProcessMonitor>(sp => new ProcessMonitor(
+            sp.GetServices<ProcessDefinition>(),
+            sp.GetRequiredService<IProcessRepository>()
+        ));
+
         return services;
     }
 
