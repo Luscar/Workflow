@@ -22,8 +22,8 @@ Historique des modifications du projet SimpleBPM.
 - `ProcessNode.Id` supprimé : `Name` sert d'identifiant, `DisplayName` pour l'affichage
 - Suivi des sous-processus via `ParentProcessId` au lieu de `SubProcessIds`
 - `RechercherParVariable` utilise `List<FiltreVariable>` au lieu d'un dictionnaire simple
-- `AddSimpleBPM` ne prend plus que `tablePrefix` ; la connexion `IDbConnection` est enregistrée par le client
-- Constructeur `OracleConfiguration(string tablePrefix)` ajouté (sans connection string)
+- `AddSimpleBPM` accepte `tablePrefix` et `connectionFactory` ; `IDbConnection` est enregistré automatiquement
+- `OracleConfiguration` ne contient plus `ConnectionString` (supprimé) ; seul `TablePrefix` reste
 - Consolidation de `ExampleWithHistory` dans `ExampleWithOracle` (suppression du doublon)
 - Mise à jour du `README.md` (paramètres, structure du projet, section DI, section tests)
 

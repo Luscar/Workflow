@@ -6,13 +6,10 @@ using SimpleBPM.Handlers;
 using SimpleBPM.Persistence;
 
 // Configuration Oracle avec préfixe de table
-var oracleConfig = new OracleConfiguration(
-    connectionString: "User Id=myuser;Password=mypass;Data Source=localhost:1521/XEPDB1",
-    tablePrefix: "ABC" // Préfixe de 3 à 10 lettres
-);
+var oracleConfig = new OracleConfiguration("ABC"); // Préfixe de 3 à 10 lettres
 
 // Connexion gérée par le client
-using var connection = new OracleConnection(oracleConfig.ConnectionString);
+using var connection = new OracleConnection("User Id=myuser;Password=mypass;Data Source=localhost:1521/XEPDB1");
 connection.Open();
 
 // Créer le repository avec la connexion

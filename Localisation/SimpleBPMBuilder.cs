@@ -1,3 +1,4 @@
+using System.Data;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using SimpleBPM.Abstractions;
@@ -14,6 +15,7 @@ public sealed class SimpleBPMBuilder
     internal readonly List<Assembly> HandlerAssemblies = new();
     internal readonly List<ProcessDefinition> ProcessDefinitions = new();
     internal string? OracleTablePrefix;
+    internal Func<IServiceProvider, IDbConnection>? ConnectionFactory;
 
     internal SimpleBPMBuilder(IServiceCollection services)
     {
@@ -49,12 +51,14 @@ public sealed class SimpleBPMBuilder
     }
 
     /// <summary>
-    /// Configures SimpleBPM to use Oracle persistence with the given table prefix.
+    /// Configures SimpleBPM to use Oracle persistence with the given table prefix
+    /// and connection factory.
     /// When not called, in-memory storage is used.
     /// </summary>
-    public SimpleBPMBuilder UseOracle(string tablePrefix)
+    public SimpleBPMBuilder UseOracle(string tablePrefix, Func<IServiceProvider, IDbConnection> connectionFactory)
     {
         OracleTablePrefix = tablePrefix;
+        ConnectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
         return this;
     }
 }

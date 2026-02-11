@@ -1,3 +1,4 @@
+using System.Data;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -74,17 +75,18 @@ public static class ServiceCollectionExtensions
 
     /// <summary>
     /// Enregistre les services SimpleBPM avec persistance Oracle.
-    /// Le client doit enregistrer <see cref="ICommandExecutor"/> (requis),
-    /// <see cref="System.Data.IDbConnection"/> (requis), et
+    /// Le client doit enregistrer <see cref="ICommandExecutor"/> (requis) et
     /// optionnellement <see cref="IGestionTache"/> avant cet appel.
     /// Les <see cref="ProcessDefinition"/> doivent aussi être enregistrées par le client.
     /// </summary>
     public static IServiceCollection AddSimpleBPM(
         this IServiceCollection services,
-        string tablePrefix)
+        string tablePrefix,
+        Func<IServiceProvider, IDbConnection> connectionFactory)
     {
         // Infrastructure Oracle
         services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(tablePrefix));
+        services.AddScoped<IDbConnection>(connectionFactory);
         services.AddScoped<IProcessRepository, OracleProcessRepository>();
 
         return services.AddSimpleBPM();
@@ -123,6 +125,7 @@ public static class ServiceCollectionExtensions
         if (builder.OracleTablePrefix is not null)
         {
             services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(builder.OracleTablePrefix));
+            services.AddScoped<IDbConnection>(builder.ConnectionFactory!);
             services.AddScoped<IProcessRepository, OracleProcessRepository>();
         }
 
