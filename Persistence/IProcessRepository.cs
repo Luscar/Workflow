@@ -11,4 +11,11 @@ public interface IProcessRepository
     Task<(NodeExecutionHistory History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId);
     Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId);
     Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId);
+
+    /// <summary>
+    /// Returns all process instances. Default implementation delegates to
+    /// <see cref="SearchByVariableAsync"/> with an empty filter list.
+    /// </summary>
+    Task<List<ProcessInstance>> GetAllProcessInstancesAsync() =>
+        SearchByVariableAsync(new List<FiltreVariable>());
 }

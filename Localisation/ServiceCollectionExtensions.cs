@@ -37,6 +37,12 @@ public static class ServiceCollectionExtensions
             sp.GetServices<INodeHandler>()
         ));
 
+        // Monitoring
+        services.AddScoped<IProcessMonitor>(sp => new ProcessMonitor(
+            sp.GetServices<ProcessDefinition>(),
+            sp.GetRequiredService<IProcessRepository>()
+        ));
+
         return services;
     }
 

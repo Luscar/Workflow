@@ -1,0 +1,97 @@
+@page "/definitions"
+@inject IProcessMonitor Monitor
+
+<div class="page-header">
+    <h1>Process Definitions</h1>
+    <p>All registered process definitions and their node configurations</p>
+</div>
+
+@if (_definitions.Count == 0)
+{
+    <div class="card">
+        <div class="empty-state">No process definitions registered</div>
+    </div>
+}
+else
+{
+    @foreach (var definition in _definitions)
+    {
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">@definition.Name</span>
+                <span class="node-type-badge">v@definition.Version</span>
+            </div>
+
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <label>Start Node</label>
+                    <span>@definition.StartNodeId</span>
+                </div>
+                <div class="detail-item">
+                    <label>Total Nodes</label>
+                    <span>@definition.Nodes.Count</span>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Node ID</th>
+                        <th>Display Name</th>
+                        <th>Type</th>
+                        <th>Next Nodes</th>
+                        <th>Parameters</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var node in definition.Nodes.Values)
+                    {
+                        <tr>
+                            <td>
+                                @if (node.Name == definition.StartNodeId)
+                                {
+                                    <strong>@node.Name</strong>
+                                }
+                                else
+                                {
+                                    @node.Name
+                                }
+                            </td>
+                            <td>@node.DisplayName</td>
+                            <td><span class="node-type-badge">@node.Type</span></td>
+                            <td>
+                                @if (node.NextNodeIds.Count > 0)
+                                {
+                                    @string.Join(", ", node.NextNodeIds)
+                                }
+                                else
+                                {
+                                    <span style="color: var(--color-text-secondary);">-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (node.Parameters.Count > 0)
+                                {
+                                    @string.Join(", ", node.Parameters.Select(p => $"{p.Key}={p.Value}"))
+                                }
+                                else
+                                {
+                                    <span style="color: var(--color-text-secondary);">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    private List<ProcessDefinition> _definitions = new();
+
+    protected override void OnInitialized()
+    {
+        _definitions = Monitor.GetDefinitions();
+    }
+}

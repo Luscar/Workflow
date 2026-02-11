@@ -1,0 +1,102 @@
+@page "/instances"
+@inject IProcessMonitor Monitor
+
+<div class="page-header">
+    <h1>Process Instances</h1>
+    <p>All process instances with status filtering</p>
+</div>
+
+<div class="filter-bar">
+    <button class="filter-btn @(_selectedStatus == null ? "active" : "")"
+            @onclick="() => FilterByStatus(null)">
+        All (@_allInstances.Count)
+    </button>
+    @foreach (var kvp in _statusCounts.Where(s => s.Value > 0))
+    {
+        <button class="filter-btn @(_selectedStatus == kvp.Key ? "active" : "")"
+                @onclick="() => FilterByStatus(kvp.Key)">
+            @FormatStatus(kvp.Key) (@kvp.Value)
+        </button>
+    }
+</div>
+
+@if (_loading)
+{
+    <div class="loading">Loading...</div>
+}
+else
+{
+    <div class="card">
+        @if (_filteredInstances.Count == 0)
+        {
+            <div class="empty-state">No process instances found</div>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Aggregate ID</th>
+                        <th>Definition</th>
+                        <th>Version</th>
+                        <th>Status</th>
+                        <th>Current Node</th>
+                        <th>Started</th>
+                        <th>Completed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inst in _filteredInstances.OrderByDescending(i => i.StartedAt))
+                    {
+                        <tr>
+                            <td><a href="instances/@inst.Id">@inst.Id</a></td>
+                            <td>@(inst.AggregateId ?? "-")</td>
+                            <td>@inst.DefinitionName</td>
+                            <td>@inst.DefinitionVersion</td>
+                            <td><span class="status-badge status-@inst.Status">@FormatStatus(inst.Status)</span></td>
+                            <td>@(inst.CurrentNodeId ?? "-")</td>
+                            <td>@inst.StartedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@(inst.CompletedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<Processus> _allInstances = new();
+    private List<Processus> _filteredInstances = new();
+    private Dictionary<ProcessStatus, int> _statusCounts = new();
+    private ProcessStatus? _selectedStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _allInstances = await Monitor.GetAllInstancesAsync();
+        _statusCounts = await Monitor.GetStatusSummaryAsync();
+        _filteredInstances = _allInstances;
+        _loading = false;
+    }
+
+    private void FilterByStatus(ProcessStatus? status)
+    {
+        _selectedStatus = status;
+        _filteredInstances = status.HasValue
+            ? _allInstances.Where(i => i.Status == status.Value).ToList()
+            : _allInstances;
+    }
+
+    private static string FormatStatus(ProcessStatus status) => status switch
+    {
+        ProcessStatus.Running => "Running",
+        ProcessStatus.WaitingInteraction => "Waiting Interaction",
+        ProcessStatus.WaitingDate => "Waiting Date",
+        ProcessStatus.WaitingSignal => "Waiting Signal",
+        ProcessStatus.Completed => "Completed",
+        ProcessStatus.Failed => "Failed",
+        _ => status.ToString()
+    };
+}
