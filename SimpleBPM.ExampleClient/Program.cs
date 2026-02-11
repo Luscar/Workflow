@@ -1,5 +1,5 @@
 using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
+using Autofac;
 using SimpleBPM;
 using SimpleBPM.ExampleClient;
 using SimpleBPM.Localisation;
@@ -12,7 +12,7 @@ using SimpleBPM.Localisation;
 //   1. Implement ICommandHandler / IQueryHandler for business logic
 //   2. Implement IGestionTache for task management (optional)
 //   3. Define processes using the fluent ProcessBuilder API
-//   4. Register everything via a single AddSimpleBPM(options => ...) call
+//   4. Register everything via a single SimpleBPMAutofacModule
 //   5. Interact exclusively through IFlowService
 //
 // The client never references handlers or the engine directly.
@@ -21,19 +21,19 @@ using SimpleBPM.Localisation;
 Console.WriteLine("=== SimpleBPM Example Client: Loan Approval Workflow ===");
 Console.WriteLine();
 
-// --- Dependency Injection Setup ---
-var services = new ServiceCollection();
+// --- Dependency Injection Setup (Autofac) ---
+var containerBuilder = new ContainerBuilder();
 
-// Single call registers handlers, task manager, process definitions, and SimpleBPM services.
-services.AddSimpleBPM(options =>
+containerBuilder.RegisterModule(new SimpleBPMAutofacModule(module =>
 {
-    options.ScanHandlers(Assembly.GetExecutingAssembly());
-    options.UseTaskManager<LoanTaskManager>();
-    options.AddProcess(LoanProcessDefinitions.CreateLoanApprovalProcess());
-});
+    module.ScanHandlers(Assembly.GetExecutingAssembly());
+    module.UseTaskManager<LoanTaskManager>();
+    module.AddProcess(LoanProcessDefinitions.CreateLoanApprovalProcess());
+}));
 
-var provider = services.BuildServiceProvider();
-var flowService = provider.GetRequiredService<IFlowService>();
+var container = containerBuilder.Build();
+await using var scope = container.BeginLifetimeScope();
+var flowService = scope.Resolve<IFlowService>();
 
 // --- Start a loan approval process ---
 Console.WriteLine("--- Starting loan approval workflow ---");
