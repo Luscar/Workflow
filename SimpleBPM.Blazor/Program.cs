@@ -6,11 +6,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddSimpleBPM(options =>
-{
-    // Process definitions are registered here.
-    // In production, load definitions from your configuration source.
-});
+// Monitoring-only registration: no execution engine or ICommandExecutor needed.
+// Register process definitions before this call if you want them visible in the dashboard.
+builder.Services.AddProcessMonitoring();
 
 var app = builder.Build();
 
