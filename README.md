@@ -293,13 +293,10 @@ La librairie supporte la persistance dans Oracle avec préfixe de tables personn
 Le repository accepte une `IDbConnection` injectée par le client, compatible avec les containers DI.
 
 ```csharp
-var oracleConfig = new OracleConfiguration(
-    connectionString: "User Id=myuser;Password=mypass;Data Source=localhost:1521/XEPDB1",
-    tablePrefix: "ABC" // Préfixe de 3 à 10 lettres
-);
+var oracleConfig = new OracleConfiguration("ABC"); // Préfixe de 3 à 10 lettres
 
 // Connexion gérée par le client
-using var connection = new OracleConnection(oracleConfig.ConnectionString);
+using var connection = new OracleConnection("User Id=myuser;Password=mypass;Data Source=localhost:1521/XEPDB1");
 connection.Open();
 
 var repository = new OracleProcessRepository(oracleConfig, connection);
@@ -322,20 +319,17 @@ services.AddCommandHandlers(Assembly.GetExecutingAssembly());
 // 2. Enregistrer les services optionnels
 services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
 
-// 3. Enregistrer la connexion (gérée par le client)
-services.AddScoped<IDbConnection>(sp =>
+// 3. Enregistrer les définitions de processus
+services.AddSingleton(orderProcessDefinition);
+services.AddSingleton(invoiceProcessDefinition);
+
+// 4. Enregistrer SimpleBPM (Oracle avec connexion, handlers, FlowService)
+services.AddSimpleBPM(tablePrefix: "BPM", connectionFactory: sp =>
 {
     var conn = new OracleConnection(connectionString);
     conn.Open();
     return conn;
 });
-
-// 4. Enregistrer les définitions de processus
-services.AddSingleton(orderProcessDefinition);
-services.AddSingleton(invoiceProcessDefinition);
-
-// 5. Enregistrer SimpleBPM (Oracle, handlers, FlowService)
-services.AddSimpleBPM(tablePrefix: "BPM");
 ```
 
 #### Avec ICommandExecutor direct
@@ -349,20 +343,17 @@ using SimpleBPM.Localisation;
 services.AddSingleton<ICommandExecutor, MyCommandExecutor>();
 services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
 
-// 2. Enregistrer la connexion (gérée par le client)
-services.AddScoped<IDbConnection>(sp =>
+// 2. Enregistrer les définitions de processus
+services.AddSingleton(orderProcessDefinition);
+services.AddSingleton(invoiceProcessDefinition);
+
+// 3. Enregistrer SimpleBPM (Oracle avec connexion, handlers, FlowService)
+services.AddSimpleBPM(tablePrefix: "BPM", connectionFactory: sp =>
 {
     var conn = new OracleConnection(connectionString);
     conn.Open();
     return conn;
 });
-
-// 3. Enregistrer les définitions de processus
-services.AddSingleton(orderProcessDefinition);
-services.AddSingleton(invoiceProcessDefinition);
-
-// 4. Enregistrer SimpleBPM (Oracle, handlers, FlowService)
-services.AddSimpleBPM(tablePrefix: "BPM");
 ```
 
 ### Préfixe de tables
