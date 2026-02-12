@@ -64,6 +64,20 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registers read-only monitoring services with Oracle persistence.
+    /// The client must register <see cref="System.Data.IDbConnection"/> before this call.
+    /// </summary>
+    public static IServiceCollection AddProcessMonitoring(
+        this IServiceCollection services,
+        string tablePrefix)
+    {
+        services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(tablePrefix));
+        services.AddScoped<IProcessRepository, OracleProcessRepository>();
+
+        return services.AddProcessMonitoring();
+    }
+
+    /// <summary>
     /// Scans the given assemblies for all <see cref="ICommandHandler"/> and
     /// <see cref="IQueryHandler"/> implementations and registers them in the DI container.
     /// Also registers <see cref="CommandHandlerExecutor"/> as the <see cref="ICommandExecutor"/>,
