@@ -139,6 +139,17 @@ public class ProcessBuilder
     }
 
     /// <summary>
+    /// Breaks the automatic node-linking chain. After calling this, the next node added
+    /// will not be auto-linked from the previous node. Use this to define terminal nodes
+    /// (e.g. RejectLoan) that should not flow into whatever node is declared next in the builder.
+    /// </summary>
+    public ProcessBuilder Break()
+    {
+        _lastNode = null;
+        return this;
+    }
+
+    /// <summary>
     /// Connecte le nœud courant au nœud spécifié
     /// </summary>
     public ProcessBuilder Then(string nextNodeName)
