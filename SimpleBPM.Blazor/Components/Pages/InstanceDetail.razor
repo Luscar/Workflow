@@ -278,6 +278,7 @@ else
         sb.AppendLine("    classDef waitSignal fill:#cffafe,stroke:#06b6d4,color:#1e293b");
         sb.AppendLine("    classDef waitDate fill:#ede9fe,stroke:#8b5cf6,color:#1e293b");
         sb.AppendLine("    classDef subProcess fill:#fce7f3,stroke:#ec4899,color:#1e293b");
+        sb.AppendLine("    classDef endNode fill:#fee2e2,stroke:#dc2626,color:#1e293b");
 
         foreach (var (id, node) in definition.Nodes)
         {
@@ -289,6 +290,7 @@ else
                 NodeType.WaitForSignal => "waitSignal",
                 NodeType.WaitUntilDate => "waitDate",
                 NodeType.SubProcess => "subProcess",
+                NodeType.End => "endNode",
                 _ => "business"
             };
             sb.AppendLine($"    class {SanitizeId(id)} {cls}");
@@ -336,6 +338,7 @@ else
             NodeType.WaitForSignal => "    " + id + "{{\"" + label + "\"}}",
             NodeType.WaitUntilDate => $"    {id}[/\"{label}\"/]",
             NodeType.SubProcess    => $"    {id}[[\"{label}\"]]",
+            NodeType.End           => $"    {id}((\"{label}\"))",
             _                      => $"    {id}[\"{label}\"]"
         };
     }
