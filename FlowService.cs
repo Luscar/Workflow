@@ -39,6 +39,30 @@ public class FlowService : IFlowService
         return processId;
     }
 
+    public async Task<long> CreateProcessInstanceIdempotentAsync(string idempotencyKey, string definitionName, Dictionary<string, object>? variables = null)
+    {
+        // Return early if a process with this key already exists (duplicate message from messaging layer).
+        var existing = await _repository.GetByIdempotencyKeyAsync(idempotencyKey);
+        if (existing != null)
+            return existing.ProcessId;
+
+        var processId = await _repository.ObtenirSequenceAsync("SEQ_PROCESSUS");
+        var instance = new ProcessInstance(processId)
+        {
+            DefinitionName = definitionName,
+            IdempotencyKey = idempotencyKey
+        };
+
+        if (variables != null)
+        {
+            foreach (var kvp in variables)
+                instance.Variables[kvp.Key] = kvp.Value;
+        }
+
+        await _engine.ExecuteAsync(instance);
+        return processId;
+    }
+
     public async Task<List<Processus>> RechercherParVariable(List<FiltreVariable> filtres)
     {
         var instances = await _repository.SearchByVariableAsync(filtres);
@@ -119,6 +143,11 @@ public class FlowService : IFlowService
     {
         var instance = await _repository.GetProcessInstanceAsync(idInstanceProcessus)
             ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");
+
+        // Idempotency: if the process is no longer waiting for this signal (already processed
+        // by a previous delivery), ignore the duplicate instead of throwing.
+        if (instance.Status != ProcessStatus.WaitingSignal)
+            return;
 
         await _engine.SignalAsync(instance, signalName);
     }

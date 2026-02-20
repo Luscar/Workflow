@@ -69,6 +69,7 @@ public class OracleProcessRepository : IProcessRepository
                     NOM_DEFINITION VARCHAR2(255),
                     VERSION_DEFINITION VARCHAR2(50),
                     STATUT NUMBER(10),
+                    IDEMPOTENCY_KEY VARCHAR2(255),
                     CONSTRAINT CHK_{_config.TablePrefix}_STATUT CHECK (STATUT BETWEEN 0 AND 5)
                 )';
             EXCEPTION
@@ -118,9 +119,22 @@ public class OracleProcessRepository : IProcessRepository
                     END IF;
             END;";
 
+        var createIndex04Sql = $@"
+            BEGIN
+                EXECUTE IMMEDIATE 'CREATE UNIQUE INDEX IX_{_config.TablePrefix}_04_PROCESS_CONTEXT ON {_processContextTable}(IDEMPOTENCY_KEY)';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    IF SQLCODE = -955 THEN
+                        NULL;
+                    ELSE
+                        RAISE;
+                    END IF;
+            END;";
+
         await _connection.ExecuteAsync(createIndex01Sql);
         await _connection.ExecuteAsync(createIndex02Sql);
         await _connection.ExecuteAsync(createIndex03Sql);
+        await _connection.ExecuteAsync(createIndex04Sql);
 
         await _historyRepository.InitializeDatabaseAsync();
     }
@@ -129,9 +143,9 @@ public class OracleProcessRepository : IProcessRepository
     {
         var sql = $@"
             INSERT INTO {_processContextTable}
-            (ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT)
+            (ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT, IDEMPOTENCY_KEY)
             VALUES
-            (:IdProcessus, :IdProcessusParent, :IdNoeudParent, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :Statut)";
+            (:IdProcessus, :IdProcessusParent, :IdNoeudParent, :IdAgregat, :Donnees, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :Statut, :IdempotencyKey)";
 
         var parameters = new
         {
@@ -146,7 +160,8 @@ public class OracleProcessRepository : IProcessRepository
             IdNoeudCourant = instance.CurrentNodeId,
             NomDefinition = instance.DefinitionName,
             VersionDefinition = instance.DefinitionVersion,
-            Statut = (int)instance.Status
+            Statut = (int)instance.Status,
+            IdempotencyKey = instance.IdempotencyKey
         };
 
         await _connection.ExecuteAsync(sql, parameters);
@@ -155,7 +170,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetProcessInstanceAsync(long processId)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT, IDEMPOTENCY_KEY
             FROM {_processContextTable}
             WHERE ID_PROCESSUS = :IdProcessus";
 
@@ -216,10 +231,27 @@ public class OracleProcessRepository : IProcessRepository
         await _connection.ExecuteAsync(sql, new { IdProcessus = processId });
     }
 
+    public async Task<ProcessInstance?> GetByIdempotencyKeyAsync(string idempotencyKey)
+    {
+        var sql = $@"
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT, IDEMPOTENCY_KEY
+            FROM {_processContextTable}
+            WHERE IDEMPOTENCY_KEY = :IdempotencyKey";
+
+        var result = await _connection.QueryFirstOrDefaultAsync<ProcessInstanceDto>(sql, new { IdempotencyKey = idempotencyKey });
+
+        if (result == null)
+            return null;
+
+        var instance = MapToInstance(result);
+        instance.ExecutionHistory = await _historyRepository.GetHistoryAsync(result.ID_PROCESSUS);
+        return instance;
+    }
+
     public async Task<List<ProcessInstance>> SearchByVariableAsync(List<FiltreVariable> filtres)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT, IDEMPOTENCY_KEY
             FROM {_processContextTable}
             WHERE DONNEES IS NOT NULL";
 
@@ -255,7 +287,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT, IDEMPOTENCY_KEY
             FROM {_processContextTable}
             WHERE ID_PROCESSUS_PARENT = :IdProcessusParent AND ID_NOEUD_PARENT = :IdNoeudParent";
 
@@ -272,7 +304,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT, IDEMPOTENCY_KEY
             FROM {_processContextTable}
             WHERE ID_PROCESSUS_PARENT = :IdProcessusParent";
 
@@ -305,7 +337,8 @@ public class OracleProcessRepository : IProcessRepository
             LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
             CompletedAt = result.DATE_COMPLETION,
             CurrentNodeId = result.ID_NOEUD_COURANT,
-            Status = (ProcessStatus)result.STATUT
+            Status = (ProcessStatus)result.STATUT,
+            IdempotencyKey = result.IDEMPOTENCY_KEY
         };
     }
 
@@ -323,5 +356,6 @@ public class OracleProcessRepository : IProcessRepository
         public string? NOM_DEFINITION { get; set; }
         public string? VERSION_DEFINITION { get; set; }
         public int STATUT { get; set; }
+        public string? IDEMPOTENCY_KEY { get; set; }
     }
 }

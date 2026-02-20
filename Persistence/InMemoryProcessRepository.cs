@@ -71,6 +71,13 @@ public class InMemoryProcessRepository : IProcessRepository
         return Task.FromResult(children);
     }
 
+    public Task<ProcessInstance?> GetByIdempotencyKeyAsync(string idempotencyKey)
+    {
+        var instance = _processes.Values
+            .FirstOrDefault(p => p.IdempotencyKey == idempotencyKey);
+        return Task.FromResult(instance);
+    }
+
     public Task<List<ProcessInstance>> GetAllProcessInstancesAsync() =>
         Task.FromResult(_processes.Values.ToList());
 

@@ -6,6 +6,12 @@ public class ProcessInstance
     public long? ParentProcessId { get; set; }
     public string? ParentNodeId { get; set; }
     public string? AggregateId { get; set; }
+    /// <summary>
+    /// Unique key supplied by the messaging layer to deduplicate process creation.
+    /// If a process already exists with this key, <see cref="IFlowService.CreateProcessInstanceIdempotentAsync"/>
+    /// returns its ID instead of creating a new one.
+    /// </summary>
+    public string? IdempotencyKey { get; set; }
     public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }
     public Dictionary<string, object> Variables { get; set; } = new();

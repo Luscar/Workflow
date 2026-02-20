@@ -123,6 +123,17 @@ public class FlowEngine
                 return instance;
             }
 
+            // Idempotency check: if this node already completed successfully (e.g. engine restart
+            // after a crash mid-run, or a duplicate message from the messaging layer), skip
+            // re-execution and resume from the recorded next node instead.
+            var previousSuccess = instance.ExecutionHistory
+                .LastOrDefault(h => h.NodeId == node.Name && h.Success);
+            if (previousSuccess != null)
+            {
+                currentNodeId = previousSuccess.NextNodeId;
+                continue;
+            }
+
             // Créer l'entrée d'historique
             var historyEntry = new NodeExecutionHistory(node.Name, node.DisplayName, node.Type);
 
