@@ -13,8 +13,8 @@ public static class LoanProcessDefinitions
     ///
     /// Workflow:
     ///   ValidateApplication -> Verification (subprocess) -> CheckCredit -> CreditDecision
-    ///     - approved  -> CalculateTerms -> ManualReview (interactive) -> WaitDocumentSigning (signal) -> DisburseFunds -> [End: LoanApproved]
-    ///     - rejected  -> RejectLoan -> [End: LoanRejected]
+    ///     - CreditScore >= 650  -> CalculateTerms -> ManualReview (interactive) -> WaitDocumentSigning (signal) -> DisburseFunds -> [End: LoanApproved]
+    ///     - default             -> RejectLoan -> [End: LoanRejected]
     /// </summary>
     public static ProcessDefinition CreateLoanApprovalProcess()
     {
@@ -29,8 +29,8 @@ public static class LoanProcessDefinitions
                 displayName: "Applicant Verification")
             .Business("CheckCredit", "Check Credit Score")
             .Decision("CreditDecision", "Credit Decision", routes => routes
-                .When("approved", "CalculateTerms")
-                .When("rejected", "RejectLoan"))
+                .When("CreditScore", OperateurFiltre.SuperieurOuEgal, 650, TypeDonnee.Nombre, "CalculateTerms")
+                .Default("RejectLoan"))
             .Business("CalculateTerms", "Calculate Loan Terms")
                 .Then("ManualReview")
             .Business("RejectLoan", "Reject Loan Application")

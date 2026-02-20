@@ -44,7 +44,8 @@ var processId = await flowService.CreateProcessInstance("LoanApproval", new Dict
     ["ApplicantName"] = "Jane Doe",
     ["ApplicantId"] = "APP-12345",
     ["LoanAmount"] = 50000.00,
-    ["LoanTerm"] = 36
+    ["LoanTerm"] = 36,
+    ["CreditScore"] = 720
 });
 
 var process = await flowService.ObtenirAsync(processId);

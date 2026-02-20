@@ -259,9 +259,30 @@ public class DecisionRouteBuilder
         _node = node;
     }
 
+    /// <summary>
+    /// Adds a named route resolved by an external query handler.
+    /// </summary>
     public DecisionRouteBuilder When(string condition, string targetNodeName)
     {
         _node.AddRoute(condition, targetNodeName);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a variable-based condition evaluated directly against process variables.
+    /// </summary>
+    public DecisionRouteBuilder When(string variableName, OperateurFiltre operateur, object valeur, TypeDonnee typeDonnee, string targetNodeName)
+    {
+        _node.AddCondition(variableName, valeur, operateur, typeDonnee, targetNodeName);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the fallback node taken when no condition matches.
+    /// </summary>
+    public DecisionRouteBuilder Default(string targetNodeName)
+    {
+        _node.SetNoeudParDefaut(targetNodeName);
         return this;
     }
 }
