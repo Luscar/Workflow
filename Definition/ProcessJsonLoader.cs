@@ -135,6 +135,11 @@ public static class ProcessJsonLoader
                 DisplayName = nodeDef.DisplayName ?? nodeDef.Name
             },
             NodeType.SubProcess => CreateSubProcessNode(nodeDef),
+            NodeType.End => new EndNode
+            {
+                Name = nodeDef.Name,
+                DisplayName = nodeDef.DisplayName ?? nodeDef.Name
+            },
             _ => throw new InvalidOperationException($"Unknown node type: {nodeDef.Type}")
         };
 
@@ -206,6 +211,9 @@ public static class ProcessJsonLoader
                         nodeDef.InputMapping = spn.InputMapping;
                     if (spn.OutputMapping.Count > 0)
                         nodeDef.OutputMapping = spn.OutputMapping;
+                    break;
+                case EndNode:
+                    // End nodes have no additional properties
                     break;
             }
 

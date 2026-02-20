@@ -29,6 +29,7 @@ public class FlowEngine
         }
 
         // Auto-register default handlers for nodes without dependencies
+        _handlers.TryAdd(NodeType.End, new EndNodeHandler());
         _handlers.TryAdd(NodeType.Interactive, new InteractiveNodeHandler());
         _handlers.TryAdd(NodeType.WaitUntilDate, new WaitUntilDateNodeHandler());
         _handlers.TryAdd(NodeType.WaitForSignal, new WaitForSignalNodeHandler());

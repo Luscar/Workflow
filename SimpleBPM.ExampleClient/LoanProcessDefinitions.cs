@@ -13,8 +13,8 @@ public static class LoanProcessDefinitions
     ///
     /// Workflow:
     ///   ValidateApplication -> Verification (subprocess) -> CheckCredit -> CreditDecision
-    ///     - approved  -> CalculateTerms -> ManualReview (interactive) -> WaitDocumentSigning (signal) -> DisburseFunds
-    ///     - rejected  -> RejectLoan
+    ///     - approved  -> CalculateTerms -> ManualReview (interactive) -> WaitDocumentSigning (signal) -> DisburseFunds -> [End: LoanApproved]
+    ///     - rejected  -> RejectLoan -> [End: LoanRejected]
     /// </summary>
     public static ProcessDefinition CreateLoanApprovalProcess()
     {
@@ -34,9 +34,11 @@ public static class LoanProcessDefinitions
             .Business("CalculateTerms", "Calculate Loan Terms")
                 .Then("ManualReview")
             .Business("RejectLoan", "Reject Loan Application")
+                .End("LoanRejected", "Loan Application Rejected")
             .Interactive("ManualReview", "Underwriter Review")
             .WaitForSignal("WaitDocumentSigning", "Wait for Document Signing")
             .Business("DisburseFunds", "Disburse Loan Funds")
+                .End("LoanApproved", "Loan Approved and Disbursed")
             .Build();
     }
 

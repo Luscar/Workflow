@@ -7,7 +7,8 @@ public enum NodeType
     Interactive,
     WaitUntilDate,
     WaitForSignal,
-    SubProcess
+    SubProcess,
+    End
 }
 
 public class ProcessNode

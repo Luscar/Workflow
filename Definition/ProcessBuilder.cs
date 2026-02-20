@@ -139,6 +139,27 @@ public class ProcessBuilder
     }
 
     /// <summary>
+    /// Adds an explicit terminal node to end a process branch.
+    /// The branch predecessor links to this node, and the auto-link chain is broken
+    /// so the next declared node starts a new independent section.
+    /// </summary>
+    public ProcessBuilder End(string name, string? displayName = null)
+    {
+        var node = new EndNode { Name = name, DisplayName = displayName ?? name };
+        return AddNode(name, node);
+    }
+
+    /// <summary>
+    /// Breaks the automatic node-linking chain. After calling this, the next node added
+    /// will not be auto-linked from the previous node.
+    /// </summary>
+    public ProcessBuilder Break()
+    {
+        _lastNode = null;
+        return this;
+    }
+
+    /// <summary>
     /// Connecte le nœud courant au nœud spécifié
     /// </summary>
     public ProcessBuilder Then(string nextNodeName)
@@ -207,8 +228,11 @@ public class ProcessBuilder
     {
         _nodesByName[name] = node;
 
-        // Connecter automatiquement au nœud précédent (sauf pour les décisions qui ont leurs propres routes)
-        if (_lastNode != null && _lastNode is not DecisionNode)
+        // Auto-link from the previous node only when:
+        // - there is a previous node
+        // - it is not a DecisionNode (which manages its own routes)
+        // - it has no explicitly declared next node yet (e.g. via .Then())
+        if (_lastNode != null && _lastNode is not DecisionNode && _lastNode.NextNodeIds.Count == 0)
         {
             _lastNode.NextNodeIds.Add(node.Name);
         }
@@ -220,7 +244,8 @@ public class ProcessBuilder
             _definition.StartNodeId = node.Name;
         }
 
-        _lastNode = node;
+        // End nodes are terminal: break the chain so nothing is auto-linked after them
+        _lastNode = node is EndNode ? null : node;
         return this;
     }
 }

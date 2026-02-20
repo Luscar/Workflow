@@ -10,6 +10,7 @@ Une librairie légère pour gérer des processus métier (BPM) avec différents 
 - **WaitUntilDateNode** : Arrête le processus jusqu'à une date précise
 - **WaitForSignalNode** : Arrête le processus en attente d'un signal spécifique
 - **SubProcessNode** : Exécute un sous-processus complet avec gestion d'état
+- **EndNode** : Termine explicitement une branche de processus — le moteur marque l'instance comme `Completed` dès qu'il atteint ce nœud
 
 ## Définition de processus
 
@@ -32,10 +33,13 @@ var process = ProcessBuilder.Create("OrderProcess")
     .Business("ProcessApproved", "Traiter approuvé")
         .Then("WaitPayment")
     .Business("ProcessRejected", "Traiter rejeté")
+        .End("OrderRejected", "Commande rejetée")   // branch terminates here
     .WaitForSignal("WaitPayment", "Attente paiement")
     .Interactive("ManualReview", "Revue manuelle")
     .Build();
 ```
+
+> **Chaînage automatique** : le builder relie chaque nœud au précédent automatiquement, sauf si le nœud précédent a déjà un successeur explicite (via `.Then()`) ou est un `DecisionNode`. Appeler `.End()` termine la branche courante et déconnecte les nœuds suivants de cette branche.
 
 #### Avec sous-processus inline
 
@@ -77,8 +81,13 @@ Définition déclarative, idéale pour la configuration externe.
             "query": "DecideApproval",
             "routes": {
                 "approved": "ProcessApproved",
-                "rejected": "ProcessRejected"
+                "rejected": "OrderRejected"
             }
+        },
+        {
+            "name": "OrderRejected",
+            "type": "End",
+            "displayName": "Commande rejetée"
         }
     ]
 }
@@ -651,7 +660,7 @@ Voir `SimpleBPM.ExampleClient/` pour un projet client complet utilisant l'inject
 - Les nœuds métier appellent des commandes via `ICommandExecutor`
 - Les décisions sont évaluées via `ICommandExecutor.EvaluateDecisionAsync`
 - Chaque type de nœud a un handler dédié (`INodeHandler`) injecté avec ses propres dépendances
-- Les handlers par défaut (Interactive, WaitForSignal, WaitUntilDate, SubProcess) sont auto-enregistrés
+- Les handlers par défaut (End, Interactive, WaitForSignal, WaitUntilDate, SubProcess) sont auto-enregistrés — `EndNodeHandler` marque directement l'instance comme `Completed`
 - **Injection de handlers** : les commandes métier et décisions peuvent être implémentées comme des handlers individuels (`ICommandHandler` / `IQueryHandler`), découverts automatiquement via `AddCommandHandlers()` et dispatchés par `CommandHandlerExecutor`
 - Les variables d'instance (`Variables`) stockent l'état partagé entre les nœuds
 - L'instance est automatiquement sauvegardée/mise à jour dans Oracle après chaque exécution
@@ -706,7 +715,7 @@ SimpleBPM.sln
 Le projet `SimpleBPM.Tests` contient des tests unitaires xUnit couvrant l'ensemble des composants :
 
 - **FlowEngineTests** : Exécution, continuation, signaux, historique, cas d'erreur
-- **ProcessBuilderTests** : API fluide, chaînage, décisions, sous-processus, paramètres
+- **ProcessBuilderTests** : API fluide, chaînage, décisions, sous-processus, paramètres, nœuds End et isolation de branches
 - **ProcessJsonLoaderTests** : Sérialisation aller-retour JSON, tous les types de nœuds, paramètres
 - **ProcessDefinitionTests** : Ajout de nœuds, versions, nœud de départ
 - **ProcessInstanceTests** : Statut, variables, durée, historique

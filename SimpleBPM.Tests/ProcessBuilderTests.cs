@@ -218,4 +218,74 @@ public class ProcessBuilderTests
         var builder = ProcessBuilder.Create("Test");
         Assert.Throws<InvalidOperationException>(() => builder.Then("node"));
     }
+
+    [Fact]
+    public void Build_WithEndNode_IsTerminal()
+    {
+        var def = ProcessBuilder.Create("Test")
+            .Business("DoWork")
+            .End("Done", "Work Done")
+            .Build();
+
+        var endNode = def.GetNode("Done");
+        Assert.NotNull(endNode);
+        Assert.Equal(NodeType.End, endNode.Type);
+        Assert.Equal("Work Done", endNode.DisplayName);
+        Assert.Empty(endNode.NextNodeIds);
+    }
+
+    [Fact]
+    public void Build_EndNode_BreaksAutoLinkChain()
+    {
+        var def = ProcessBuilder.Create("Test")
+            .Business("Rejected")
+            .End("TerminateRejected")
+            .Business("Approved")
+            .Build();
+
+        var rejected = def.GetNode("Rejected");
+        var approved = def.GetNode("Approved");
+
+        // Rejected links to TerminateRejected, not to Approved
+        Assert.Contains("TerminateRejected", rejected!.NextNodeIds);
+        Assert.DoesNotContain("Approved", rejected.NextNodeIds);
+
+        // Approved has no next (declared after the broken chain)
+        Assert.Empty(approved!.NextNodeIds);
+    }
+
+    [Fact]
+    public void Build_ThenPreventsAutoLink()
+    {
+        var def = ProcessBuilder.Create("Test")
+            .Business("A")
+                .Then("C")
+            .Business("B")  // A already has an explicit next, so B should NOT be auto-linked from A
+            .Business("C")
+            .Build();
+
+        var nodeA = def.GetNode("A");
+        Assert.Equal(new[] { "C" }, nodeA!.NextNodeIds);
+    }
+
+    [Fact]
+    public void Build_BranchedProcess_CorrectLinks()
+    {
+        var def = ProcessBuilder.Create("LoanTest")
+            .Business("Decide")
+                .Then("Approved")
+            .Business("Rejected")
+                .End("EndRejected")
+            .Business("Approved")
+                .End("EndApproved")
+            .Build();
+
+        var rejected = def.GetNode("Rejected");
+        var approved = def.GetNode("Approved");
+
+        Assert.Equal(new[] { "EndRejected" }, rejected!.NextNodeIds);
+        Assert.Equal(new[] { "EndApproved" }, approved!.NextNodeIds);
+        Assert.Equal(NodeType.End, def.GetNode("EndRejected")!.Type);
+        Assert.Equal(NodeType.End, def.GetNode("EndApproved")!.Type);
+    }
 }
