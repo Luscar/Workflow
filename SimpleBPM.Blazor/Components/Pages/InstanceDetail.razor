@@ -1,5 +1,6 @@
 @page "/instances/{Id:long}"
 @inject IProcessMonitor Monitor
+@inject IJSRuntime JS
 @inject NavigationManager Navigation
 
 <a href="instances" class="back-link">&larr; Back to instances</a>
@@ -97,6 +98,38 @@ else
         }
     </div>
 
+    @if (_definition != null)
+    {
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Process Flow</span>
+            </div>
+
+            <div class="graph-legend" style="padding: 0 0 0.75rem 0; font-size: 0.8rem; color: var(--color-text-secondary);">
+                <div class="legend-item">
+                    <span class="legend-swatch legend-start" style="background:#dcfce7;border-color:#22c55e;"></span>
+                    Start node
+                </div>
+                <div class="legend-item">
+                    <span class="legend-swatch" style="background:#bbf7d0;border-color:#22c55e;"></span>
+                    Executed
+                </div>
+                <div class="legend-item">
+                    <span class="legend-swatch" style="background:#fecaca;border-color:#ef4444;"></span>
+                    Failed
+                </div>
+                <div class="legend-item">
+                    <span class="legend-swatch" style="background:#dbeafe;border-color:#3b82f6;border-width:3px;"></span>
+                    @((_instance.Status == ProcessStatus.Completed || _instance.Status == ProcessStatus.Failed) ? "End node" : "Current node")
+                </div>
+            </div>
+
+            <div class="definition-graph" id="instance-graph-@_instance.Id">
+                <div class="loading">Rendering graph...</div>
+            </div>
+        </div>
+    }
+
     <div class="card">
         <div class="card-header">
             <span class="card-title">Execution History</span>
@@ -144,7 +177,9 @@ else
     public long Id { get; set; }
 
     private bool _loading = true;
+    private bool _graphRendered = false;
     private Processus? _instance;
+    private ProcessDefinition? _definition;
     private List<NodeExecutionHistory> _history = new();
 
     protected override async Task OnInitializedAsync()
@@ -153,6 +188,12 @@ else
         {
             _instance = await Monitor.GetInstanceAsync(Id);
             _history = await Monitor.GetExecutionHistoryAsync(Id);
+
+            if (_instance != null)
+            {
+                _definition = Monitor.GetDefinitions()
+                    .FirstOrDefault(d => d.Name == _instance.DefinitionName && d.Version == _instance.DefinitionVersion);
+            }
         }
         catch (InvalidOperationException)
         {
@@ -162,14 +203,174 @@ else
         _loading = false;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_loading && !_graphRendered && _instance != null && _definition != null)
+        {
+            _graphRendered = true;
+            var succeededNodes = _history.Where(h => h.Success).Select(h => h.NodeId).ToHashSet();
+            var failedOnlyNodes = _history.Where(h => !h.Success).Select(h => h.NodeId)
+                .Where(id => !succeededNodes.Contains(id)).ToHashSet();
+
+            var syntax = GenerateMermaidSyntaxWithHighlights(_definition, succeededNodes, failedOnlyNodes, _instance.CurrentNodeId, _instance.Status);
+            await JS.InvokeVoidAsync("renderMermaid", $"instance-graph-{_instance.Id}", syntax);
+        }
+    }
+
+    private string GenerateMermaidSyntaxWithHighlights(
+        ProcessDefinition definition,
+        HashSet<string> executedNodes,
+        HashSet<string> failedOnlyNodes,
+        string? currentNodeId,
+        ProcessStatus status)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("graph TD");
+
+        foreach (var (id, node) in definition.Nodes)
+        {
+            var safeId = SanitizeId(id);
+            var label = EscapeLabel(!string.IsNullOrEmpty(node.DisplayName) ? node.DisplayName : id);
+            sb.AppendLine(MermaidNodeDeclaration(safeId, label, node.Type));
+        }
+
+        foreach (var (id, node) in definition.Nodes)
+        {
+            var safeId = SanitizeId(id);
+
+            if (node is DecisionNode decision)
+            {
+                var handled = new HashSet<string>();
+
+                foreach (var (condition, targetId) in decision.ConditionToNodeId)
+                {
+                    sb.AppendLine($"    {safeId} -->|\"{EscapeLabel(condition)}\"| {SanitizeId(targetId)}");
+                    handled.Add(targetId);
+                }
+
+                foreach (var cond in decision.Conditions)
+                {
+                    if (handled.Contains(cond.NoeudCible)) continue;
+                    var condLabel = $"{cond.NomVariable} {FormatOperator(cond.Operateur)} {cond.Valeur}";
+                    sb.AppendLine($"    {safeId} -->|\"{EscapeLabel(condLabel)}\"| {SanitizeId(cond.NoeudCible)}");
+                    handled.Add(cond.NoeudCible);
+                }
+
+                if (decision.NoeudParDefaut != null && !handled.Contains(decision.NoeudParDefaut))
+                {
+                    sb.AppendLine($"    {safeId} -->|\"default\"| {SanitizeId(decision.NoeudParDefaut)}");
+                    handled.Add(decision.NoeudParDefaut);
+                }
+
+                foreach (var nextId in node.NextNodeIds.Where(n => !handled.Contains(n)))
+                    sb.AppendLine($"    {safeId} --> {SanitizeId(nextId)}");
+            }
+            else
+            {
+                foreach (var nextId in node.NextNodeIds)
+                    sb.AppendLine($"    {safeId} --> {SanitizeId(nextId)}");
+            }
+        }
+
+        sb.AppendLine("    classDef business fill:#dbeafe,stroke:#3b82f6,color:#1e293b");
+        sb.AppendLine("    classDef decision fill:#fef3c7,stroke:#f59e0b,color:#1e293b");
+        sb.AppendLine("    classDef interactive fill:#dcfce7,stroke:#22c55e,color:#1e293b");
+        sb.AppendLine("    classDef waitSignal fill:#cffafe,stroke:#06b6d4,color:#1e293b");
+        sb.AppendLine("    classDef waitDate fill:#ede9fe,stroke:#8b5cf6,color:#1e293b");
+        sb.AppendLine("    classDef subProcess fill:#fce7f3,stroke:#ec4899,color:#1e293b");
+        sb.AppendLine("    classDef endNode fill:#fee2e2,stroke:#dc2626,color:#1e293b");
+
+        foreach (var (id, node) in definition.Nodes)
+        {
+            var cls = node.Type switch
+            {
+                NodeType.Business => "business",
+                NodeType.Decision => "decision",
+                NodeType.Interactive => "interactive",
+                NodeType.WaitForSignal => "waitSignal",
+                NodeType.WaitUntilDate => "waitDate",
+                NodeType.SubProcess => "subProcess",
+                NodeType.End => "endNode",
+                _ => "business"
+            };
+            sb.AppendLine($"    class {SanitizeId(id)} {cls}");
+        }
+
+        // Highlight start node with thick green border
+        if (definition.StartNodeId != null)
+            sb.AppendLine($"    style {SanitizeId(definition.StartNodeId)} stroke:#16a34a,stroke-width:3px");
+
+        // Highlight successfully executed nodes
+        foreach (var nodeId in executedNodes)
+        {
+            if (definition.Nodes.ContainsKey(nodeId))
+                sb.AppendLine($"    style {SanitizeId(nodeId)} fill:#bbf7d0,stroke:#22c55e,stroke-width:2px");
+        }
+
+        // Highlight failed-only nodes (overrides executed highlight)
+        foreach (var nodeId in failedOnlyNodes)
+        {
+            if (definition.Nodes.ContainsKey(nodeId))
+                sb.AppendLine($"    style {SanitizeId(nodeId)} fill:#fecaca,stroke:#ef4444,stroke-width:2px");
+        }
+
+        // Highlight current / end node with thick status-coloured border
+        if (currentNodeId != null && definition.Nodes.ContainsKey(currentNodeId))
+        {
+            var borderColor = status switch
+            {
+                ProcessStatus.Completed => "#16a34a",
+                ProcessStatus.Failed    => "#ef4444",
+                _                       => "#3b82f6"
+            };
+            sb.AppendLine($"    style {SanitizeId(currentNodeId)} stroke:{borderColor},stroke-width:4px");
+        }
+
+        return sb.ToString();
+    }
+
+    private static string MermaidNodeDeclaration(string id, string label, NodeType type)
+    {
+        return type switch
+        {
+            NodeType.Decision      => $"    {id}{{\"{label}\"}}",
+            NodeType.Interactive   => $"    {id}([\"{label}\"])",
+            NodeType.WaitForSignal => "    " + id + "{{\"" + label + "\"}}",
+            NodeType.WaitUntilDate => $"    {id}[/\"{label}\"/]",
+            NodeType.SubProcess    => $"    {id}[[\"{label}\"]]",
+            NodeType.End           => $"    {id}((\"{label}\"))",
+            _                      => $"    {id}[\"{label}\"]"
+        };
+    }
+
+    private static string SanitizeId(string id)
+        => new string(id.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray());
+
+    private static string EscapeLabel(string text)
+        => text.Replace("\"", "#quot;").Replace("<", "#lt;").Replace(">", "#gt;");
+
+    private static string FormatOperator(OperateurFiltre op) => op switch
+    {
+        OperateurFiltre.Egal              => "=",
+        OperateurFiltre.Different         => "!=",
+        OperateurFiltre.Superieur         => ">",
+        OperateurFiltre.SuperieurOuEgal   => ">=",
+        OperateurFiltre.Inferieur         => "<",
+        OperateurFiltre.InferieurOuEgal   => "<=",
+        OperateurFiltre.Contient          => "contains",
+        OperateurFiltre.CommencePar       => "starts with",
+        OperateurFiltre.FinitPar          => "ends with",
+        _                                 => op.ToString()
+    };
+
     private static string FormatStatus(ProcessStatus status) => status switch
     {
-        ProcessStatus.Running => "Running",
+        ProcessStatus.Running            => "Running",
         ProcessStatus.WaitingInteraction => "Waiting Interaction",
-        ProcessStatus.WaitingDate => "Waiting Date",
-        ProcessStatus.WaitingSignal => "Waiting Signal",
-        ProcessStatus.Completed => "Completed",
-        ProcessStatus.Failed => "Failed",
+        ProcessStatus.WaitingDate        => "Waiting Date",
+        ProcessStatus.WaitingSignal      => "Waiting Signal",
+        ProcessStatus.Completed          => "Completed",
+        ProcessStatus.Failed             => "Failed",
         _ => status.ToString()
     };
 
