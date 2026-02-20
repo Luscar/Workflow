@@ -212,7 +212,10 @@ else
             var failedOnlyNodes = _history.Where(h => !h.Success).Select(h => h.NodeId)
                 .Where(id => !succeededNodes.Contains(id)).ToHashSet();
 
-            var syntax = GenerateMermaidSyntaxWithHighlights(_definition, succeededNodes, failedOnlyNodes, _instance.CurrentNodeId, _instance.Status);
+            // For completed/failed instances CurrentNodeId is null; fall back to the last executed node
+            var highlightNodeId = _instance.CurrentNodeId ?? _history.LastOrDefault()?.NodeId;
+
+            var syntax = GenerateMermaidSyntaxWithHighlights(_definition, succeededNodes, failedOnlyNodes, highlightNodeId, _instance.Status);
             await JS.InvokeVoidAsync("renderMermaid", $"instance-graph-{_instance.Id}", syntax);
         }
     }
