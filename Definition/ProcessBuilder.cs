@@ -169,6 +169,18 @@ public class ProcessBuilder
     }
 
     /// <summary>
+    /// Ajoute un paramètre à la commande OnEnter du nœud courant
+    /// </summary>
+    public ProcessBuilder WithOnEnterCommandParameter(string key, object value)
+    {
+        if (_lastNode == null)
+            throw new InvalidOperationException("Aucun nœud courant sur lequel définir le paramètre de commande OnEnter");
+
+        _lastNode.OnEnterCommandParameters[key] = value;
+        return this;
+    }
+
+    /// <summary>
     /// Ajoute un nœud terminal explicite pour terminer une branche du processus.
     /// Le prédécesseur de la branche est lié à ce nœud, et la chaîne de liaison automatique est rompue
     /// afin que le nœud suivant déclaré commence une nouvelle section indépendante.

@@ -260,6 +260,30 @@ public class ProcessBuilderTests
     }
 
     [Fact]
+    public void Build_WithOnEnterCommandParameter_SetsParameters()
+    {
+        var def = ProcessBuilder.Create("NotifyProcess")
+            .Business("Init")
+            .Interactive("Review")
+                .WithOnEnterCommand("NotifyReviewer")
+                .WithOnEnterCommandParameter("priority", "high")
+                .WithOnEnterCommandParameter("dueInDays", 3)
+            .Business("Complete")
+            .Build();
+
+        var node = def.GetNode("Review");
+        Assert.Equal("high", node!.OnEnterCommandParameters["priority"]);
+        Assert.Equal(3, node.OnEnterCommandParameters["dueInDays"]);
+    }
+
+    [Fact]
+    public void WithOnEnterCommandParameter_NoCurrentNode_Throws()
+    {
+        var builder = ProcessBuilder.Create("Test");
+        Assert.Throws<InvalidOperationException>(() => builder.WithOnEnterCommandParameter("key", "val"));
+    }
+
+    [Fact]
     public void WithOnEnterCommand_NoCurrentNode_Throws()
     {
         var builder = ProcessBuilder.Create("Test");
