@@ -1,6 +1,6 @@
 namespace SimpleBPM.Nodes;
 
-public class DecisionNode : ProcessNode
+public class DecisionNode : NodeDefinition
 {
     public string? QueryName { get; set; }
     public Dictionary<string, string> ConditionToNodeId { get; set; } = new();

@@ -3,13 +3,13 @@ namespace SimpleBPM;
 public class Processus
 {
     public long Id { get; set; }
-    public string? AggregateId { get; set; }
+    public long? AggregateId { get; set; }
     public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }
     public ProcessStatus Status { get; set; }
     public string? ErrorMessage { get; set; }
     public Dictionary<string, object> Variables { get; set; } = new();
-    public string? CurrentNodeId { get; set; }
+    public string? CurrentNodeName { get; set; }
     public DateTime StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
 
@@ -22,7 +22,7 @@ public class Processus
         Status = instance.Status,
         ErrorMessage = instance.ErrorMessage,
         Variables = new Dictionary<string, object>(instance.Variables),
-        CurrentNodeId = instance.CurrentNodeId,
+        CurrentNodeName = instance.CurrentNodeName,
         StartedAt = instance.StartedAt,
         CompletedAt = instance.CompletedAt
     };

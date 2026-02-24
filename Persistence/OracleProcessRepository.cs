@@ -137,13 +137,13 @@ public class OracleProcessRepository : IProcessRepository
         {
             IdProcessus = instance.ProcessId,
             IdProcessusParent = instance.ParentProcessId,
-            IdNoeudParent = instance.ParentNodeId,
+            IdNoeudParent = instance.ParentNodeName,
             IdAgregat = instance.AggregateId,
             Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
             DateDebut = instance.StartedAt,
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
-            IdNoeudCourant = instance.CurrentNodeId,
+            IdNoeudCourant = instance.CurrentNodeName,
             NomDefinition = instance.DefinitionName,
             VersionDefinition = instance.DefinitionVersion,
             Statut = (int)instance.Status
@@ -192,7 +192,7 @@ public class OracleProcessRepository : IProcessRepository
             Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
-            IdNoeudCourant = instance.CurrentNodeId,
+            IdNoeudCourant = instance.CurrentNodeName,
             NomDefinition = instance.DefinitionName,
             VersionDefinition = instance.DefinitionVersion,
             Statut = (int)instance.Status,
@@ -247,19 +247,19 @@ public class OracleProcessRepository : IProcessRepository
         return matches;
     }
 
-    public async Task<(NodeExecutionHistory History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId)
+    public async Task<(NodeInstance History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId)
     {
         return await _historyRepository.GetByIdAsync(historyId);
     }
 
-    public async Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId)
+    public async Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName)
     {
         var sql = $@"
             SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS_PARENT = :IdProcessusParent AND ID_NOEUD_PARENT = :IdNoeudParent";
 
-        var result = await _connection.QueryFirstOrDefaultAsync<ProcessInstanceDto>(sql, new { IdProcessusParent = parentProcessId, IdNoeudParent = parentNodeId });
+        var result = await _connection.QueryFirstOrDefaultAsync<ProcessInstanceDto>(sql, new { IdProcessusParent = parentProcessId, IdNoeudParent = parentNodeName });
 
         if (result == null)
             return null;
@@ -294,7 +294,7 @@ public class OracleProcessRepository : IProcessRepository
         return new ProcessInstance(result.ID_PROCESSUS)
         {
             ParentProcessId = result.ID_PROCESSUS_PARENT,
-            ParentNodeId = result.ID_NOEUD_PARENT,
+            ParentNodeName = result.ID_NOEUD_PARENT,
             AggregateId = result.ID_AGREGAT,
             DefinitionName = result.NOM_DEFINITION,
             DefinitionVersion = result.VERSION_DEFINITION,
@@ -304,7 +304,7 @@ public class OracleProcessRepository : IProcessRepository
             StartedAt = result.DATE_DEBUT,
             LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
             CompletedAt = result.DATE_COMPLETION,
-            CurrentNodeId = result.ID_NOEUD_COURANT,
+            CurrentNodeName = result.ID_NOEUD_COURANT,
             Status = (ProcessStatus)result.STATUT
         };
     }

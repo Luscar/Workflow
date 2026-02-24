@@ -315,7 +315,7 @@ public class ProcessMigrationRunnerTests
             DefinitionName = "TestProcess",
             DefinitionVersion = "1.0",
             Status = status,
-            CurrentNodeId = "Review"
+            CurrentNodeName = "Review"
         };
 
         var result = ProcessMigrationRunner.Migrate(instance, source, target, migration);
@@ -325,7 +325,7 @@ public class ProcessMigrationRunnerTests
         Assert.Equal("2.0", result.NewVersion);
         Assert.Equal("Review", result.PreviousNodeId);
         Assert.Equal("NewReview", result.NewNodeId);
-        Assert.Equal("NewReview", instance.CurrentNodeId);
+        Assert.Equal("NewReview", instance.CurrentNodeName);
         Assert.Equal("2.0", instance.DefinitionVersion);
     }
 
@@ -342,7 +342,7 @@ public class ProcessMigrationRunnerTests
         var instance = new ProcessInstance(1)
         {
             Status = status,
-            CurrentNodeId = "Review"
+            CurrentNodeName = "Review"
         };
 
         var result = ProcessMigrationRunner.Migrate(instance, source, target, migration);
@@ -352,7 +352,7 @@ public class ProcessMigrationRunnerTests
     }
 
     [Fact]
-    public void Migrate_NullCurrentNodeId_Fails()
+    public void Migrate_NullCurrentNodeName_Fails()
     {
         var source = CreateSourceDefinition();
         var target = CreateTargetDefinition();
@@ -361,7 +361,7 @@ public class ProcessMigrationRunnerTests
         var instance = new ProcessInstance(1)
         {
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = null
+            CurrentNodeName = null
         };
 
         var result = ProcessMigrationRunner.Migrate(instance, source, target, migration);
@@ -371,7 +371,7 @@ public class ProcessMigrationRunnerTests
     }
 
     [Fact]
-    public void Migrate_EmptyCurrentNodeId_Fails()
+    public void Migrate_EmptyCurrentNodeName_Fails()
     {
         var source = CreateSourceDefinition();
         var target = CreateTargetDefinition();
@@ -380,7 +380,7 @@ public class ProcessMigrationRunnerTests
         var instance = new ProcessInstance(1)
         {
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = ""
+            CurrentNodeName = ""
         };
 
         var result = ProcessMigrationRunner.Migrate(instance, source, target, migration);
@@ -399,7 +399,7 @@ public class ProcessMigrationRunnerTests
         var instance = new ProcessInstance(1)
         {
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = "NonExistentNode"
+            CurrentNodeName = "NonExistentNode"
         };
 
         var result = ProcessMigrationRunner.Migrate(instance, source, target, migration);
@@ -420,7 +420,7 @@ public class ProcessMigrationRunnerTests
         var instance = new ProcessInstance(1)
         {
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = "Review"
+            CurrentNodeName = "Review"
         };
 
         var result = ProcessMigrationRunner.Migrate(instance, source, target, migration);
@@ -444,7 +444,7 @@ public class ProcessMigrationRunnerTests
         var instance = new ProcessInstance(1)
         {
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = "SharedNode"
+            CurrentNodeName = "SharedNode"
         };
 
         var result = ProcessMigrationRunner.Migrate(instance, source, target, migration);
@@ -467,7 +467,7 @@ public class ProcessMigrationRunnerTests
         var instance = new ProcessInstance(1)
         {
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = "Review"
+            CurrentNodeName = "Review"
         };
         instance.Variables["oldStatus"] = "pending";
         instance.Variables["deprecated"] = "removeMe";
@@ -495,13 +495,13 @@ public class ProcessMigrationRunnerTests
         {
             DefinitionVersion = "1.0",
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = "Review"
+            CurrentNodeName = "Review"
         };
 
         ProcessMigrationRunner.Migrate(instance, source, target, migration);
 
         Assert.Equal("2.0", instance.DefinitionVersion);
-        Assert.Equal("NewReview", instance.CurrentNodeId);
+        Assert.Equal("NewReview", instance.CurrentNodeName);
     }
 
     [Fact]
@@ -516,7 +516,7 @@ public class ProcessMigrationRunnerTests
         {
             DefinitionVersion = "1.0",
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = "Review"
+            CurrentNodeName = "Review"
         };
 
         var result = ProcessMigrationRunner.Migrate(instance, source, target, migration);
@@ -536,7 +536,7 @@ public class ProcessMigrationRunnerTests
         {
             DefinitionVersion = null,
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = "Review"
+            CurrentNodeName = "Review"
         };
 
         var result = ProcessMigrationRunner.Migrate(instance, source, target, migration);

@@ -1,6 +1,6 @@
 namespace SimpleBPM;
 
-public class NodeExecutionHistory
+public class NodeInstance
 {
     public string NodeId { get; set; }
     public string NodeName { get; set; }
@@ -12,7 +12,7 @@ public class NodeExecutionHistory
     public string? ErrorMessage { get; set; }
     public string? NextNodeId { get; set; }
 
-    public NodeExecutionHistory(string nodeId, string nodeName, NodeType nodeType)
+    public NodeInstance(string nodeId, string nodeName, NodeType nodeType)
     {
         NodeId = nodeId;
         NodeName = nodeName;

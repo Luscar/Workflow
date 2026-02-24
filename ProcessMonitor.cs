@@ -39,7 +39,7 @@ public class ProcessMonitor : IProcessMonitor
         return Processus.FromInstance(instance);
     }
 
-    public async Task<List<NodeExecutionHistory>> GetExecutionHistoryAsync(long processId)
+    public async Task<List<NodeInstance>> GetExecutionHistoryAsync(long processId)
     {
         var instance = await _repository.GetProcessInstanceAsync(processId)
             ?? throw new InvalidOperationException($"Process '{processId}' not found");

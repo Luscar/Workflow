@@ -9,7 +9,7 @@ namespace SimpleBPM.ExampleClient;
 /// </summary>
 public class LoanTaskManager : IGestionTache
 {
-    public Task CreerTacheAsync(long processId, string? aggregateId, string definitionName, string nodeName)
+    public Task CreerTacheAsync(long processId, long? aggregateId, string definitionName, string nodeName)
     {
         Console.WriteLine($"  [TASK] Created task for process {processId}");
         Console.WriteLine($"         Definition: {definitionName}, Node: {nodeName}");
@@ -18,7 +18,7 @@ public class LoanTaskManager : IGestionTache
         return Task.CompletedTask;
     }
 
-    public Task FermerTacheAsync(long processId, string? aggregateId, string definitionName, string nodeName)
+    public Task FermerTacheAsync(long processId, long? aggregateId, string definitionName, string nodeName)
     {
         Console.WriteLine($"  [TASK] Closed task for process {processId}");
         Console.WriteLine($"         Definition: {definitionName}, Node: {nodeName}");

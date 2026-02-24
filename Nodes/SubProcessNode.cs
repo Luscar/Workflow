@@ -1,6 +1,6 @@
 namespace SimpleBPM.Nodes;
 
-public class SubProcessNode : ProcessNode
+public class SubProcessNode : NodeDefinition
 {
     public ProcessDefinition SubProcessDefinition { get; set; }
     public bool InheritAggregateId { get; set; } = true;

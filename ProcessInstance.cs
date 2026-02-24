@@ -4,8 +4,8 @@ public class ProcessInstance
 {
     public long ProcessId { get; set; }
     public long? ParentProcessId { get; set; }
-    public string? ParentNodeId { get; set; }
-    public string? AggregateId { get; set; }
+    public string? ParentNodeName { get; set; }
+    public long? AggregateId { get; set; }
     public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }
     public Dictionary<string, object> Variables { get; set; } = new();
@@ -13,14 +13,15 @@ public class ProcessInstance
     public DateTime StartedAt { get; set; }
     public DateTime? LastExecutedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
-    public string? CurrentNodeId { get; set; }
+    public string? CurrentNodeName { get; set; }
+    public long? CurrentNodeId { get; set; }
     public ProcessStatus Status { get; set; }
     public string? ErrorMessage { get; set; }
-    public List<NodeExecutionHistory> ExecutionHistory { get; set; } = new();
+    public List<NodeInstance> ExecutionHistory { get; set; } = new();
 
     internal SemaphoreSlim ExecutionLock { get; } = new(1, 1);
 
-    public ProcessInstance(long processId, string? aggregateId = null)
+    public ProcessInstance(long processId, long? aggregateId = null)
     {
         ProcessId = processId;
         AggregateId = aggregateId;

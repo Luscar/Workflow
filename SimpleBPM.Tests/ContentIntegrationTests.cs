@@ -20,10 +20,10 @@ public class ContentIntegrationTests
     {
         var handler = Substitute.For<INodeHandler>();
         handler.NodeType.Returns(NodeType.Business);
-        handler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        handler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 var inst = callInfo.ArgAt<ProcessInstance>(1);
                 onExecute?.Invoke(inst);
                 return Task.FromResult(new NodeExecutionResult
@@ -50,7 +50,7 @@ public class ContentIntegrationTests
         private long _sequence;
         private long _historySequence;
         private readonly Dictionary<long, ProcessInstance> _instances = new();
-        private readonly Dictionary<long, (NodeExecutionHistory History, long ProcessId)> _historyEntries = new();
+        private readonly Dictionary<long, (NodeInstance History, long ProcessId)> _historyEntries = new();
 
         public Task<long> ObtenirSequenceAsync(string nomSequence) =>
             Task.FromResult(Interlocked.Increment(ref _sequence));
@@ -87,14 +87,14 @@ public class ContentIntegrationTests
             return Task.FromResult(results);
         }
 
-        public Task<(NodeExecutionHistory History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId) =>
+        public Task<(NodeInstance History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId) =>
             Task.FromResult(_historyEntries.TryGetValue(historyId, out var entry)
                 ? (entry.History, entry.ProcessId)
-                : ((NodeExecutionHistory History, long ProcessId)?)null);
+                : ((NodeInstance History, long ProcessId)?)null);
 
-        public Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId) =>
+        public Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName) =>
             Task.FromResult(_instances.Values.FirstOrDefault(i =>
-                i.ParentProcessId == parentProcessId && i.ParentNodeId == parentNodeId));
+                i.ParentProcessId == parentProcessId && i.ParentNodeName == parentNodeName));
 
         public Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId) =>
             Task.FromResult(_instances.Values.Where(i => i.ParentProcessId == parentProcessId).ToList());
@@ -272,10 +272,10 @@ public class ContentIntegrationTests
         // Business handler that tracks node names
         var trackingHandler = Substitute.For<INodeHandler>();
         trackingHandler.NodeType.Returns(NodeType.Business);
-        trackingHandler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        trackingHandler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 executedNodes.Add(node.Name);
                 return Task.FromResult(new NodeExecutionResult
                 {
@@ -326,10 +326,10 @@ public class ContentIntegrationTests
         var executedNodes = new List<string>();
         var trackingHandler = Substitute.For<INodeHandler>();
         trackingHandler.NodeType.Returns(NodeType.Business);
-        trackingHandler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        trackingHandler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 executedNodes.Add(node.Name);
                 return Task.FromResult(new NodeExecutionResult
                 {
@@ -404,10 +404,10 @@ public class ContentIntegrationTests
         // SubProcess business handler that transforms variables
         var subBusinessHandler = Substitute.For<INodeHandler>();
         subBusinessHandler.NodeType.Returns(NodeType.Business);
-        subBusinessHandler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        subBusinessHandler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 var inst = callInfo.ArgAt<ProcessInstance>(1);
 
                 // Simulate business logic: calculate tax
@@ -484,10 +484,10 @@ public class ContentIntegrationTests
 
         var businessHandler = Substitute.For<INodeHandler>();
         businessHandler.NodeType.Returns(NodeType.Business);
-        businessHandler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        businessHandler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 var inst = callInfo.ArgAt<ProcessInstance>(1);
                 // Subprocess adds internal variables
                 inst.Variables["internalTemp"] = "should_not_leak";
@@ -788,10 +788,10 @@ public class ContentIntegrationTests
 
         var businessHandler = Substitute.For<INodeHandler>();
         businessHandler.NodeType.Returns(NodeType.Business);
-        businessHandler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        businessHandler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 var inst = callInfo.ArgAt<ProcessInstance>(1);
                 if (node.Name == "FinalProcess")
                 {
@@ -1061,10 +1061,10 @@ public class ContentIntegrationTests
         var capturedVariables = new Dictionary<string, object?>();
         var businessHandler = Substitute.For<INodeHandler>();
         businessHandler.NodeType.Returns(NodeType.Business);
-        businessHandler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        businessHandler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 var inst = callInfo.ArgAt<ProcessInstance>(1);
                 foreach (var kvp in inst.Variables)
                     capturedVariables[kvp.Key] = kvp.Value;

@@ -24,10 +24,10 @@ public class FlowEngineTests
     {
         var handler = Substitute.For<INodeHandler>();
         handler.NodeType.Returns(NodeType.Business);
-        handler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        handler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 return Task.FromResult(new NodeExecutionResult
                 {
                     IsCompleted = true,
@@ -49,7 +49,7 @@ public class FlowEngineTests
         var result = await engine.ExecuteAsync(instance);
 
         Assert.Equal(ProcessStatus.Completed, result.Status);
-        Assert.Null(result.CurrentNodeId);
+        Assert.Null(result.CurrentNodeName);
         Assert.NotNull(result.CompletedAt);
         Assert.Equal(2, result.ExecutionHistory.Count);
     }
@@ -110,7 +110,7 @@ public class FlowEngineTests
 
         var handler = Substitute.For<INodeHandler>();
         handler.NodeType.Returns(NodeType.Business);
-        handler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        handler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(Task.FromResult(new NodeExecutionResult
             {
                 IsCompleted = false,
@@ -142,7 +142,7 @@ public class FlowEngineTests
         var result = await engine.ExecuteAsync(instance);
 
         Assert.Equal(ProcessStatus.WaitingInteraction, result.Status);
-        Assert.Equal("Final", result.CurrentNodeId);
+        Assert.Equal("Final", result.CurrentNodeName);
     }
 
     [Fact]
@@ -366,9 +366,9 @@ public class FlowEngineTests
     public void GetLatestDefinition_ReturnsHighestVersion()
     {
         var def1 = new ProcessDefinition("MyProcess", "1.0");
-        def1.AddNode(new ProcessNode(NodeType.Business) { Name = "n1" });
+        def1.AddNode(new NodeDefinition(NodeType.Business) { Name = "n1" });
         var def2 = new ProcessDefinition("MyProcess", "2.0");
-        def2.AddNode(new ProcessNode(NodeType.Business) { Name = "n1" });
+        def2.AddNode(new NodeDefinition(NodeType.Business) { Name = "n1" });
 
         var handler = CreateSuccessfulBusinessHandler();
         var engine = new FlowEngine(new[] { def1, def2 }, handlers: new[] { handler });
@@ -382,9 +382,9 @@ public class FlowEngineTests
     public void GetDefinition_ReturnsSpecificVersion()
     {
         var def1 = new ProcessDefinition("MyProcess", "1.0");
-        def1.AddNode(new ProcessNode(NodeType.Business) { Name = "n1" });
+        def1.AddNode(new NodeDefinition(NodeType.Business) { Name = "n1" });
         var def2 = new ProcessDefinition("MyProcess", "2.0");
-        def2.AddNode(new ProcessNode(NodeType.Business) { Name = "n1" });
+        def2.AddNode(new NodeDefinition(NodeType.Business) { Name = "n1" });
 
         var handler = CreateSuccessfulBusinessHandler();
         var engine = new FlowEngine(new[] { def1, def2 }, handlers: new[] { handler });
@@ -398,7 +398,7 @@ public class FlowEngineTests
     public void GetDefinition_NotFound_Throws()
     {
         var def = new ProcessDefinition("Test", "1.0");
-        def.AddNode(new ProcessNode(NodeType.Business) { Name = "n1" });
+        def.AddNode(new NodeDefinition(NodeType.Business) { Name = "n1" });
         var engine = new FlowEngine(new[] { def });
 
         Assert.Throws<InvalidOperationException>(() => engine.GetDefinition("Unknown", "1.0"));

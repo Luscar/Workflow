@@ -20,7 +20,7 @@ public class CommandHandlerExecutor : ICommandExecutor
         _queryHandlers = queryHandlers.ToDictionary(h => h.QueryName);
     }
 
-    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId,
+    public Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
         if (!_commandHandlers.TryGetValue(commandName, out var handler))
@@ -30,7 +30,7 @@ public class CommandHandlerExecutor : ICommandExecutor
         return handler.HandleAsync(processId, aggregateId, parameters);
     }
 
-    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId,
+    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
         if (!_queryHandlers.TryGetValue(decisionName, out var handler))

@@ -6,7 +6,7 @@ public class VerifyIdentityHandler : ICommandHandler
 {
     public string CommandName => "VerifyIdentity";
 
-    public Task HandleAsync(long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public Task HandleAsync(long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"  [{processId}] Verifying applicant identity documents");
         return Task.CompletedTask;

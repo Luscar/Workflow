@@ -16,7 +16,7 @@ public class SubProcessNodeHandler : INodeHandler
         _handlers = handlers;
     }
 
-    public async Task<NodeExecutionResult> HandleAsync(ProcessNode node, ProcessInstance instance)
+    public async Task<NodeExecutionResult> HandleAsync(NodeDefinition node, ProcessInstance instance)
     {
         var subNode = (SubProcessNode)node;
 
@@ -42,7 +42,7 @@ public class SubProcessNodeHandler : INodeHandler
                 )
                 {
                     ParentProcessId = instance.ProcessId,
-                    ParentNodeId = node.Name
+                    ParentNodeName = node.Name
                 };
 
                 // Copier les variables d'entrée via le mapping explicite
@@ -74,7 +74,7 @@ public class SubProcessNodeHandler : INodeHandler
                 return new NodeExecutionResult
                 {
                     IsCompleted = false,
-                    ErrorMessage = $"Sub-process failed at node {subInstance.CurrentNodeId}"
+                    ErrorMessage = $"Sub-process failed at node {subInstance.CurrentNodeName}"
                 };
             }
 

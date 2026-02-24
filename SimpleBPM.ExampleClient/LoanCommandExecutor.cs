@@ -8,7 +8,7 @@ namespace SimpleBPM.ExampleClient;
 /// </summary>
 public class LoanCommandExecutor : ICommandExecutor
 {
-    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId,
+    public Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
         switch (commandName)
@@ -63,7 +63,7 @@ public class LoanCommandExecutor : ICommandExecutor
         return Task.CompletedTask;
     }
 
-    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId,
+    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
         switch (decisionName)

@@ -2,13 +2,13 @@ using SimpleBPM;
 
 namespace SimpleBPM.Tests;
 
-public class NodeExecutionHistoryTests
+public class NodeInstanceTests
 {
     [Fact]
     public void Constructor_SetsInitialValues()
     {
         var before = DateTime.UtcNow;
-        var history = new NodeExecutionHistory("step1", "Étape 1", NodeType.Business);
+        var history = new NodeInstance("step1", "Étape 1", NodeType.Business);
         var after = DateTime.UtcNow;
 
         Assert.Equal("step1", history.NodeId);
@@ -20,7 +20,7 @@ public class NodeExecutionHistoryTests
     [Fact]
     public void Complete_Success_SetsProperties()
     {
-        var history = new NodeExecutionHistory("step1", "Step 1", NodeType.Business);
+        var history = new NodeInstance("step1", "Step 1", NodeType.Business);
         history.Complete(true, null, "step2");
 
         Assert.True(history.Success);
@@ -32,7 +32,7 @@ public class NodeExecutionHistoryTests
     [Fact]
     public void Complete_Failure_SetsErrorMessage()
     {
-        var history = new NodeExecutionHistory("step1", "Step 1", NodeType.Business);
+        var history = new NodeInstance("step1", "Step 1", NodeType.Business);
         history.Complete(false, "Something went wrong");
 
         Assert.False(history.Success);
@@ -42,7 +42,7 @@ public class NodeExecutionHistoryTests
     [Fact]
     public void Duration_ReturnsTimeBetweenStartAndComplete()
     {
-        var history = new NodeExecutionHistory("step1", "Step 1", NodeType.Business);
+        var history = new NodeInstance("step1", "Step 1", NodeType.Business);
         history.Complete(true);
 
         Assert.True(history.Duration >= TimeSpan.Zero);

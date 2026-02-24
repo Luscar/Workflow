@@ -4,7 +4,7 @@ public class ProcessDefinition
 {
     public string Name { get; set; }
     public string Version { get; set; }
-    public Dictionary<string, ProcessNode> Nodes { get; set; } = new();
+    public Dictionary<string, NodeDefinition> Nodes { get; set; } = new();
     public string StartNodeId { get; set; }
 
     public ProcessDefinition(string name, string version = "1.0")
@@ -13,7 +13,7 @@ public class ProcessDefinition
         Version = version;
     }
 
-    public ProcessDefinition AddNode(ProcessNode node)
+    public ProcessDefinition AddNode(NodeDefinition node)
     {
         Nodes[node.Name] = node;
 
@@ -36,7 +36,7 @@ public class ProcessDefinition
         return this;
     }
 
-    public ProcessNode? GetNode(string nodeName)
+    public NodeDefinition? GetNode(string nodeName)
     {
         return Nodes.TryGetValue(nodeName, out var node) ? node : null;
     }

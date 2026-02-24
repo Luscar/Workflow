@@ -121,7 +121,7 @@ var instance = new ProcessInstance(789, "aggregate-123");
 instance = await engine.ExecuteAsync(instance);
 
 Console.WriteLine($"Statut: {instance.Status}");
-Console.WriteLine($"Nœud courant: {instance.CurrentNodeId}");
+Console.WriteLine($"Nœud courant: {instance.CurrentNodeName}");
 Console.WriteLine($"Étapes exécutées: {instance.ExecutionHistory.Count}");
 
 foreach (var history in instance.ExecutionHistory)
@@ -150,13 +150,13 @@ Console.WriteLine($"Nombre de nœuds: {processWithSubProcess.Nodes.Count}");
 
 public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"    Exécution: {commandName}");
         return Task.CompletedTask;
     }
 
-    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"    Décision: {decisionName} -> approved");
         return Task.FromResult("approved");

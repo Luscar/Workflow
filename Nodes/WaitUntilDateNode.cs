@@ -1,6 +1,6 @@
 namespace SimpleBPM.Nodes;
 
-public class WaitUntilDateNode : ProcessNode
+public class WaitUntilDateNode : NodeDefinition
 {
     public DateTime? TargetDate { get; set; }
     public Func<ProcessInstance, DateTime>? DateProvider { get; set; }

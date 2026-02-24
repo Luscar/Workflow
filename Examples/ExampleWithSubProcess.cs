@@ -79,7 +79,7 @@ Console.WriteLine("=== Démarrage du processus principal ===");
 instance = await engine.ExecuteAsync(instance);
 
 Console.WriteLine($"Statut: {instance.Status}");
-Console.WriteLine($"Nœud courant: {instance.CurrentNodeId}");
+Console.WriteLine($"Nœud courant: {instance.CurrentNodeName}");
 Console.WriteLine($"Nombre d'étapes exécutées: {instance.ExecutionHistory.Count}");
 
 // Afficher l'historique
@@ -119,13 +119,13 @@ if (instance.CompletedAt.HasValue)
 
 public class SampleExecutor : ICommandExecutor
 {
-    public async Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public async Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         await Task.Delay(Random.Shared.Next(50, 150));
         Console.WriteLine($"  Exécution: {commandName}");
     }
 
-    public async Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public async Task<string> EvaluateDecisionAsync(string decisionName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         await Task.Delay(Random.Shared.Next(50, 100));
         Console.WriteLine($"  Décision: {decisionName}");

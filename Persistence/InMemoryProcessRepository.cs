@@ -5,7 +5,7 @@ namespace SimpleBPM.Persistence;
 public class InMemoryProcessRepository : IProcessRepository
 {
     private readonly ConcurrentDictionary<long, ProcessInstance> _processes = new();
-    private readonly ConcurrentDictionary<long, (NodeExecutionHistory History, long ProcessId)> _nodeHistories = new();
+    private readonly ConcurrentDictionary<long, (NodeInstance History, long ProcessId)> _nodeHistories = new();
     private long _sequence;
     private long _historySequence;
 
@@ -49,17 +49,17 @@ public class InMemoryProcessRepository : IProcessRepository
         return Task.FromResult(results);
     }
 
-    public Task<(NodeExecutionHistory History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId)
+    public Task<(NodeInstance History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId)
     {
         if (_nodeHistories.TryGetValue(historyId, out var result))
-            return Task.FromResult<(NodeExecutionHistory, long)?>(result);
-        return Task.FromResult<(NodeExecutionHistory, long)?>(null);
+            return Task.FromResult<(NodeInstance, long)?>(result);
+        return Task.FromResult<(NodeInstance, long)?>(null);
     }
 
-    public Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId)
+    public Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName)
     {
         var child = _processes.Values
-            .FirstOrDefault(p => p.ParentProcessId == parentProcessId && p.ParentNodeId == parentNodeId);
+            .FirstOrDefault(p => p.ParentProcessId == parentProcessId && p.ParentNodeName == parentNodeName);
         return Task.FromResult(child);
     }
 
@@ -76,7 +76,7 @@ public class InMemoryProcessRepository : IProcessRepository
 
     private void SyncNodeHistories(ProcessInstance instance)
     {
-        var tracked = new HashSet<NodeExecutionHistory>(
+        var tracked = new HashSet<NodeInstance>(
             _nodeHistories.Values
                 .Where(v => v.ProcessId == instance.ProcessId)
                 .Select(v => v.History));

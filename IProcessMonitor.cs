@@ -28,7 +28,7 @@ public interface IProcessMonitor
     /// <summary>
     /// Returns the execution history for a process instance.
     /// </summary>
-    Task<List<NodeExecutionHistory>> GetExecutionHistoryAsync(long processId);
+    Task<List<NodeInstance>> GetExecutionHistoryAsync(long processId);
 
     /// <summary>
     /// Returns count of instances grouped by status.
