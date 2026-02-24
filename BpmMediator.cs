@@ -3,16 +3,16 @@ using SimpleBPM.Abstractions;
 namespace SimpleBPM;
 
 /// <summary>
-/// Implementation of <see cref="ICommandExecutor"/> that dispatches to individual
+/// Implementation of <see cref="IBpmMediator"/> that dispatches to individual
 /// <see cref="ICommandHandler"/> and <see cref="IQueryHandler"/> instances
 /// resolved from the DI container.
 /// </summary>
-public class CommandHandlerExecutor : ICommandExecutor
+public class BpmMediator : IBpmMediator
 {
     private readonly Dictionary<string, ICommandHandler> _commandHandlers;
     private readonly Dictionary<string, IQueryHandler> _queryHandlers;
 
-    public CommandHandlerExecutor(
+    public BpmMediator(
         IEnumerable<ICommandHandler> commandHandlers,
         IEnumerable<IQueryHandler> queryHandlers)
     {
