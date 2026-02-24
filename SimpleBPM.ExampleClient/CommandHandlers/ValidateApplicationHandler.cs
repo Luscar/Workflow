@@ -6,7 +6,7 @@ public class ValidateApplicationHandler : ICommandHandler
 {
     public string CommandName => "ValidateApplication";
 
-    public Task HandleAsync(long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public Task HandleAsync(long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"  [{processId}] Validating loan application for aggregate '{aggregateId}'");
         if (parameters != null)

@@ -11,7 +11,7 @@ public enum NodeType
     End
 }
 
-public class ProcessNode
+public class NodeDefinition
 {
     public string Name { get; set; }
     public string DisplayName { get; set; }
@@ -20,7 +20,7 @@ public class ProcessNode
     public Dictionary<string, object> Parameters { get; set; } = new();
     public string? OnEnterCommandName { get; set; }
 
-    public ProcessNode(NodeType type)
+    public NodeDefinition(NodeType type)
     {
         Type = type;
     }

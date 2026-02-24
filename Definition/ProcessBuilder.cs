@@ -5,9 +5,9 @@ namespace SimpleBPM.Definition;
 public class ProcessBuilder
 {
     private readonly ProcessDefinition _definition;
-    private readonly Dictionary<string, ProcessNode> _nodesByName = new();
-    private ProcessNode? _lastNode;
-    private ProcessNode? _startNode;
+    private readonly Dictionary<string, NodeDefinition> _nodesByName = new();
+    private NodeDefinition? _lastNode;
+    private NodeDefinition? _startNode;
 
     private ProcessBuilder(string processName, string version = "1.0")
     {
@@ -224,7 +224,7 @@ public class ProcessBuilder
         return _definition;
     }
 
-    private ProcessBuilder AddNode(string name, ProcessNode node)
+    private ProcessBuilder AddNode(string name, NodeDefinition node)
     {
         _nodesByName[name] = node;
 

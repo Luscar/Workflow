@@ -14,12 +14,12 @@ public class WaitForSignalNodeHandler : INodeHandler
         _executor = executor;
     }
 
-    public async Task<NodeExecutionResult> HandleAsync(ProcessNode node, ProcessInstance instance)
+    public async Task<NodeExecutionResult> HandleAsync(NodeDefinition node, ProcessInstance instance)
     {
         var signalNode = (WaitForSignalNode)node;
 
         instance.Status = ProcessStatus.WaitingSignal;
-        instance.CurrentNodeId = node.Name;
+        instance.CurrentNodeName = node.Name;
         instance.InternalState["WaitingForSignal"] = signalNode.SignalName;
 
         if (_executor != null && !string.IsNullOrEmpty(node.OnEnterCommandName))

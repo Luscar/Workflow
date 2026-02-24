@@ -14,7 +14,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
         _executor = executor;
     }
 
-    public async Task<NodeExecutionResult> HandleAsync(ProcessNode node, ProcessInstance instance)
+    public async Task<NodeExecutionResult> HandleAsync(NodeDefinition node, ProcessInstance instance)
     {
         var waitNode = (WaitUntilDateNode)node;
 
@@ -51,7 +51,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
         }
 
         instance.Status = ProcessStatus.WaitingDate;
-        instance.CurrentNodeId = node.Name;
+        instance.CurrentNodeName = node.Name;
         instance.InternalState["WaitUntilDate"] = targetDate.Value;
 
         if (_executor != null && !string.IsNullOrEmpty(node.OnEnterCommandName))

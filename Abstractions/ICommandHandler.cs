@@ -9,5 +9,5 @@ namespace SimpleBPM.Abstractions;
 public interface ICommandHandler
 {
     string CommandName { get; }
-    Task HandleAsync(long processId, string? aggregateId, Dictionary<string, object>? parameters = null);
+    Task HandleAsync(long processId, long? aggregateId, Dictionary<string, object>? parameters = null);
 }

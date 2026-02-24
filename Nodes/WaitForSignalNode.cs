@@ -1,6 +1,6 @@
 namespace SimpleBPM.Nodes;
 
-public class WaitForSignalNode : ProcessNode
+public class WaitForSignalNode : NodeDefinition
 {
     public string SignalName { get; set; }
 

@@ -9,5 +9,5 @@ namespace SimpleBPM.Abstractions;
 public interface IQueryHandler
 {
     string QueryName { get; }
-    Task<string> HandleAsync(long processId, string? aggregateId, Dictionary<string, object>? parameters = null);
+    Task<string> HandleAsync(long processId, long? aggregateId, Dictionary<string, object>? parameters = null);
 }

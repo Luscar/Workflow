@@ -6,13 +6,13 @@ using SimpleBPM.Handlers;
 // Exemple d'implémentation d'un exécuteur
 public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"Executing Command: {commandName} for Process: {processId}, Aggregate: {aggregateId}");
         return Task.CompletedTask;
     }
 
-    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"Executing Decision: {decisionName} for Process: {processId}, Aggregate: {aggregateId}");
         // Retourne une condition (ex: "approved", "rejected", etc.)
@@ -66,12 +66,12 @@ var instance = new ProcessInstance(123, "aggregate-456");
 
 // Première exécution - s'arrêtera au premier nœud d'attente/interactif
 instance = await engine.ExecuteAsync(instance);
-Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeName}");
 
 // Simuler la réception d'un signal
 instance = await engine.SignalAsync(instance, "PaymentReceived");
-Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeName}");
 
 // Continuer après interaction utilisateur
 instance = await engine.ContinueAsync(instance);
-Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeName}");

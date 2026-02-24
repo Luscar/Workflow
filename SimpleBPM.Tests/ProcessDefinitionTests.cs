@@ -25,7 +25,7 @@ public class ProcessDefinitionTests
     public void AddNode_AddsNodeToDefinition()
     {
         var def = new ProcessDefinition("Test");
-        var node = new ProcessNode(NodeType.Business) { Name = "step1" };
+        var node = new NodeDefinition(NodeType.Business) { Name = "step1" };
 
         def.AddNode(node);
 
@@ -37,7 +37,7 @@ public class ProcessDefinitionTests
     public void AddNode_FirstNode_BecomesStartNode()
     {
         var def = new ProcessDefinition("Test");
-        var node = new ProcessNode(NodeType.Business) { Name = "first" };
+        var node = new NodeDefinition(NodeType.Business) { Name = "first" };
 
         def.AddNode(node);
 
@@ -48,7 +48,7 @@ public class ProcessDefinitionTests
     public void AddNode_ReturnsSelf_ForChaining()
     {
         var def = new ProcessDefinition("Test");
-        var node = new ProcessNode(NodeType.Business) { Name = "step1" };
+        var node = new NodeDefinition(NodeType.Business) { Name = "step1" };
 
         var result = def.AddNode(node);
 
@@ -59,8 +59,8 @@ public class ProcessDefinitionTests
     public void SetStartNode_ChangesStartNodeId()
     {
         var def = new ProcessDefinition("Test");
-        def.AddNode(new ProcessNode(NodeType.Business) { Name = "step1" });
-        def.AddNode(new ProcessNode(NodeType.Business) { Name = "step2" });
+        def.AddNode(new NodeDefinition(NodeType.Business) { Name = "step1" });
+        def.AddNode(new NodeDefinition(NodeType.Business) { Name = "step2" });
 
         def.SetStartNode("step2");
 
@@ -71,7 +71,7 @@ public class ProcessDefinitionTests
     public void SetStartNode_ThrowsForNonExistentNode()
     {
         var def = new ProcessDefinition("Test");
-        def.AddNode(new ProcessNode(NodeType.Business) { Name = "step1" });
+        def.AddNode(new NodeDefinition(NodeType.Business) { Name = "step1" });
 
         Assert.Throws<ArgumentException>(() => def.SetStartNode("nonexistent"));
     }
@@ -80,7 +80,7 @@ public class ProcessDefinitionTests
     public void GetNode_ReturnsExistingNode()
     {
         var def = new ProcessDefinition("Test");
-        var node = new ProcessNode(NodeType.Business) { Name = "step1" };
+        var node = new NodeDefinition(NodeType.Business) { Name = "step1" };
         def.AddNode(node);
 
         var result = def.GetNode("step1");
@@ -103,9 +103,9 @@ public class ProcessDefinitionTests
     public void AddNode_MultipleNodes()
     {
         var def = new ProcessDefinition("Test");
-        def.AddNode(new ProcessNode(NodeType.Business) { Name = "step1" });
-        def.AddNode(new ProcessNode(NodeType.Interactive) { Name = "step2" });
-        def.AddNode(new ProcessNode(NodeType.Decision) { Name = "step3" });
+        def.AddNode(new NodeDefinition(NodeType.Business) { Name = "step1" });
+        def.AddNode(new NodeDefinition(NodeType.Interactive) { Name = "step2" });
+        def.AddNode(new NodeDefinition(NodeType.Decision) { Name = "step3" });
 
         Assert.Equal(3, def.Nodes.Count);
     }

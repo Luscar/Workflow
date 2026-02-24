@@ -1,6 +1,6 @@
 namespace SimpleBPM.Nodes;
 
-public class InteractiveNode : ProcessNode
+public class InteractiveNode : NodeDefinition
 {
     public InteractiveNode() : base(NodeType.Interactive)
     {

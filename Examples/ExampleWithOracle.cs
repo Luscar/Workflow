@@ -65,7 +65,7 @@ var engine = new FlowEngine(new[] { processDefinition }, repository, handlers);
 // Démarrer un nouveau processus
 var instance = new ProcessInstance(123, "aggregate-456");
 instance = await engine.ExecuteAsync(instance);
-Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeName}");
 // L'instance est automatiquement sauvegardée dans Oracle avec le préfixe ABC_PROCESS_CONTEXT
 
 // Historique d'exécution détaillé
@@ -133,13 +133,13 @@ if (loadedInstance != null)
 // Exemple d'implémentation d'un exécuteur
 public class SampleExecutor : ICommandExecutor
 {
-    public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"Executing Command: {commandName}");
         return Task.CompletedTask;
     }
 
-    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public Task<string> EvaluateDecisionAsync(string decisionName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"Executing Decision: {decisionName}");
         return Task.FromResult("approved");

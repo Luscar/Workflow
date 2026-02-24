@@ -6,7 +6,7 @@ public class CreditDecisionHandler : IQueryHandler
 {
     public string QueryName => "CreditDecision";
 
-    public Task<string> HandleAsync(long processId, string? aggregateId, Dictionary<string, object>? parameters = null)
+    public Task<string> HandleAsync(long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
         Console.WriteLine($"  [{processId}] Evaluating credit decision...");
         var result = "approved"; // In reality, would check credit score from parameters/variables

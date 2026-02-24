@@ -15,10 +15,10 @@ public class InteractiveNodeHandler : INodeHandler
         _executor = executor;
     }
 
-    public async Task<NodeExecutionResult> HandleAsync(ProcessNode node, ProcessInstance instance)
+    public async Task<NodeExecutionResult> HandleAsync(NodeDefinition node, ProcessInstance instance)
     {
         instance.Status = ProcessStatus.WaitingInteraction;
-        instance.CurrentNodeId = node.Name;
+        instance.CurrentNodeName = node.Name;
 
         if (_gestionTache != null)
         {
@@ -51,7 +51,7 @@ public class InteractiveNodeHandler : INodeHandler
         };
     }
 
-    public async Task OnLeaveAsync(ProcessNode node, ProcessInstance instance)
+    public async Task OnLeaveAsync(NodeDefinition node, ProcessInstance instance)
     {
         if (_gestionTache != null)
         {

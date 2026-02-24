@@ -3,12 +3,12 @@ using SimpleBPM.Nodes;
 
 namespace SimpleBPM.Tests;
 
-public class ProcessNodeTests
+public class NodeDefinitionTests
 {
     [Fact]
-    public void ProcessNode_Constructor_SetsNodeType()
+    public void NodeDefinition_Constructor_SetsNodeType()
     {
-        var node = new ProcessNode(NodeType.Business);
+        var node = new NodeDefinition(NodeType.Business);
 
         Assert.Equal(NodeType.Business, node.Type);
     }
@@ -20,32 +20,32 @@ public class ProcessNodeTests
     [InlineData(NodeType.WaitUntilDate)]
     [InlineData(NodeType.WaitForSignal)]
     [InlineData(NodeType.SubProcess)]
-    public void ProcessNode_Constructor_SupportsAllNodeTypes(NodeType type)
+    public void NodeDefinition_Constructor_SupportsAllNodeTypes(NodeType type)
     {
-        var node = new ProcessNode(type);
+        var node = new NodeDefinition(type);
         Assert.Equal(type, node.Type);
     }
 
     [Fact]
-    public void ProcessNode_NextNodeIds_InitializedEmpty()
+    public void NodeDefinition_NextNodeIds_InitializedEmpty()
     {
-        var node = new ProcessNode(NodeType.Business);
+        var node = new NodeDefinition(NodeType.Business);
         Assert.NotNull(node.NextNodeIds);
         Assert.Empty(node.NextNodeIds);
     }
 
     [Fact]
-    public void ProcessNode_Parameters_InitializedEmpty()
+    public void NodeDefinition_Parameters_InitializedEmpty()
     {
-        var node = new ProcessNode(NodeType.Business);
+        var node = new NodeDefinition(NodeType.Business);
         Assert.NotNull(node.Parameters);
         Assert.Empty(node.Parameters);
     }
 
     [Fact]
-    public void ProcessNode_CanSetProperties()
+    public void NodeDefinition_CanSetProperties()
     {
-        var node = new ProcessNode(NodeType.Interactive)
+        var node = new NodeDefinition(NodeType.Interactive)
         {
             Name = "step1",
             DisplayName = "Étape 1"

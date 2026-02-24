@@ -105,7 +105,7 @@ public static class ProcessJsonLoader
         return definition;
     }
 
-    private static ProcessNode CreateNode(NodeJsonDefinition nodeDef)
+    private static NodeDefinition CreateNode(NodeJsonDefinition nodeDef)
     {
         var node = nodeDef.Type switch
         {
@@ -113,7 +113,7 @@ public static class ProcessJsonLoader
             {
                 Name = nodeDef.Name,
                 DisplayName = nodeDef.DisplayName ?? nodeDef.Name
-            } as ProcessNode,
+            } as NodeDefinition,
             NodeType.Decision => new DecisionNode(nodeDef.Query ?? nodeDef.Name)
             {
                 Name = nodeDef.Name,
@@ -154,7 +154,7 @@ public static class ProcessJsonLoader
         return node;
     }
 
-    private static ProcessNode CreateSubProcessNode(NodeJsonDefinition nodeDef)
+    private static NodeDefinition CreateSubProcessNode(NodeJsonDefinition nodeDef)
     {
         if (nodeDef.SubProcess == null)
             throw new InvalidOperationException($"SubProcess node '{nodeDef.Name}' requires a 'subProcess' definition");

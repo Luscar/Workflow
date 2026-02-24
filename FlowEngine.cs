@@ -101,7 +101,7 @@ public class FlowEngine
             await _repository.SaveProcessInstanceAsync(instance);
         }
 
-        var currentNodeId = instance.CurrentNodeId ?? definition.StartNodeId;
+        var currentNodeId = instance.CurrentNodeName ?? definition.StartNodeId;
 
         while (!string.IsNullOrEmpty(currentNodeId))
         {
@@ -124,7 +124,7 @@ public class FlowEngine
             }
 
             // Créer l'entrée d'historique
-            var historyEntry = new NodeExecutionHistory(node.Name, node.DisplayName, node.Type);
+            var historyEntry = new NodeInstance(node.Name, node.DisplayName, node.Type);
 
             var result = await handler.HandleAsync(node, instance);
 
@@ -142,7 +142,7 @@ public class FlowEngine
 
             if (result.RequiresStop)
             {
-                instance.CurrentNodeId = result.NextNodeId;
+                instance.CurrentNodeName = result.NextNodeId;
                 await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
@@ -151,7 +151,7 @@ public class FlowEngine
         }
 
         instance.Status = ProcessStatus.Completed;
-        instance.CurrentNodeId = null;
+        instance.CurrentNodeName = null;
         instance.CompletedAt = DateTime.UtcNow;
         await _repository.UpdateProcessInstanceAsync(instance);
         return instance;
@@ -165,7 +165,7 @@ public class FlowEngine
                 $"Cannot continue process '{instance.ProcessId}': status is '{instance.Status}'");
         }
 
-        if (string.IsNullOrEmpty(instance.CurrentNodeId))
+        if (string.IsNullOrEmpty(instance.CurrentNodeName))
         {
             instance.Status = ProcessStatus.Failed;
             instance.ErrorMessage = "Cannot continue: no current node set on the instance";
@@ -174,7 +174,7 @@ public class FlowEngine
         }
 
         var definition = ResolveDefinition(instance);
-        var currentNode = definition.GetNode(instance.CurrentNodeId);
+        var currentNode = definition.GetNode(instance.CurrentNodeName);
 
         // Notify handler that we are leaving this node
         if (currentNode != null && _handlers.TryGetValue(currentNode.Type, out var currentHandler))
@@ -187,14 +187,14 @@ public class FlowEngine
         if (currentNode == null || currentNode.NextNodeIds.Count == 0)
         {
             instance.Status = ProcessStatus.Completed;
-            instance.CurrentNodeId = null;
+            instance.CurrentNodeName = null;
             instance.CompletedAt = DateTime.UtcNow;
             await _repository.UpdateProcessInstanceAsync(instance);
             return instance;
         }
 
         var nextNodeId = currentNode.NextNodeIds.FirstOrDefault();
-        instance.CurrentNodeId = nextNodeId;
+        instance.CurrentNodeName = nextNodeId;
 
         return await ExecuteInternalAsync(instance);
     }

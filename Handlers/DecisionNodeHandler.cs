@@ -16,7 +16,7 @@ public class DecisionNodeHandler : INodeHandler
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
 
-    public async Task<NodeExecutionResult> HandleAsync(ProcessNode node, ProcessInstance instance)
+    public async Task<NodeExecutionResult> HandleAsync(NodeDefinition node, ProcessInstance instance)
     {
         var decisionNode = (DecisionNode)node;
 

@@ -34,7 +34,7 @@ public class BusinessNodeHandlerTests
 
         var node = new BusinessNode("ProcessPayment") { Name = "pay", DisplayName = "Pay" };
         node.Parameters["amount"] = 100.0;
-        var instance = new ProcessInstance(1, "AGG-1");
+        var instance = new ProcessInstance(1, 1L);
 
         await handler.HandleAsync(node, instance);
 
@@ -206,7 +206,7 @@ public class InteractiveNodeHandlerTests
         Assert.True(result.RequiresStop);
         Assert.Equal("next", result.NextNodeId);
         Assert.Equal(ProcessStatus.WaitingInteraction, instance.Status);
-        Assert.Equal("review", instance.CurrentNodeId);
+        Assert.Equal("review", instance.CurrentNodeName);
     }
 
     [Fact]
@@ -215,11 +215,11 @@ public class InteractiveNodeHandlerTests
         var gestionTache = Substitute.For<IGestionTache>();
         var handler = new InteractiveNodeHandler(gestionTache);
         var node = new InteractiveNode { Name = "review", DisplayName = "Review" };
-        var instance = new ProcessInstance(1, "AGG-1") { DefinitionName = "Process1" };
+        var instance = new ProcessInstance(1, 1L) { DefinitionName = "Process1" };
 
         await handler.HandleAsync(node, instance);
 
-        await gestionTache.Received(1).CreerTacheAsync(1, "AGG-1", "Process1", "Review");
+        await gestionTache.Received(1).CreerTacheAsync(1, 1L, "Process1", "Review");
     }
 
     [Fact]
@@ -228,11 +228,11 @@ public class InteractiveNodeHandlerTests
         var gestionTache = Substitute.For<IGestionTache>();
         var handler = new InteractiveNodeHandler(gestionTache);
         var node = new InteractiveNode { Name = "review", DisplayName = "Review" };
-        var instance = new ProcessInstance(1, "AGG-1") { DefinitionName = "Process1" };
+        var instance = new ProcessInstance(1, 1L) { DefinitionName = "Process1" };
 
         await handler.OnLeaveAsync(node, instance);
 
-        await gestionTache.Received(1).FermerTacheAsync(1, "AGG-1", "Process1", "Review");
+        await gestionTache.Received(1).FermerTacheAsync(1, 1L, "Process1", "Review");
     }
 
     [Fact]
@@ -248,13 +248,13 @@ public class InteractiveNodeHandlerTests
         var executor = Substitute.For<ICommandExecutor>();
         var handler = new InteractiveNodeHandler(executor: executor);
         var node = new InteractiveNode { Name = "review", DisplayName = "Review", OnEnterCommandName = "NotifyReviewPending" };
-        var instance = new ProcessInstance(1, "AGG-1");
+        var instance = new ProcessInstance(1, 1L);
 
         var result = await handler.HandleAsync(node, instance);
 
         Assert.True(result.IsCompleted);
         Assert.True(result.RequiresStop);
-        await executor.Received(1).ExecuteCommandAsync("NotifyReviewPending", 1, "AGG-1", null);
+        await executor.Received(1).ExecuteCommandAsync("NotifyReviewPending", 1, 1L, null);
     }
 
     [Fact]
@@ -328,13 +328,13 @@ public class WaitForSignalNodeHandlerTests
             DisplayName = "Wait Approval",
             OnEnterCommandName = "NotifyAwaitingApproval"
         };
-        var instance = new ProcessInstance(1, "AGG-1");
+        var instance = new ProcessInstance(1, 1L);
 
         var result = await handler.HandleAsync(node, instance);
 
         Assert.True(result.IsCompleted);
         Assert.True(result.RequiresStop);
-        await executor.Received(1).ExecuteCommandAsync("NotifyAwaitingApproval", 1, "AGG-1", null);
+        await executor.Received(1).ExecuteCommandAsync("NotifyAwaitingApproval", 1, 1L, null);
     }
 
     [Fact]
@@ -472,13 +472,13 @@ public class WaitUntilDateNodeHandlerTests
             OnEnterCommandName = "NotifyWaiting"
         };
         node.NextNodeIds.Add("next");
-        var instance = new ProcessInstance(1, "AGG-1");
+        var instance = new ProcessInstance(1, 1L);
 
         var result = await handler.HandleAsync(node, instance);
 
         Assert.True(result.IsCompleted);
         Assert.True(result.RequiresStop);
-        await executor.Received(1).ExecuteCommandAsync("NotifyWaiting", 1, "AGG-1", null);
+        await executor.Received(1).ExecuteCommandAsync("NotifyWaiting", 1, 1L, null);
     }
 
     [Fact]

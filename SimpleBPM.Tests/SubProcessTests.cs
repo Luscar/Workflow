@@ -108,10 +108,10 @@ public class SubProcessNodeHandlerTests
     {
         var handler = Substitute.For<INodeHandler>();
         handler.NodeType.Returns(NodeType.Business);
-        handler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        handler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 return Task.FromResult(new NodeExecutionResult
                 {
                     IsCompleted = true,
@@ -162,7 +162,7 @@ public class SubProcessNodeHandlerTests
         var subNode = new SubProcessNode(subDef) { Name = "RunSub", DisplayName = "Run Sub" };
         subNode.NextNodeIds.Add("NextParentNode");
 
-        var parentInstance = new ProcessInstance(1, "AGG-1");
+        var parentInstance = new ProcessInstance(1, 1L);
 
         var result = await handler.HandleAsync(subNode, parentInstance);
 
@@ -186,14 +186,14 @@ public class SubProcessNodeHandlerTests
         var subDef = CreateSimpleSubProcessDef();
         var subNode = new SubProcessNode(subDef) { Name = "RunSub", DisplayName = "Run Sub", InheritAggregateId = true };
 
-        var parentInstance = new ProcessInstance(1, "AGG-123");
+        var parentInstance = new ProcessInstance(1, 123L);
 
         await handler.HandleAsync(subNode, parentInstance);
 
         Assert.NotNull(savedInstance);
-        Assert.Equal("AGG-123", savedInstance!.AggregateId);
+        Assert.Equal(123L, savedInstance!.AggregateId);
         Assert.Equal(1L, savedInstance.ParentProcessId);
-        Assert.Equal("RunSub", savedInstance.ParentNodeId);
+        Assert.Equal("RunSub", savedInstance.ParentNodeName);
     }
 
     [Fact]
@@ -211,7 +211,7 @@ public class SubProcessNodeHandlerTests
         var subDef = CreateSimpleSubProcessDef();
         var subNode = new SubProcessNode(subDef) { Name = "RunSub", DisplayName = "Run Sub", InheritAggregateId = false };
 
-        var parentInstance = new ProcessInstance(1, "AGG-123");
+        var parentInstance = new ProcessInstance(1, 123L);
 
         await handler.HandleAsync(subNode, parentInstance);
 
@@ -301,10 +301,10 @@ public class SubProcessNodeHandlerTests
         // Create a business handler that sets a result variable on the subprocess
         var businessHandler = Substitute.For<INodeHandler>();
         businessHandler.NodeType.Returns(NodeType.Business);
-        businessHandler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        businessHandler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 var inst = callInfo.ArgAt<ProcessInstance>(1);
                 inst.Variables["subResult"] = "processed";
                 inst.Variables["subTotal"] = 200.0;
@@ -452,7 +452,7 @@ public class SubProcessNodeHandlerTests
 
         var failHandler = Substitute.For<INodeHandler>();
         failHandler.NodeType.Returns(NodeType.Business);
-        failHandler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        failHandler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(Task.FromResult(new NodeExecutionResult
             {
                 IsCompleted = false,
@@ -483,9 +483,9 @@ public class SubProcessNodeHandlerTests
         var existingChild = new ProcessInstance(100)
         {
             ParentProcessId = 1,
-            ParentNodeId = "RunSub",
+            ParentNodeName = "RunSub",
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeId = "SubFinal",
+            CurrentNodeName = "SubFinal",
             DefinitionName = "SubProcess",
             DefinitionVersion = "1.0"
         };
@@ -640,10 +640,10 @@ public class SubProcessIntegrationTests
     {
         var handler = Substitute.For<INodeHandler>();
         handler.NodeType.Returns(NodeType.Business);
-        handler.HandleAsync(Arg.Any<ProcessNode>(), Arg.Any<ProcessInstance>())
+        handler.HandleAsync(Arg.Any<NodeDefinition>(), Arg.Any<ProcessInstance>())
             .Returns(callInfo =>
             {
-                var node = callInfo.ArgAt<ProcessNode>(0);
+                var node = callInfo.ArgAt<NodeDefinition>(0);
                 return Task.FromResult(new NodeExecutionResult
                 {
                     IsCompleted = true,
