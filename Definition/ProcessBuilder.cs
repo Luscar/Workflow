@@ -70,6 +70,24 @@ public class ProcessBuilder
     }
 
     /// <summary>
+    /// Ajoute un nœud d'attente jusqu'à une date statique
+    /// </summary>
+    public ProcessBuilder WaitUntilDate(string name, DateTime targetDate, string? displayName = null)
+    {
+        var node = new WaitUntilDateNode(targetDate) { Name = name, DisplayName = displayName ?? name };
+        return AddNode(name, node);
+    }
+
+    /// <summary>
+    /// Ajoute un nœud d'attente jusqu'à une date calculée dynamiquement
+    /// </summary>
+    public ProcessBuilder WaitUntilDate(string name, Func<ProcessInstance, DateTime> dateProvider, string? displayName = null)
+    {
+        var node = new WaitUntilDateNode(dateProvider) { Name = name, DisplayName = displayName ?? name };
+        return AddNode(name, node);
+    }
+
+    /// <summary>
     /// Ajoute un sous-processus
     /// </summary>
     public ProcessBuilder SubProcess(string name, ProcessDefinition subProcessDefinition,
@@ -135,6 +153,18 @@ public class ProcessBuilder
             throw new InvalidOperationException("Aucun nœud courant sur lequel définir le paramètre");
 
         _lastNode.Parameters[key] = value;
+        return this;
+    }
+
+    /// <summary>
+    /// Définit la commande à exécuter lorsqu'un nœud bloquant est atteint
+    /// </summary>
+    public ProcessBuilder WithOnEnterCommand(string commandName)
+    {
+        if (_lastNode == null)
+            throw new InvalidOperationException("Aucun nœud courant sur lequel définir la commande OnEnter");
+
+        _lastNode.OnEnterCommandName = commandName;
         return this;
     }
 
