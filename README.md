@@ -115,7 +115,7 @@ Les nœuds de décision permettent de router le flux vers différents nœuds sel
 ### Deux modes de fonctionnement
 
 1. **Conditions sur variables** (recommandé) : Évalue directement les variables du processus
-2. **Query externe** : Délègue l'évaluation à `ICommandExecutor.EvaluateDecisionAsync`
+2. **Query externe** : Délègue l'évaluation à `IBpmMediator.EvaluateDecisionAsync`
 
 ### Opérateurs disponibles
 
@@ -166,7 +166,7 @@ var decisionNode = new DecisionNode("EvaluerEligibilite")
 
 ## Paramètres de nœuds
 
-Chaque nœud peut porter des paramètres statiques (`Dictionary<string, object>`) définis à la conception. Ces paramètres sont transmis automatiquement à `ICommandExecutor` lors de l'exécution.
+Chaque nœud peut porter des paramètres statiques (`Dictionary<string, object>`) définis à la conception. Ces paramètres sont transmis automatiquement à `IBpmMediator` lors de l'exécution.
 
 ### Avec le Fluent Builder
 
@@ -197,10 +197,10 @@ var process = ProcessBuilder.Create("OrderProcess")
 
 ### Réception côté client
 
-Les paramètres sont passés en dernier argument de `ICommandExecutor` :
+Les paramètres sont passés en dernier argument de `IBpmMediator` :
 
 ```csharp
-public class MyCommandExecutor : ICommandExecutor
+public class MyBpmMediator : IBpmMediator
 {
     public Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId,
         Dictionary<string, object>? parameters = null)
@@ -347,15 +347,15 @@ services.AddSingleton(invoiceProcessDefinition);
 services.AddSimpleBPM(tablePrefix: "BPM");
 ```
 
-#### Avec ICommandExecutor direct
+#### Avec IBpmMediator direct
 
 ```csharp
 using SimpleBPM.Localisation;
 
 // Program.cs / Startup.cs
 
-// 1. Enregistrer l'implémentation ICommandExecutor (requis)
-services.AddSingleton<ICommandExecutor, MyCommandExecutor>();
+// 1. Enregistrer l'implémentation IBpmMediator (requis)
+services.AddSingleton<IBpmMediator, MyBpmMediator>();
 services.AddSingleton<IGestionTache, MyGestionTache>(); // Optionnel
 
 // 2. Enregistrer la connexion (gérée par le client)
@@ -581,19 +581,19 @@ public class CreditDecisionHandler : IQueryHandler
 
 Les handlers sont découverts automatiquement via `AddCommandHandlers()` (voir section [Injection de handlers](#injection-de-handlers)).
 
-### ICommandExecutor (approche directe)
+### IBpmMediator (approche directe)
 
 Alternative à l'injection de handlers : une seule classe qui gère toutes les commandes et décisions. Utile pour les cas simples ou quand une logique centralisée est préférée.
 
 ```csharp
-public interface ICommandExecutor
+public interface IBpmMediator
 {
     Task ExecuteCommandAsync(string commandName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null);
     Task<string> EvaluateDecisionAsync(string decisionName, long processId, string? aggregateId, Dictionary<string, object>? parameters = null);
 }
 ```
 
-> **Note** : Les deux approches sont mutuellement exclusives. `AddCommandHandlers()` enregistre automatiquement un `CommandHandlerExecutor` comme `ICommandExecutor`, qui dispatche vers les handlers individuels. Si vous utilisez l'injection de handlers, vous n'avez pas besoin d'implémenter `ICommandExecutor` directement.
+> **Note** : Les deux approches sont mutuellement exclusives. `AddCommandHandlers()` enregistre automatiquement un `BpmMediator` comme `IBpmMediator`, qui dispatche vers les handlers individuels. Si vous utilisez l'injection de handlers, vous n'avez pas besoin d'implémenter `IBpmMediator` directement.
 
 ### IGestionTache
 
@@ -619,7 +619,7 @@ L'injection de handlers permet de découper la logique métier en handlers indiv
 
 1. Le client implémente un `ICommandHandler` par commande métier et un `IQueryHandler` par décision
 2. `AddCommandHandlers(Assembly.GetExecutingAssembly())` scanne les assemblies et enregistre tous les handlers trouvés
-3. Un `CommandHandlerExecutor` est automatiquement enregistré comme `ICommandExecutor`
+3. Un `BpmMediator` est automatiquement enregistré comme `IBpmMediator`
 4. Au runtime, les commandes sont dispatchées vers le bon handler selon le `CommandName` / `QueryName`
 
 ### Enregistrement
@@ -640,7 +640,7 @@ services.AddCommandHandlers(
 
 ### Dispatch
 
-Le `CommandHandlerExecutor` maintient un dictionnaire interne indexé par `CommandName` / `QueryName` pour un dispatch en O(1) :
+Le `BpmMediator` maintient un dictionnaire interne indexé par `CommandName` / `QueryName` pour un dispatch en O(1) :
 
 - `ExecuteCommandAsync("ValidateApplication", ...)` → `ValidateApplicationHandler.HandleAsync(...)`
 - `EvaluateDecisionAsync("CreditDecision", ...)` → `CreditDecisionHandler.HandleAsync(...)`
@@ -657,11 +657,11 @@ Voir `SimpleBPM.ExampleClient/` pour un projet client complet utilisant l'inject
 - Le client interagit via `IFlowService` en spécifiant le nom de la définition au démarrage
 - L'instance stocke le nom et la version de la définition pour retrouver le bon processus
 - Le processus s'exécute nœud par nœud jusqu'à rencontrer un nœud d'arrêt ou la fin naturelle
-- Les nœuds métier appellent des commandes via `ICommandExecutor`
-- Les décisions sont évaluées via `ICommandExecutor.EvaluateDecisionAsync`
+- Les nœuds métier appellent des commandes via `IBpmMediator`
+- Les décisions sont évaluées via `IBpmMediator.EvaluateDecisionAsync`
 - Chaque type de nœud a un handler dédié (`INodeHandler`) injecté avec ses propres dépendances
 - Les handlers par défaut (End, Interactive, WaitForSignal, WaitUntilDate, SubProcess) sont auto-enregistrés — `EndNodeHandler` marque directement l'instance comme `Completed`
-- **Injection de handlers** : les commandes métier et décisions peuvent être implémentées comme des handlers individuels (`ICommandHandler` / `IQueryHandler`), découverts automatiquement via `AddCommandHandlers()` et dispatchés par `CommandHandlerExecutor`
+- **Injection de handlers** : les commandes métier et décisions peuvent être implémentées comme des handlers individuels (`ICommandHandler` / `IQueryHandler`), découverts automatiquement via `AddCommandHandlers()` et dispatchés par `BpmMediator`
 - Les variables d'instance (`Variables`) stockent l'état partagé entre les nœuds
 - L'instance est automatiquement sauvegardée/mise à jour dans Oracle après chaque exécution
 - Les sous-processus peuvent être imbriqués et sont gérés de manière transparente
@@ -671,7 +671,7 @@ Voir `SimpleBPM.ExampleClient/` pour un projet client complet utilisant l'inject
 ```
 SimpleBPM.sln
 ├── SimpleBPM/                # Projet principal
-│   ├── Abstractions/         # Interfaces client (ICommandHandler, IQueryHandler, ICommandExecutor, IGestionTache)
+│   ├── Abstractions/         # Interfaces client (ICommandHandler, IQueryHandler, IBpmMediator, IGestionTache)
 │   ├── Definition/           # Fluent Builder et chargeur JSON
 │   ├── Examples/             # Exemples d'utilisation
 │   ├── Handlers/             # Handlers par type de nœud (logique d'exécution)
@@ -679,7 +679,7 @@ SimpleBPM.sln
 │   ├── Migration/            # Migration de version (ProcessMigration, Runner, Result)
 │   ├── Nodes/                # Définitions des nœuds (données seulement)
 │   ├── Persistence/          # Repository Oracle et configuration
-│   ├── CommandHandlerExecutor.cs # Dispatcher vers ICommandHandler/IQueryHandler
+│   ├── BpmMediator.cs        # Dispatcher vers ICommandHandler/IQueryHandler
 │   ├── ConditionDecision.cs  # Condition pour nœuds de décision avec opérateurs
 │   ├── FiltreVariable.cs     # Filtre pour recherche par variable avec opérateurs
 │   ├── FlowEngine.cs         # Moteur d'exécution (multi-définitions, multi-versions)

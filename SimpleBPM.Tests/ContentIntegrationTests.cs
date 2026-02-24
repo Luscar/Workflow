@@ -645,7 +645,7 @@ public class ContentIntegrationTests
         Dictionary<string, object>? receivedParams = null;
         long receivedProcessId = 0;
 
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string?>(), Arg.Any<Dictionary<string, object>?>())
             .Returns(callInfo =>
             {

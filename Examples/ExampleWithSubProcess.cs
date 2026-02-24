@@ -117,7 +117,7 @@ if (instance.CompletedAt.HasValue)
     Console.WriteLine($"Durée totale: {instance.TotalDuration?.TotalSeconds:F2} secondes");
 }
 
-public class SampleExecutor : ICommandExecutor
+public class SampleExecutor : IBpmMediator
 {
     public async Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {

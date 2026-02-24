@@ -11,7 +11,7 @@ public class BusinessNodeHandlerTests
     [Fact]
     public async Task HandleAsync_Success_ReturnsCompleted()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         var handler = new BusinessNodeHandler(executor);
 
         var node = new BusinessNode("CreateOrder") { Name = "step1", DisplayName = "Step 1" };
@@ -29,7 +29,7 @@ public class BusinessNodeHandlerTests
     [Fact]
     public async Task HandleAsync_WithParameters_PassesParameters()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         var handler = new BusinessNodeHandler(executor);
 
         var node = new BusinessNode("ProcessPayment") { Name = "pay", DisplayName = "Pay" };
@@ -46,7 +46,7 @@ public class BusinessNodeHandlerTests
     [Fact]
     public async Task HandleAsync_ExecutorThrows_ReturnsFailed()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string?>(), Arg.Any<Dictionary<string, object>?>())
             .ThrowsAsync(new Exception("Database error"));
 
@@ -69,7 +69,7 @@ public class BusinessNodeHandlerTests
     [Fact]
     public void NodeType_IsBusiness()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         var handler = new BusinessNodeHandler(executor);
 
         Assert.Equal(NodeType.Business, handler.NodeType);
@@ -131,7 +131,7 @@ public class DecisionNodeHandlerTests
     [Fact]
     public async Task HandleAsync_WithQuery_RoutesCorrectly()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         executor.EvaluateDecisionAsync("CheckEligibility", 1, null, null)
             .Returns("eligible");
 
@@ -151,7 +151,7 @@ public class DecisionNodeHandlerTests
     [Fact]
     public async Task HandleAsync_WithQuery_NoMatchingRoute_Fails()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         executor.EvaluateDecisionAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string?>(), Arg.Any<Dictionary<string, object>?>())
             .Returns("unknown-result");
 
@@ -245,7 +245,7 @@ public class InteractiveNodeHandlerTests
     [Fact]
     public async Task HandleAsync_WithOnEnterCommandName_ExecutesCommand()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         var handler = new InteractiveNodeHandler(executor: executor);
         var node = new InteractiveNode { Name = "review", DisplayName = "Review", OnEnterCommandName = "NotifyReviewPending" };
         var instance = new ProcessInstance(1, 1L);
@@ -260,7 +260,7 @@ public class InteractiveNodeHandlerTests
     [Fact]
     public async Task HandleAsync_WithoutOnEnterCommandName_DoesNotCallExecutor()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         var handler = new InteractiveNodeHandler(executor: executor);
         var node = new InteractiveNode { Name = "review", DisplayName = "Review" };
         var instance = new ProcessInstance(1);
@@ -273,7 +273,7 @@ public class InteractiveNodeHandlerTests
     [Fact]
     public async Task HandleAsync_OnEnterCommandThrows_ReturnsFailed()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string?>(), Arg.Any<Dictionary<string, object>?>())
             .ThrowsAsync(new Exception("Command failed"));
         var handler = new InteractiveNodeHandler(executor: executor);
@@ -320,7 +320,7 @@ public class WaitForSignalNodeHandlerTests
     [Fact]
     public async Task HandleAsync_WithOnEnterCommandName_ExecutesCommand()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         var handler = new WaitForSignalNodeHandler(executor);
         var node = new WaitForSignalNode("approval-signal")
         {
@@ -340,7 +340,7 @@ public class WaitForSignalNodeHandlerTests
     [Fact]
     public async Task HandleAsync_WithoutOnEnterCommandName_DoesNotCallExecutor()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         var handler = new WaitForSignalNodeHandler(executor);
         var node = new WaitForSignalNode("approval-signal") { Name = "waitApproval", DisplayName = "Wait Approval" };
         var instance = new ProcessInstance(1);
@@ -353,7 +353,7 @@ public class WaitForSignalNodeHandlerTests
     [Fact]
     public async Task HandleAsync_OnEnterCommandThrows_ReturnsFailed()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string?>(), Arg.Any<Dictionary<string, object>?>())
             .ThrowsAsync(new Exception("Command failed"));
         var handler = new WaitForSignalNodeHandler(executor);
@@ -463,7 +463,7 @@ public class WaitUntilDateNodeHandlerTests
     [Fact]
     public async Task HandleAsync_FutureDate_WithOnEnterCommandName_ExecutesCommand()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         var handler = new WaitUntilDateNodeHandler(executor);
         var node = new WaitUntilDateNode(DateTime.UtcNow.AddDays(5))
         {
@@ -484,7 +484,7 @@ public class WaitUntilDateNodeHandlerTests
     [Fact]
     public async Task HandleAsync_PastDate_WithOnEnterCommandName_DoesNotExecuteCommand()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         var handler = new WaitUntilDateNodeHandler(executor);
         var node = new WaitUntilDateNode(DateTime.UtcNow.AddDays(-1))
         {
@@ -505,7 +505,7 @@ public class WaitUntilDateNodeHandlerTests
     [Fact]
     public async Task HandleAsync_FutureDate_OnEnterCommandThrows_ReturnsFailed()
     {
-        var executor = Substitute.For<ICommandExecutor>();
+        var executor = Substitute.For<IBpmMediator>();
         executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string?>(), Arg.Any<Dictionary<string, object>?>())
             .ThrowsAsync(new Exception("Command failed"));
         var handler = new WaitUntilDateNodeHandler(executor);
