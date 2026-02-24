@@ -5,12 +5,14 @@ namespace SimpleBPM.Handlers;
 public class InteractiveNodeHandler : INodeHandler
 {
     private readonly IGestionTache? _gestionTache;
+    private readonly ICommandExecutor? _executor;
 
     public NodeType NodeType => NodeType.Interactive;
 
-    public InteractiveNodeHandler(IGestionTache? gestionTache = null)
+    public InteractiveNodeHandler(IGestionTache? gestionTache = null, ICommandExecutor? executor = null)
     {
         _gestionTache = gestionTache;
+        _executor = executor;
     }
 
     public async Task<NodeExecutionResult> HandleAsync(ProcessNode node, ProcessInstance instance)
@@ -23,6 +25,22 @@ public class InteractiveNodeHandler : INodeHandler
             await _gestionTache.CreerTacheAsync(
                 instance.ProcessId, instance.AggregateId,
                 instance.DefinitionName ?? "", node.DisplayName);
+        }
+
+        if (_executor != null && !string.IsNullOrEmpty(node.OnEnterCommandName))
+        {
+            try
+            {
+                await _executor.ExecuteCommandAsync(node.OnEnterCommandName, instance.ProcessId, instance.AggregateId);
+            }
+            catch (Exception ex)
+            {
+                return new NodeExecutionResult
+                {
+                    IsCompleted = false,
+                    ErrorMessage = ex.Message
+                };
+            }
         }
 
         return new NodeExecutionResult
