@@ -160,7 +160,7 @@ public class WorkflowIntegrationTests
         var service = CreateService(repo, new[] { def }, handler);
 
         // Act: submit a high-value expense
-        var processId = await service.CreateProcessInstance("ExpenseApproval",
+        var processId = await service.CreateProcessInstanceAsync("ExpenseApproval",
             new Dictionary<string, object> { ["amount"] = 1500.0, ["submittedBy"] = "emp-42" });
 
         // Assert: routed to manager approval; original variables preserved
@@ -193,7 +193,7 @@ public class WorkflowIntegrationTests
         var service = CreateService(repo, new[] { def }, handler);
 
         // Act: submit a low-value expense
-        var processId = await service.CreateProcessInstance("ExpenseApproval",
+        var processId = await service.CreateProcessInstanceAsync("ExpenseApproval",
             new Dictionary<string, object> { ["amount"] = 250.0, ["submittedBy"] = "emp-7" });
 
         // Assert: auto-approved without manager involvement
@@ -223,7 +223,7 @@ public class WorkflowIntegrationTests
         var service = CreateService(repo, new[] { def });
 
         // Act
-        var processId = await service.CreateProcessInstance("ServiceRequest",
+        var processId = await service.CreateProcessInstanceAsync("ServiceRequest",
             new Dictionary<string, object>
             {
                 ["requesterId"] = "EMP-001",
@@ -253,14 +253,14 @@ public class WorkflowIntegrationTests
         def.AddNode(done);
 
         var service = CreateService(repo, new[] { def });
-        var processId = await service.CreateProcessInstance("ServiceRequest",
+        var processId = await service.CreateProcessInstanceAsync("ServiceRequest",
             new Dictionary<string, object> { ["requesterId"] = "EMP-002" });
 
         Assert.Equal(ProcessStatus.WaitingInteraction, (await service.ObtenirAsync(processId)).Status);
 
         // Act: user submits the form; content is merged into process variables
         var historyId = repo.GetLastHistoryId(processId)!.Value;
-        await service.TerminerEtape(historyId, new Dictionary<string, object>
+        await service.TerminerEtapeAsync(historyId, new Dictionary<string, object>
         {
             ["description"] = "Need a new laptop",
             ["urgency"] = "high",
@@ -289,11 +289,11 @@ public class WorkflowIntegrationTests
         def.AddNode(done);
 
         var service = CreateService(repo, new[] { def });
-        var processId = await service.CreateProcessInstance("ServiceRequest",
+        var processId = await service.CreateProcessInstanceAsync("ServiceRequest",
             new Dictionary<string, object> { ["requesterId"] = "EMP-003" });
 
         // Act: user completes the current step; identified only by process ID
-        await service.TerminerEtapeEnCours(processId, new Dictionary<string, object>
+        await service.TerminerEtapeEnCoursAsync(processId, new Dictionary<string, object>
         {
             ["assignedTeam"] = "IT",
             ["ticketNumber"] = "TKT-0042"
@@ -337,12 +337,12 @@ public class WorkflowIntegrationTests
         var service = CreateService(repo, new[] { def });
 
         // Act – Phase 1: applicant provides personal details
-        var processId = await service.CreateProcessInstance("LoanApplication",
+        var processId = await service.CreateProcessInstanceAsync("LoanApplication",
             new Dictionary<string, object> { ["applicantId"] = "APP-500" });
 
         Assert.Equal(ProcessStatus.WaitingInteraction, (await service.ObtenirAsync(processId)).Status);
 
-        await service.TerminerEtapeEnCours(processId, new Dictionary<string, object>
+        await service.TerminerEtapeEnCoursAsync(processId, new Dictionary<string, object>
         {
             ["firstName"] = "Alice",
             ["lastName"] = "Martin",
@@ -353,7 +353,7 @@ public class WorkflowIntegrationTests
         Assert.Equal(ProcessStatus.WaitingInteraction, (await service.ObtenirAsync(processId)).Status);
 
         // Act – Phase 2: applicant provides financial details
-        await service.TerminerEtapeEnCours(processId, new Dictionary<string, object>
+        await service.TerminerEtapeEnCoursAsync(processId, new Dictionary<string, object>
         {
             ["annualIncome"] = 80000.0,
             ["creditScore"] = 720,
@@ -398,7 +398,7 @@ public class WorkflowIntegrationTests
         var service = CreateService(repo, new[] { def }, handler);
 
         // Act: create order; process should run until the signal wait
-        var processId = await service.CreateProcessInstance("PurchaseOrder",
+        var processId = await service.CreateProcessInstanceAsync("PurchaseOrder",
             new Dictionary<string, object> { ["orderId"] = "PO-999", ["totalAmount"] = 349.99 });
 
         var waiting = await service.ObtenirAsync(processId);
@@ -425,12 +425,12 @@ public class WorkflowIntegrationTests
             { Name = "WaitApproval", DisplayName = "Wait for Approval" });
 
         var service = CreateService(repo, new[] { def });
-        var processId = await service.CreateProcessInstance("ApprovalFlow");
+        var processId = await service.CreateProcessInstanceAsync("ApprovalFlow");
 
         Assert.Equal(ProcessStatus.WaitingSignal, (await service.ObtenirAsync(processId)).Status);
 
         // Act
-        var pendingSignals = (await service.ObtenirSignauxEnAttente(processId)).ToList();
+        var pendingSignals = (await service.ObtenirSignauxEnAttenteAsync(processId)).ToList();
 
         // Assert: the expected signal name is visible while the process is paused
         Assert.Single(pendingSignals);
@@ -455,15 +455,15 @@ public class WorkflowIntegrationTests
 
         var service = CreateService(repo, new[] { def });
 
-        await service.CreateProcessInstance("HRProcess",
+        await service.CreateProcessInstanceAsync("HRProcess",
             new Dictionary<string, object> { ["department"] = "engineering", ["region"] = "north" });
-        await service.CreateProcessInstance("HRProcess",
+        await service.CreateProcessInstanceAsync("HRProcess",
             new Dictionary<string, object> { ["department"] = "finance", ["region"] = "east" });
-        await service.CreateProcessInstance("HRProcess",
+        await service.CreateProcessInstanceAsync("HRProcess",
             new Dictionary<string, object> { ["department"] = "finance", ["region"] = "west" });
 
         // Act: search for the finance department
-        var results = await service.RechercherParVariable(new List<FiltreVariable>
+        var results = await service.RechercherParVariableAsync(new List<FiltreVariable>
         {
             new FiltreVariable("department", "finance")
         });
@@ -489,15 +489,15 @@ public class WorkflowIntegrationTests
 
         var service = CreateService(repo, new[] { def });
 
-        await service.CreateProcessInstance("HRProcess",
+        await service.CreateProcessInstanceAsync("HRProcess",
             new Dictionary<string, object> { ["department"] = "finance", ["region"] = "east" });
-        await service.CreateProcessInstance("HRProcess",
+        await service.CreateProcessInstanceAsync("HRProcess",
             new Dictionary<string, object> { ["department"] = "finance", ["region"] = "west" });
-        await service.CreateProcessInstance("HRProcess",
+        await service.CreateProcessInstanceAsync("HRProcess",
             new Dictionary<string, object> { ["department"] = "engineering", ["region"] = "east" });
 
         // Act: search for finance AND east – only the first process matches both
-        var results = await service.RechercherParVariable(new List<FiltreVariable>
+        var results = await service.RechercherParVariableAsync(new List<FiltreVariable>
         {
             new FiltreVariable("department", "finance"),
             new FiltreVariable("region", "east")
@@ -522,11 +522,11 @@ public class WorkflowIntegrationTests
         def.AddNode(done);
 
         var service = CreateService(repo, new[] { def });
-        await service.CreateProcessInstance("HRProcess",
+        await service.CreateProcessInstanceAsync("HRProcess",
             new Dictionary<string, object> { ["department"] = "engineering" });
 
         // Act
-        var results = await service.RechercherParVariable(new List<FiltreVariable>
+        var results = await service.RechercherParVariableAsync(new List<FiltreVariable>
         {
             new FiltreVariable("department", "hr")
         });
@@ -550,14 +550,14 @@ public class WorkflowIntegrationTests
             { Name = "ProcessOrder", DisplayName = "Process Order" });
 
         var service = CreateService(repo, new[] { def }, handler);
-        var processId = await service.CreateProcessInstance("SimpleFlow",
+        var processId = await service.CreateProcessInstanceAsync("SimpleFlow",
             new Dictionary<string, object> { ["orderId"] = "ORD-XYZ" });
 
         var historyId = repo.GetLastHistoryId(processId);
         Assert.NotNull(historyId);
 
         // Act
-        var nodeHistory = await service.Obtenir(historyId!.Value);
+        var nodeHistory = await service.ObtenirNoeudAsync(historyId!.Value);
 
         // Assert: history entry accurately reflects the executed node
         Assert.Equal(processId, nodeHistory.ProcessId);
@@ -597,10 +597,10 @@ public class WorkflowIntegrationTests
         var service = CreateService(repo, new[] { parentDef });
 
         // Act: creating the order starts the sub-process, which pauses
-        var parentId = await service.CreateProcessInstance("OrderProcess",
+        var parentId = await service.CreateProcessInstanceAsync("OrderProcess",
             new Dictionary<string, object> { ["orderId"] = "ORD-007" });
 
-        var children = await service.ObtenirEnfants(parentId);
+        var children = await service.ObtenirEnfantsAsync(parentId);
 
         // Assert: one child process waiting for interaction on the sub-process's interactive step
         Assert.Single(children);
@@ -649,13 +649,13 @@ public class WorkflowIntegrationTests
         var service = CreateService(repo, new[] { def }, handler);
 
         // Create ticket and pause for user input
-        var processId = await service.CreateProcessInstance("HelpDesk",
+        var processId = await service.CreateProcessInstanceAsync("HelpDesk",
             new Dictionary<string, object> { ["submittedBy"] = "user-99" });
         Assert.Equal(ProcessStatus.WaitingInteraction, (await service.ObtenirAsync(processId)).Status);
 
         // User submits ticket details including a critical priority
         var historyId = repo.GetLastHistoryId(processId)!.Value;
-        await service.TerminerEtape(historyId, new Dictionary<string, object>
+        await service.TerminerEtapeAsync(historyId, new Dictionary<string, object>
         {
             ["title"] = "Production server down",
             ["priority"] = "critical",
@@ -709,13 +709,13 @@ public class WorkflowIntegrationTests
         var service = CreateService(repo, new[] { def }, handler);
 
         // Create process; employee fills in request form
-        var processId = await service.CreateProcessInstance("PurchaseApproval",
+        var processId = await service.CreateProcessInstanceAsync("PurchaseApproval",
             new Dictionary<string, object> { ["requesterId"] = "EMP-808" });
 
         Assert.Equal(ProcessStatus.WaitingInteraction, (await service.ObtenirAsync(processId)).Status);
 
         var historyId = repo.GetLastHistoryId(processId)!.Value;
-        await service.TerminerEtape(historyId, new Dictionary<string, object>
+        await service.TerminerEtapeAsync(historyId, new Dictionary<string, object>
         {
             ["itemDescription"] = "Development laptop",
             ["amount"] = 2500.0,
@@ -729,7 +729,7 @@ public class WorkflowIntegrationTests
         Assert.Equal(2500.0, waitingForSignal.Variables["amount"]);
 
         // The pending signal should be visible via ObtenirSignauxEnAttente
-        var pendingSignals = (await service.ObtenirSignauxEnAttente(processId)).ToList();
+        var pendingSignals = (await service.ObtenirSignauxEnAttenteAsync(processId)).ToList();
         Assert.Contains("manager-approved", pendingSignals);
 
         // Manager sends the approval signal

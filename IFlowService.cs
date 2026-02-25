@@ -3,12 +3,12 @@ namespace SimpleBPM;
 public interface IFlowService
 {
     Task<Processus> ObtenirAsync(long instanceProcessId);
-    Task<long> CreateProcessInstance(string definitionName, Dictionary<string, object>? variables = null);
-    Task<List<Processus>> RechercherParVariable(List<FiltreVariable> filtres);
-    Task<List<Processus>> ObtenirEnfants(long idInstanceParent);
-    Task<IEnumerable<string>> ObtenirSignauxEnAttente(long idInstanceProcessus);
-    Task<InstanceNode> Obtenir(long idInstanceNoeud);
-    Task TerminerEtape(long idInstanceNoeud, object contenu);
-    Task TerminerEtapeEnCours(long idInstanceProcessus, Dictionary<string, object>? contenu = null);
+    Task<long> CreateProcessInstanceAsync(string definitionName, Dictionary<string, object>? variables = null);
+    Task<List<Processus>> RechercherParVariableAsync(List<FiltreVariable> filtres);
+    Task<List<Processus>> ObtenirEnfantsAsync(long idInstanceParent);
+    Task<IEnumerable<string>> ObtenirSignauxEnAttenteAsync(long idInstanceProcessus);
+    Task<InstanceNode> ObtenirNoeudAsync(long idInstanceNoeud);
+    Task TerminerEtapeAsync(long idInstanceNoeud, object contenu);
+    Task TerminerEtapeEnCoursAsync(long idInstanceProcessus, Dictionary<string, object>? contenu = null);
     Task EnvoyerSignalAsync(long idInstanceProcessus, string signalName);
 }
