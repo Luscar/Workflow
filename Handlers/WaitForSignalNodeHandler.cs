@@ -5,11 +5,11 @@ namespace SimpleBPM.Handlers;
 
 public class WaitForSignalNodeHandler : INodeHandler
 {
-    private readonly IBpmMediator? _executor;
+    private readonly IBpmMediateur? _executor;
 
     public NodeType NodeType => NodeType.WaitForSignal;
 
-    public WaitForSignalNodeHandler(IBpmMediator? executor = null)
+    public WaitForSignalNodeHandler(IBpmMediateur? executor = null)
     {
         _executor = executor;
     }

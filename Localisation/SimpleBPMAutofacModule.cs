@@ -91,9 +91,9 @@ public sealed class SimpleBPMAutofacModule : Module
                     .SingleInstance();
             }
 
-            builder.RegisterType<BpmMediator>()
-                .As<IBpmMediator>()
-                .IfNotRegistered(typeof(IBpmMediator))
+            builder.RegisterType<BpmMediateur>()
+                .As<IBpmMediateur>()
+                .IfNotRegistered(typeof(IBpmMediateur))
                 .SingleInstance();
         }
 
@@ -137,7 +137,7 @@ public sealed class SimpleBPMAutofacModule : Module
 
         builder.RegisterType<DecisionNodeHandler>()
             .As<INodeHandler>()
-            .UsingConstructor(typeof(IBpmMediator))
+            .UsingConstructor(typeof(IBpmMediateur))
             .SingleInstance();
 
         builder.RegisterType<InteractiveNodeHandler>()

@@ -74,7 +74,7 @@ public class SubProcessNodeHandler : INodeHandler
                 return new NodeExecutionResult
                 {
                     IsCompleted = false,
-                    ErrorMessage = $"Sub-process failed at node {subInstance.CurrentNodeName}"
+                    ErrorMessage = $"Le sous-processus a échoué au nœud {subInstance.CurrentNodeName}"
                 };
             }
 
@@ -119,7 +119,7 @@ public class SubProcessNodeHandler : INodeHandler
             return new NodeExecutionResult
             {
                 IsCompleted = false,
-                ErrorMessage = $"Sub-process execution error: {ex.Message}"
+                ErrorMessage = $"Erreur d'exécution du sous-processus : {ex.Message}"
             };
         }
     }

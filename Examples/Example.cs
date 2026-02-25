@@ -4,7 +4,7 @@ using SimpleBPM.Nodes;
 using SimpleBPM.Handlers;
 
 // Exemple d'implémentation d'un exécuteur
-public class SampleExecutor : IBpmMediator
+public class SampleExecutor : IBpmMediateur
 {
     public Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {

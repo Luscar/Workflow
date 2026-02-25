@@ -117,7 +117,7 @@ public class ProcessBuilder
     public ProcessBuilder WithParameters(Dictionary<string, object> parameters)
     {
         if (_lastNode == null)
-            throw new InvalidOperationException("No current node to set parameters on");
+            throw new InvalidOperationException("Aucun nœud courant sur lequel définir les paramètres");
 
         foreach (var kvp in parameters)
         {
@@ -132,16 +132,16 @@ public class ProcessBuilder
     public ProcessBuilder WithParameter(string key, object value)
     {
         if (_lastNode == null)
-            throw new InvalidOperationException("No current node to set parameter on");
+            throw new InvalidOperationException("Aucun nœud courant sur lequel définir le paramètre");
 
         _lastNode.Parameters[key] = value;
         return this;
     }
 
     /// <summary>
-    /// Adds an explicit terminal node to end a process branch.
-    /// The branch predecessor links to this node, and the auto-link chain is broken
-    /// so the next declared node starts a new independent section.
+    /// Ajoute un nœud terminal explicite pour terminer une branche du processus.
+    /// Le prédécesseur de la branche est lié à ce nœud, et la chaîne de liaison automatique est rompue
+    /// afin que le nœud suivant déclaré commence une nouvelle section indépendante.
     /// </summary>
     public ProcessBuilder End(string name, string? displayName = null)
     {
@@ -150,8 +150,8 @@ public class ProcessBuilder
     }
 
     /// <summary>
-    /// Breaks the automatic node-linking chain. After calling this, the next node added
-    /// will not be auto-linked from the previous node.
+    /// Rompt la chaîne de liaison automatique des nœuds. Après cet appel, le nœud suivant ajouté
+    /// ne sera pas lié automatiquement au nœud précédent.
     /// </summary>
     public ProcessBuilder Break()
     {
@@ -165,7 +165,7 @@ public class ProcessBuilder
     public ProcessBuilder Then(string nextNodeName)
     {
         if (_lastNode == null)
-            throw new InvalidOperationException("No current node to connect from");
+            throw new InvalidOperationException("Aucun nœud courant depuis lequel se connecter");
 
         _lastNode.NextNodeIds.Add(nextNodeName);
         return this;
@@ -200,7 +200,7 @@ public class ProcessBuilder
             foreach (var nextName in node.NextNodeIds)
             {
                 if (!_nodesByName.ContainsKey(nextName))
-                    throw new InvalidOperationException($"Node '{nextName}' not found");
+                    throw new InvalidOperationException($"Nœud '{nextName}' introuvable");
             }
 
             // Valider les routes des DecisionNode
@@ -209,7 +209,7 @@ public class ProcessBuilder
                 foreach (var kvp in decisionNode.ConditionToNodeId)
                 {
                     if (!_nodesByName.ContainsKey(kvp.Value))
-                        throw new InvalidOperationException($"Node '{kvp.Value}' not found for route '{kvp.Key}'");
+                        throw new InvalidOperationException($"Nœud '{kvp.Value}' introuvable pour la route '{kvp.Key}'");
                 }
             }
 
@@ -228,10 +228,10 @@ public class ProcessBuilder
     {
         _nodesByName[name] = node;
 
-        // Auto-link from the previous node only when:
-        // - there is a previous node
-        // - it is not a DecisionNode (which manages its own routes)
-        // - it has no explicitly declared next node yet (e.g. via .Then())
+        // Liaison automatique au nœud précédent seulement si :
+        // - il existe un nœud précédent
+        // - ce n'est pas un DecisionNode (qui gère ses propres routes)
+        // - il n'a pas encore de nœud suivant déclaré explicitement (ex. via .Then())
         if (_lastNode != null && _lastNode is not DecisionNode && _lastNode.NextNodeIds.Count == 0)
         {
             _lastNode.NextNodeIds.Add(node.Name);
@@ -244,7 +244,7 @@ public class ProcessBuilder
             _definition.StartNodeId = node.Name;
         }
 
-        // End nodes are terminal: break the chain so nothing is auto-linked after them
+        // Les nœuds End sont terminaux : rompre la chaîne pour qu'aucun nœud ne soit lié automatiquement après eux
         _lastNode = node is EndNode ? null : node;
         return this;
     }

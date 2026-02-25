@@ -1,37 +1,37 @@
 namespace SimpleBPM;
 
 /// <summary>
-/// Read-only monitoring interface for observing process definitions and instances.
+/// Interface de surveillance en lecture seule pour observer les définitions et instances de processus.
 /// </summary>
 public interface IProcessMonitor
 {
     /// <summary>
-    /// Returns all registered process definitions.
+    /// Retourne toutes les définitions de processus enregistrées.
     /// </summary>
     List<ProcessDefinition> GetDefinitions();
 
     /// <summary>
-    /// Returns all process instances.
+    /// Retourne toutes les instances de processus.
     /// </summary>
     Task<List<Processus>> GetAllInstancesAsync();
 
     /// <summary>
-    /// Returns process instances filtered by status.
+    /// Retourne les instances de processus filtrées par statut.
     /// </summary>
     Task<List<Processus>> GetInstancesByStatusAsync(ProcessStatus status);
 
     /// <summary>
-    /// Returns a single process instance with its details.
+    /// Retourne une instance de processus unique avec ses détails.
     /// </summary>
     Task<Processus> GetInstanceAsync(long processId);
 
     /// <summary>
-    /// Returns the execution history for a process instance.
+    /// Retourne l'historique d'exécution d'une instance de processus.
     /// </summary>
     Task<List<NodeInstance>> GetExecutionHistoryAsync(long processId);
 
     /// <summary>
-    /// Returns count of instances grouped by status.
+    /// Retourne le nombre d'instances regroupées par statut.
     /// </summary>
     Task<Dictionary<ProcessStatus, int>> GetStatusSummaryAsync();
 }

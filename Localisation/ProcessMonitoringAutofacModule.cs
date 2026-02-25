@@ -7,7 +7,7 @@ namespace SimpleBPM.Localisation;
 /// Module Autofac qui enregistre uniquement les services de monitoring en lecture seule
 /// (IProcessMonitor) sans le moteur d'exécution ni les node handlers.
 /// Utilisé dans les clients de monitoring (ex. Blazor dashboards) qui n'ont
-/// pas besoin de IBpmMediator.
+/// pas besoin de IBpmMediateur.
 /// <example>
 /// <code>
 /// builder.RegisterModule(new ProcessMonitoringAutofacModule());

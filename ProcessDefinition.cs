@@ -29,7 +29,7 @@ public class ProcessDefinition
     {
         if (!Nodes.ContainsKey(nodeName))
         {
-            throw new ArgumentException($"Node {nodeName} not found in process definition");
+            throw new ArgumentException($"Nœud {nodeName} introuvable dans la définition du processus");
         }
 
         StartNodeId = nodeName;

@@ -5,7 +5,7 @@ Historique des modifications du projet SimpleBPM.
 ## Non publié
 
 ### Ajouté
-- Support des paramètres sur les nœuds (`ProcessNode.Parameters`) : dictionnaire `Dictionary<string, object>` transmis à `IBpmMediator` lors de l'exécution
+- Support des paramètres sur les nœuds (`ProcessNode.Parameters`) : dictionnaire `Dictionary<string, object>` transmis à `IBpmMediateur` lors de l'exécution
 - API fluide `WithParameter(key, value)` et `WithParameters(dict)` sur `ProcessBuilder`
 - Support des paramètres dans la sérialisation/désérialisation JSON (`ProcessJsonLoader`)
 - Projet de tests unitaires `SimpleBPM.Tests` avec xUnit — couverture complète incluant `ConditionDecisionTests`, `FiltreVariableTests`, `FlowEngineTests`, `HandlersTests`, `NodeExecutionHistoryTests`, `OracleConfigurationTests`, `ProcessBuilderTests`, `ProcessDefinitionTests`, `ProcessInstanceTests`, `ProcessJsonLoaderTests`, `ProcessNodeTests`, `ProcessusTests`
@@ -16,9 +16,9 @@ Historique des modifications du projet SimpleBPM.
 - Ce fichier `CHANGELOG.md`
 
 ### Modifié
-- Mise à jour du `README.md` : documentation de l'injection de handlers (`ICommandHandler` / `IQueryHandler`), `AddCommandHandlers()`, `BpmMediator`, exemples DI avec les deux approches, structure du projet mise à jour
-- `IBpmMediator.ExecuteCommandAsync` et `EvaluateDecisionAsync` acceptent un paramètre optionnel `Dictionary<string, object>? parameters`
-- Renommage de `ICommandExecutor` en `IBpmMediator` et de `CommandHandlerExecutor` en `BpmMediator`
+- Mise à jour du `README.md` : documentation de l'injection de handlers (`ICommandHandler` / `IQueryHandler`), `AddCommandHandlers()`, `BpmMediateur`, exemples DI avec les deux approches, structure du projet mise à jour
+- `IBpmMediateur.ExecuteCommandAsync` et `EvaluateDecisionAsync` acceptent un paramètre optionnel `Dictionary<string, object>? parameters`
+- Renommage de `ICommandExecutor` en `IBpmMediateur` et de `CommandHandlerExecutor` en `BpmMediateur`
 - IDs de processus et nœuds passés de `string` à `long` (NUMBER(10) en Oracle, séquences via `ObtenirSequenceAsync`)
 - `ProcessNode.Id` supprimé : `Name` sert d'identifiant, `DisplayName` pour l'affichage
 - Suivi des sous-processus via `ParentProcessId` au lieu de `SubProcessIds`

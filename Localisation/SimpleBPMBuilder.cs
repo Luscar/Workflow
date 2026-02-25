@@ -5,8 +5,8 @@ using SimpleBPM.Abstractions;
 namespace SimpleBPM.Localisation;
 
 /// <summary>
-/// Fluent builder that consolidates all client-side SimpleBPM registrations
-/// into a single <c>AddSimpleBPM(options => ...)</c> call.
+/// Constructeur fluide qui consolide toutes les configurations SimpleBPM côté client
+/// en un seul appel <c>AddSimpleBPM(options => ...)</c>.
 /// </summary>
 public sealed class SimpleBPMBuilder
 {
@@ -21,8 +21,8 @@ public sealed class SimpleBPMBuilder
     }
 
     /// <summary>
-    /// Scans the given assemblies for <see cref="ICommandHandler"/> and
-    /// <see cref="IQueryHandler"/> implementations and registers them automatically.
+    /// Scanne les assemblies données pour les implémentations de <see cref="ICommandHandler"/> et
+    /// <see cref="IQueryHandler"/> et les enregistre automatiquement.
     /// </summary>
     public SimpleBPMBuilder ScanHandlers(params Assembly[] assemblies)
     {
@@ -31,7 +31,7 @@ public sealed class SimpleBPMBuilder
     }
 
     /// <summary>
-    /// Registers a custom <see cref="IGestionTache"/> implementation for task management.
+    /// Enregistre une implémentation personnalisée de <see cref="IGestionTache"/> pour la gestion des tâches.
     /// </summary>
     public SimpleBPMBuilder UseTaskManager<TManager>() where TManager : class, IGestionTache
     {
@@ -40,7 +40,7 @@ public sealed class SimpleBPMBuilder
     }
 
     /// <summary>
-    /// Adds a process definition to the DI container.
+    /// Ajoute une définition de processus dans le conteneur DI.
     /// </summary>
     public SimpleBPMBuilder AddProcess(ProcessDefinition definition)
     {
@@ -49,8 +49,8 @@ public sealed class SimpleBPMBuilder
     }
 
     /// <summary>
-    /// Configures SimpleBPM to use Oracle persistence with the given table prefix.
-    /// When not called, in-memory storage is used.
+    /// Configure SimpleBPM pour utiliser la persistance Oracle avec le préfixe de table donné.
+    /// Si non appelé, le stockage en mémoire est utilisé.
     /// </summary>
     public SimpleBPMBuilder UseOracle(string tablePrefix)
     {

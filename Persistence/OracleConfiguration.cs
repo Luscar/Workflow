@@ -9,12 +9,12 @@ public class OracleConfiguration
     {
         if (string.IsNullOrWhiteSpace(tablePrefix) || tablePrefix.Length < 3 || tablePrefix.Length > 10)
         {
-            throw new ArgumentException("Table prefix must be between 3 and 10 characters", nameof(tablePrefix));
+            throw new ArgumentException("Le préfixe de table doit contenir entre 3 et 10 caractères", nameof(tablePrefix));
         }
 
         if (!tablePrefix.All(char.IsLetter))
         {
-            throw new ArgumentException("Table prefix must contain only letters", nameof(tablePrefix));
+            throw new ArgumentException("Le préfixe de table ne doit contenir que des lettres", nameof(tablePrefix));
         }
 
         ConnectionString = connectionString;

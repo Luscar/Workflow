@@ -5,11 +5,11 @@ namespace SimpleBPM.Handlers;
 
 public class WaitUntilDateNodeHandler : INodeHandler
 {
-    private readonly IBpmMediator? _executor;
+    private readonly IBpmMediateur? _executor;
 
     public NodeType NodeType => NodeType.WaitUntilDate;
 
-    public WaitUntilDateNodeHandler(IBpmMediator? executor = null)
+    public WaitUntilDateNodeHandler(IBpmMediateur? executor = null)
     {
         _executor = executor;
     }
@@ -36,7 +36,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
             return new NodeExecutionResult
             {
                 IsCompleted = false,
-                ErrorMessage = "No target date configured"
+                ErrorMessage = "Aucune date cible configurée"
             };
         }
 
