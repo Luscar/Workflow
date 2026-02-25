@@ -6,7 +6,7 @@ namespace SimpleBPM.ExampleClient;
 /// Handles business command execution and decision evaluation for the loan approval workflow.
 /// In a real application, these would call actual services (credit bureau API, database, etc.).
 /// </summary>
-public class LoanCommandExecutor : IBpmMediator
+public class LoanCommandExecutor : IBpmMediateur
 {
     public Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)

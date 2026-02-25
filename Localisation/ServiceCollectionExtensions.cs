@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Enregistre les services SimpleBPM dans le conteneur DI avec stockage en mémoire.
-    /// Le client doit enregistrer <see cref="IBpmMediator"/> (requis) et
+    /// Le client doit enregistrer <see cref="IBpmMediateur"/> (requis) et
     /// optionnellement <see cref="IGestionTache"/> avant cet appel.
     /// Les <see cref="ProcessDefinition"/> doivent aussi être enregistrées par le client.
     /// </summary>
@@ -22,9 +22,9 @@ public static class ServiceCollectionExtensions
 
         // Node handlers (sauf SubProcessNodeHandler qui est auto-enregistré par le moteur)
         services.AddSingleton<INodeHandler>(sp =>
-            new BusinessNodeHandler(sp.GetRequiredService<IBpmMediator>()));
+            new BusinessNodeHandler(sp.GetRequiredService<IBpmMediateur>()));
         services.AddSingleton<INodeHandler>(sp =>
-            new DecisionNodeHandler(sp.GetRequiredService<IBpmMediator>()));
+            new DecisionNodeHandler(sp.GetRequiredService<IBpmMediateur>()));
         services.AddSingleton<INodeHandler>(sp =>
             new InteractiveNodeHandler(sp.GetService<IGestionTache>()));
         services.AddSingleton<INodeHandler, WaitForSignalNodeHandler>();
@@ -49,7 +49,7 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Enregistre uniquement les services de surveillance en lecture seule (IProcessMonitor) sans
     /// le moteur d'exécution ni les handlers de nœuds. À utiliser dans les clients de surveillance uniquement
-    /// (ex. tableaux de bord Blazor) qui n'ont pas besoin de IBpmMediator.
+    /// (ex. tableaux de bord Blazor) qui n'ont pas besoin de IBpmMediateur.
     /// </summary>
     public static IServiceCollection AddProcessMonitoring(this IServiceCollection services)
     {
@@ -66,8 +66,8 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Scanne les assemblies données pour toutes les implémentations de <see cref="ICommandHandler"/> et
     /// <see cref="IQueryHandler"/> et les enregistre dans le conteneur DI.
-    /// Enregistre également <see cref="BpmMediator"/> comme <see cref="IBpmMediator"/>,
-    /// de sorte que le client n'a plus besoin d'implémenter <see cref="IBpmMediator"/> directement.
+    /// Enregistre également <see cref="BpmMediateur"/> comme <see cref="IBpmMediateur"/>,
+    /// de sorte que le client n'a plus besoin d'implémenter <see cref="IBpmMediateur"/> directement.
     /// </summary>
     public static IServiceCollection AddCommandHandlers(
         this IServiceCollection services,
@@ -90,14 +90,14 @@ public static class ServiceCollectionExtensions
                 services.AddSingleton(typeof(IQueryHandler), type);
         }
 
-        services.TryAddSingleton<IBpmMediator, BpmMediator>();
+        services.TryAddSingleton<IBpmMediateur, BpmMediateur>();
 
         return services;
     }
 
     /// <summary>
     /// Enregistre les services SimpleBPM avec persistance Oracle.
-    /// Le client doit enregistrer <see cref="IBpmMediator"/> (requis),
+    /// Le client doit enregistrer <see cref="IBpmMediateur"/> (requis),
     /// <see cref="System.Data.IDbConnection"/> (requis), et
     /// optionnellement <see cref="IGestionTache"/> avant cet appel.
     /// Les <see cref="ProcessDefinition"/> doivent aussi être enregistrées par le client.

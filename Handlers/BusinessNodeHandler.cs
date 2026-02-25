@@ -5,11 +5,11 @@ namespace SimpleBPM.Handlers;
 
 public class BusinessNodeHandler : INodeHandler
 {
-    private readonly IBpmMediator _executor;
+    private readonly IBpmMediateur _executor;
 
     public NodeType NodeType => NodeType.Business;
 
-    public BusinessNodeHandler(IBpmMediator executor)
+    public BusinessNodeHandler(IBpmMediateur executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }

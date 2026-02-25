@@ -5,11 +5,11 @@ namespace SimpleBPM.Handlers;
 public class InteractiveNodeHandler : INodeHandler
 {
     private readonly IGestionTache? _gestionTache;
-    private readonly IBpmMediator? _executor;
+    private readonly IBpmMediateur? _executor;
 
     public NodeType NodeType => NodeType.Interactive;
 
-    public InteractiveNodeHandler(IGestionTache? gestionTache = null, IBpmMediator? executor = null)
+    public InteractiveNodeHandler(IGestionTache? gestionTache = null, IBpmMediateur? executor = null)
     {
         _gestionTache = gestionTache;
         _executor = executor;

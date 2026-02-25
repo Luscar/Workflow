@@ -5,11 +5,11 @@ namespace SimpleBPM.Handlers;
 
 public class WaitUntilDateNodeHandler : INodeHandler
 {
-    private readonly IBpmMediator? _executor;
+    private readonly IBpmMediateur? _executor;
 
     public NodeType NodeType => NodeType.WaitUntilDate;
 
-    public WaitUntilDateNodeHandler(IBpmMediator? executor = null)
+    public WaitUntilDateNodeHandler(IBpmMediateur? executor = null)
     {
         _executor = executor;
     }

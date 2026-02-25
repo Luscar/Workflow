@@ -5,13 +5,13 @@ namespace SimpleBPM.Handlers;
 
 public class DecisionNodeHandler : INodeHandler
 {
-    private readonly IBpmMediator? _executor;
+    private readonly IBpmMediateur? _executor;
 
     public NodeType NodeType => NodeType.Decision;
 
     public DecisionNodeHandler() { }
 
-    public DecisionNodeHandler(IBpmMediator executor)
+    public DecisionNodeHandler(IBpmMediateur executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }

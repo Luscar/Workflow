@@ -12,7 +12,7 @@ builder.Services.AddRazorComponents()
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
 {
-    // Monitoring-only registration: no execution engine or IBpmMediator needed.
+    // Monitoring-only registration: no execution engine or IBpmMediateur needed.
     // Register process definitions before this call if you want them visible in the dashboard.
     containerBuilder.RegisterModule(new ProcessMonitoringAutofacModule());
 });

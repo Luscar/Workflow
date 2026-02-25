@@ -148,7 +148,7 @@ var processWithSubProcess = ProcessBuilder.Create("MainProcess")
 Console.WriteLine($"Processus principal: {processWithSubProcess.Name}");
 Console.WriteLine($"Nombre de nœuds: {processWithSubProcess.Nodes.Count}");
 
-public class SampleExecutor : IBpmMediator
+public class SampleExecutor : IBpmMediateur
 {
     public Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId, Dictionary<string, object>? parameters = null)
     {
