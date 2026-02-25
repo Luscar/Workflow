@@ -155,7 +155,7 @@ else
     private string GenerateMermaidSyntax(ProcessDefinition definition)
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("graph TD");
+        sb.AppendLine("graph LR");
 
         // Declare nodes with type-specific shapes
         foreach (var (id, node) in definition.Nodes)
