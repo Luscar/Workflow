@@ -42,7 +42,7 @@ public class WaitForSignalNodeHandler : INodeHandler
         {
             IsCompleted = true,
             RequiresStop = true,
-            NextNodeId = node.NextNodeIds.FirstOrDefault()
+            NextNodeName = node.NextNodeIds.FirstOrDefault()
         };
     }
 }

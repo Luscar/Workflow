@@ -49,7 +49,7 @@ public class DecisionNodeHandler : INodeHandler
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeId = condition.NoeudCible
+                    NextNodeName = condition.NoeudCible
                 };
             }
         }
@@ -60,7 +60,7 @@ public class DecisionNodeHandler : INodeHandler
             {
                 IsCompleted = true,
                 RequiresStop = false,
-                NextNodeId = decisionNode.NoeudParDefaut
+                NextNodeName = decisionNode.NoeudParDefaut
             };
         }
 
@@ -91,7 +91,7 @@ public class DecisionNodeHandler : INodeHandler
             {
                 IsCompleted = true,
                 RequiresStop = false,
-                NextNodeId = nextNodeId
+                NextNodeName = nextNodeId
             };
         }
 

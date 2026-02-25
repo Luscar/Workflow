@@ -32,7 +32,7 @@ public class FlowEngineTests
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeId = node.NextNodeIds.FirstOrDefault()
+                    NextNodeName = node.NextNodeIds.FirstOrDefault()
                 });
             });
         return handler;
