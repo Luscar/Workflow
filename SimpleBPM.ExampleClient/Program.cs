@@ -39,7 +39,7 @@ var flowService = scope.Resolve<IFlowService>();
 Console.WriteLine("--- Starting loan approval workflow ---");
 Console.WriteLine();
 
-var processId = await flowService.CreateProcessInstance("LoanApproval", new Dictionary<string, object>
+var processId = await flowService.CreateProcessInstanceAsync("LoanApproval", new Dictionary<string, object>
 {
     ["ApplicantName"] = "Jane Doe",
     ["ApplicantId"] = "APP-12345",
@@ -60,7 +60,7 @@ if (process.Status == ProcessStatus.WaitingInteraction)
     Console.WriteLine("--- Simulating underwriter review completion ---");
     Console.WriteLine();
 
-    await flowService.TerminerEtapeEnCours(processId, new Dictionary<string, object>
+    await flowService.TerminerEtapeEnCoursAsync(processId, new Dictionary<string, object>
     {
         ["UnderwriterDecision"] = "approved",
         ["ReviewNotes"] = "All documents verified, applicant meets criteria."
@@ -76,7 +76,7 @@ if (process.Status == ProcessStatus.WaitingInteraction)
 // --- Send the document signing signal ---
 if (process.Status == ProcessStatus.WaitingSignal)
 {
-    var pendingSignals = await flowService.ObtenirSignauxEnAttente(processId);
+    var pendingSignals = await flowService.ObtenirSignauxEnAttenteAsync(processId);
     Console.WriteLine($"Pending signals: {string.Join(", ", pendingSignals)}");
     Console.WriteLine();
     Console.WriteLine("--- Simulating document signing signal ---");

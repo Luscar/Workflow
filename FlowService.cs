@@ -23,7 +23,7 @@ public class FlowService : IFlowService
         return Processus.FromInstance(instance);
     }
 
-    public async Task<long> CreateProcessInstance(string definitionName, Dictionary<string, object>? variables = null)
+    public async Task<long> CreateProcessInstanceAsync(string definitionName, Dictionary<string, object>? variables = null)
     {
         var processId = await _repository.ObtenirSequenceAsync("SEQ_PROCESSUS");
         var instance = new ProcessInstance(processId);
@@ -39,19 +39,19 @@ public class FlowService : IFlowService
         return processId;
     }
 
-    public async Task<List<Processus>> RechercherParVariable(List<FiltreVariable> filtres)
+    public async Task<List<Processus>> RechercherParVariableAsync(List<FiltreVariable> filtres)
     {
         var instances = await _repository.SearchByVariableAsync(filtres);
         return instances.Select(Processus.FromInstance).ToList();
     }
 
-    public async Task<List<Processus>> ObtenirEnfants(long idInstanceParent)
+    public async Task<List<Processus>> ObtenirEnfantsAsync(long idInstanceParent)
     {
         var children = await _repository.GetChildrenAsync(idInstanceParent);
         return children.Select(Processus.FromInstance).ToList();
     }
 
-    public async Task<IEnumerable<string>> ObtenirSignauxEnAttente(long idInstanceProcessus)
+    public async Task<IEnumerable<string>> ObtenirSignauxEnAttenteAsync(long idInstanceProcessus)
     {
         var instance = await _repository.GetProcessInstanceAsync(idInstanceProcessus)
             ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");
@@ -65,7 +65,7 @@ public class FlowService : IFlowService
         return Enumerable.Empty<string>();
     }
 
-    public async Task<InstanceNode> Obtenir(long idInstanceNoeud)
+    public async Task<InstanceNode> ObtenirNoeudAsync(long idInstanceNoeud)
     {
         var result = await _repository.GetNodeHistoryByIdAsync(idInstanceNoeud)
             ?? throw new InvalidOperationException($"Node instance '{idInstanceNoeud}' not found");
@@ -84,7 +84,7 @@ public class FlowService : IFlowService
         };
     }
 
-    public async Task TerminerEtape(long idInstanceNoeud, object contenu)
+    public async Task TerminerEtapeAsync(long idInstanceNoeud, object contenu)
     {
         var nodeResult = await _repository.GetNodeHistoryByIdAsync(idInstanceNoeud)
             ?? throw new InvalidOperationException($"Node instance '{idInstanceNoeud}' not found");
@@ -101,7 +101,7 @@ public class FlowService : IFlowService
         await _engine.ContinueAsync(instance);
     }
 
-    public async Task TerminerEtapeEnCours(long idInstanceProcessus, Dictionary<string, object>? contenu = null)
+    public async Task TerminerEtapeEnCoursAsync(long idInstanceProcessus, Dictionary<string, object>? contenu = null)
     {
         var instance = await _repository.GetProcessInstanceAsync(idInstanceProcessus)
             ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");

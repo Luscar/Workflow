@@ -46,7 +46,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
             {
                 IsCompleted = true,
                 RequiresStop = false,
-                NextNodeId = node.NextNodeIds.FirstOrDefault()
+                NextNodeName = node.NextNodeIds.FirstOrDefault()
             };
         }
 
@@ -74,7 +74,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
         {
             IsCompleted = true,
             RequiresStop = true,
-            NextNodeId = node.NextNodeIds.FirstOrDefault()
+            NextNodeName = node.NextNodeIds.FirstOrDefault()
         };
     }
 }

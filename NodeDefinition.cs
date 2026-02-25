@@ -30,6 +30,6 @@ public class NodeExecutionResult
 {
     public bool IsCompleted { get; set; }
     public bool RequiresStop { get; set; }
-    public string? NextNodeId { get; set; }
+    public string? NextNodeName { get; set; }
     public string? ErrorMessage { get; set; }
 }

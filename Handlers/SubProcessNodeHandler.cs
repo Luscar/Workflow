@@ -87,7 +87,7 @@ public class SubProcessNodeHandler : INodeHandler
                 {
                     IsCompleted = true,
                     RequiresStop = true,
-                    NextNodeId = node.NextNodeIds.FirstOrDefault()
+                    NextNodeName = node.NextNodeIds.FirstOrDefault()
                 };
             }
 
@@ -111,7 +111,7 @@ public class SubProcessNodeHandler : INodeHandler
             {
                 IsCompleted = true,
                 RequiresStop = false,
-                NextNodeId = node.NextNodeIds.FirstOrDefault()
+                NextNodeName = node.NextNodeIds.FirstOrDefault()
             };
         }
         catch (Exception ex)

@@ -129,7 +129,7 @@ public class FlowEngine
             var result = await handler.HandleAsync(node, instance);
 
             // Compléter l'entrée d'historique
-            historyEntry.Complete(result.IsCompleted, result.ErrorMessage, result.NextNodeId);
+            historyEntry.Complete(result.IsCompleted, result.ErrorMessage, result.NextNodeName);
             instance.ExecutionHistory.Add(historyEntry);
 
             if (!result.IsCompleted)
@@ -142,12 +142,12 @@ public class FlowEngine
 
             if (result.RequiresStop)
             {
-                instance.CurrentNodeName = result.NextNodeId;
+                instance.CurrentNodeName = result.NextNodeName;
                 await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
 
-            currentNodeId = result.NextNodeId;
+            currentNodeId = result.NextNodeName;
         }
 
         instance.Status = ProcessStatus.Completed;

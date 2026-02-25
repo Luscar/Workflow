@@ -116,7 +116,7 @@ public class SubProcessNodeHandlerTests
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeId = node.NextNodeIds.FirstOrDefault()
+                    NextNodeName = node.NextNodeIds.FirstOrDefault()
                 });
             });
         return handler;
@@ -168,7 +168,7 @@ public class SubProcessNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.False(result.RequiresStop);
-        Assert.Equal("NextParentNode", result.NextNodeId);
+        Assert.Equal("NextParentNode", result.NextNodeName);
     }
 
     [Fact]
@@ -312,7 +312,7 @@ public class SubProcessNodeHandlerTests
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeId = node.NextNodeIds.FirstOrDefault()
+                    NextNodeName = node.NextNodeIds.FirstOrDefault()
                 });
             });
 
@@ -374,7 +374,7 @@ public class SubProcessNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.True(result.RequiresStop);
-        Assert.Equal("NextParentNode", result.NextNodeId);
+        Assert.Equal("NextParentNode", result.NextNodeName);
     }
 
     [Fact]
@@ -518,7 +518,7 @@ public class SubProcessNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.False(result.RequiresStop);
-        Assert.Equal("NextParent", result.NextNodeId);
+        Assert.Equal("NextParent", result.NextNodeName);
 
         // Verify child process was cleaned up
         await repository.Received(1).DeleteProcessInstanceAsync(100);
@@ -602,7 +602,7 @@ public class SubProcessNodeHandlerTests
         var result = await handler.HandleAsync(subNode, parentInstance);
 
         Assert.True(result.IsCompleted);
-        Assert.Null(result.NextNodeId);
+        Assert.Null(result.NextNodeName);
     }
 
     [Fact]
@@ -648,7 +648,7 @@ public class SubProcessIntegrationTests
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeId = node.NextNodeIds.FirstOrDefault()
+                    NextNodeName = node.NextNodeIds.FirstOrDefault()
                 });
             });
         return handler;

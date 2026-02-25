@@ -10,7 +10,7 @@ public class EndNodeHandler : INodeHandler
         {
             IsCompleted = true,
             RequiresStop = false,
-            NextNodeId = null
+            NextNodeName = null
         });
     }
 }
