@@ -28,7 +28,7 @@ public class FlowEngine
                 _handlers[handler.NodeType] = handler;
         }
 
-        // Auto-register default handlers for nodes without dependencies
+        // Enregistrement automatique des handlers par défaut sans dépendances
         _handlers.TryAdd(NodeType.End, new EndNodeHandler());
         _handlers.TryAdd(NodeType.Interactive, new InteractiveNodeHandler());
         _handlers.TryAdd(NodeType.WaitUntilDate, new WaitUntilDateNodeHandler());
@@ -37,7 +37,7 @@ public class FlowEngine
     }
 
     /// <summary>
-    /// Internal constructor for sub-processes that share the parent's handler registry.
+    /// Constructeur interne pour les sous-processus qui partagent le registre de handlers du parent.
     /// </summary>
     internal FlowEngine(ProcessDefinition definition, IProcessRepository? repository, Dictionary<NodeType, INodeHandler> handlers)
     {
@@ -110,7 +110,7 @@ public class FlowEngine
             if (node == null)
             {
                 instance.Status = ProcessStatus.Failed;
-                instance.ErrorMessage = $"Node '{currentNodeId}' not found in definition '{definition.Name}'";
+                instance.ErrorMessage = $"Nœud '{currentNodeId}' introuvable dans la définition '{definition.Name}'";
                 await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
@@ -118,7 +118,7 @@ public class FlowEngine
             if (!_handlers.TryGetValue(node.Type, out var handler))
             {
                 instance.Status = ProcessStatus.Failed;
-                instance.ErrorMessage = $"No handler registered for node type '{node.Type}'";
+                instance.ErrorMessage = $"Aucun handler enregistré pour le type de nœud '{node.Type}'";
                 await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
@@ -135,7 +135,7 @@ public class FlowEngine
             if (!result.IsCompleted)
             {
                 instance.Status = ProcessStatus.Failed;
-                instance.ErrorMessage = result.ErrorMessage ?? $"Node '{node.DisplayName}' (type: {node.Type}) failed";
+                instance.ErrorMessage = result.ErrorMessage ?? $"Le nœud '{node.DisplayName}' (type : {node.Type}) a échoué";
                 await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
@@ -162,13 +162,13 @@ public class FlowEngine
         if (instance.Status == ProcessStatus.Completed || instance.Status == ProcessStatus.Failed)
         {
             throw new InvalidOperationException(
-                $"Cannot continue process '{instance.ProcessId}': status is '{instance.Status}'");
+                $"Impossible de continuer le processus '{instance.ProcessId}' : le statut est '{instance.Status}'");
         }
 
         if (string.IsNullOrEmpty(instance.CurrentNodeName))
         {
             instance.Status = ProcessStatus.Failed;
-            instance.ErrorMessage = "Cannot continue: no current node set on the instance";
+            instance.ErrorMessage = "Impossible de continuer : aucun nœud courant défini sur l'instance";
             await _repository.UpdateProcessInstanceAsync(instance);
             return instance;
         }
@@ -176,7 +176,7 @@ public class FlowEngine
         var definition = ResolveDefinition(instance);
         var currentNode = definition.GetNode(instance.CurrentNodeName);
 
-        // Notify handler that we are leaving this node
+        // Notifier le handler que l'on quitte ce nœud
         if (currentNode != null && _handlers.TryGetValue(currentNode.Type, out var currentHandler))
         {
             await currentHandler.OnLeaveAsync(currentNode, instance);
@@ -204,7 +204,7 @@ public class FlowEngine
         if (instance.Status != ProcessStatus.WaitingSignal)
         {
             throw new InvalidOperationException(
-                $"Cannot signal process '{instance.ProcessId}': status is '{instance.Status}', expected '{ProcessStatus.WaitingSignal}'");
+                $"Impossible d'envoyer un signal au processus '{instance.ProcessId}' : le statut est '{instance.Status}', attendu '{ProcessStatus.WaitingSignal}'");
         }
 
         if (instance.InternalState.TryGetValue("WaitingForSignal", out var waitingSignal) &&
@@ -220,7 +220,7 @@ public class FlowEngine
     {
         if (_repository is NullProcessRepository)
         {
-            throw new InvalidOperationException("No repository configured");
+            throw new InvalidOperationException("Aucun repository configuré");
         }
 
         return await _repository.GetProcessInstanceAsync(processId);
@@ -229,16 +229,16 @@ public class FlowEngine
     internal ProcessDefinition GetDefinition(string name, string version)
     {
         if (!_definitions.TryGetValue(name, out var versions))
-            throw new InvalidOperationException($"No definition found for '{name}'");
+            throw new InvalidOperationException($"Aucune définition trouvée pour '{name}'");
 
         return versions.FirstOrDefault(d => d.Version == version)
-            ?? throw new InvalidOperationException($"No definition found for '{name}' version '{version}'");
+            ?? throw new InvalidOperationException($"Aucune définition trouvée pour '{name}' version '{version}'");
     }
 
     internal ProcessDefinition GetLatestDefinition(string name)
     {
         if (!_definitions.TryGetValue(name, out var versions) || versions.Count == 0)
-            throw new InvalidOperationException($"No definition found for '{name}'");
+            throw new InvalidOperationException($"Aucune définition trouvée pour '{name}'");
 
         return versions
             .OrderByDescending(d => Version.TryParse(d.Version, out var v) ? v : new Version(0, 0))
@@ -258,6 +258,6 @@ public class FlowEngine
                 .OrderByDescending(d => Version.TryParse(d.Version, out var v) ? v : new Version(0, 0))
                 .First();
 
-        throw new InvalidOperationException("Cannot resolve process definition. Set DefinitionName on the instance.");
+        throw new InvalidOperationException("Impossible de résoudre la définition du processus. Définissez DefinitionName sur l'instance.");
     }
 }

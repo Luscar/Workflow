@@ -18,7 +18,7 @@ public class FlowService : IFlowService
     public async Task<Processus> ObtenirAsync(long instanceProcessId)
     {
         var instance = await _repository.GetProcessInstanceAsync(instanceProcessId)
-            ?? throw new InvalidOperationException($"Process '{instanceProcessId}' not found");
+            ?? throw new InvalidOperationException($"Processus '{instanceProcessId}' introuvable");
 
         return Processus.FromInstance(instance);
     }
@@ -54,7 +54,7 @@ public class FlowService : IFlowService
     public async Task<IEnumerable<string>> ObtenirSignauxEnAttenteAsync(long idInstanceProcessus)
     {
         var instance = await _repository.GetProcessInstanceAsync(idInstanceProcessus)
-            ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");
+            ?? throw new InvalidOperationException($"Processus '{idInstanceProcessus}' introuvable");
 
         if (instance.Status == ProcessStatus.WaitingSignal &&
             instance.InternalState.TryGetValue("WaitingForSignal", out var signal))
@@ -68,7 +68,7 @@ public class FlowService : IFlowService
     public async Task<InstanceNode> ObtenirNoeudAsync(long idInstanceNoeud)
     {
         var result = await _repository.GetNodeHistoryByIdAsync(idInstanceNoeud)
-            ?? throw new InvalidOperationException($"Node instance '{idInstanceNoeud}' not found");
+            ?? throw new InvalidOperationException($"Instance de nœud '{idInstanceNoeud}' introuvable");
 
         return new InstanceNode
         {
@@ -87,10 +87,10 @@ public class FlowService : IFlowService
     public async Task TerminerEtapeAsync(long idInstanceNoeud, object contenu)
     {
         var nodeResult = await _repository.GetNodeHistoryByIdAsync(idInstanceNoeud)
-            ?? throw new InvalidOperationException($"Node instance '{idInstanceNoeud}' not found");
+            ?? throw new InvalidOperationException($"Instance de nœud '{idInstanceNoeud}' introuvable");
 
         var instance = await _repository.GetProcessInstanceAsync(nodeResult.ProcessId)
-            ?? throw new InvalidOperationException($"Process '{nodeResult.ProcessId}' not found");
+            ?? throw new InvalidOperationException($"Processus '{nodeResult.ProcessId}' introuvable");
 
         if (contenu is Dictionary<string, object> dict)
         {
@@ -104,7 +104,7 @@ public class FlowService : IFlowService
     public async Task TerminerEtapeEnCoursAsync(long idInstanceProcessus, Dictionary<string, object>? contenu = null)
     {
         var instance = await _repository.GetProcessInstanceAsync(idInstanceProcessus)
-            ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");
+            ?? throw new InvalidOperationException($"Processus '{idInstanceProcessus}' introuvable");
 
         if (contenu != null)
         {
@@ -118,7 +118,7 @@ public class FlowService : IFlowService
     public async Task EnvoyerSignalAsync(long idInstanceProcessus, string signalName)
     {
         var instance = await _repository.GetProcessInstanceAsync(idInstanceProcessus)
-            ?? throw new InvalidOperationException($"Process '{idInstanceProcessus}' not found");
+            ?? throw new InvalidOperationException($"Processus '{idInstanceProcessus}' introuvable");
 
         await _engine.SignalAsync(instance, signalName);
     }
@@ -126,7 +126,7 @@ public class FlowService : IFlowService
     public async Task<MigrationResult> MigrateAsync(long processId, ProcessDefinition targetDefinition, ProcessMigration migration)
     {
         var instance = await _repository.GetProcessInstanceAsync(processId)
-            ?? throw new InvalidOperationException($"Process '{processId}' not found");
+            ?? throw new InvalidOperationException($"Processus '{processId}' introuvable");
 
         var sourceDefinition = _engine.GetDefinition(instance.DefinitionName!, instance.DefinitionVersion!);
         var result = ProcessMigrationRunner.Migrate(instance, sourceDefinition, targetDefinition, migration);

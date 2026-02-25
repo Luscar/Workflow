@@ -21,7 +21,7 @@ public static class ProcessJsonLoader
     public static ProcessDefinition FromJson(string json)
     {
         var jsonDef = JsonSerializer.Deserialize<ProcessJsonDefinition>(json, JsonOptions)
-            ?? throw new InvalidOperationException("Invalid JSON process definition");
+            ?? throw new InvalidOperationException("Définition JSON du processus invalide");
 
         return BuildFromJson(jsonDef);
     }
@@ -69,7 +69,7 @@ public static class ProcessJsonLoader
                 foreach (var nextName in nodeDef.Next)
                 {
                     if (!nodeNames.Contains(nextName))
-                        throw new InvalidOperationException($"Node '{nextName}' not found");
+                        throw new InvalidOperationException($"Nœud '{nextName}' introuvable");
 
                     node.NextNodeIds.Add(nextName);
                 }
@@ -81,7 +81,7 @@ public static class ProcessJsonLoader
                 foreach (var route in nodeDef.Routes)
                 {
                     if (!nodeNames.Contains(route.Value))
-                        throw new InvalidOperationException($"Node '{route.Value}' not found for route '{route.Key}'");
+                        throw new InvalidOperationException($"Nœud '{route.Value}' introuvable pour la route '{route.Key}'");
 
                     decisionNode.ConditionToNodeId[route.Key] = route.Value;
                     if (!decisionNode.NextNodeIds.Contains(route.Value))
@@ -140,7 +140,7 @@ public static class ProcessJsonLoader
                 Name = nodeDef.Name,
                 DisplayName = nodeDef.DisplayName ?? nodeDef.Name
             },
-            _ => throw new InvalidOperationException($"Unknown node type: {nodeDef.Type}")
+            _ => throw new InvalidOperationException($"Type de nœud inconnu : {nodeDef.Type}")
         };
 
         if (nodeDef.Parameters != null)
@@ -157,7 +157,7 @@ public static class ProcessJsonLoader
     private static NodeDefinition CreateSubProcessNode(NodeJsonDefinition nodeDef)
     {
         if (nodeDef.SubProcess == null)
-            throw new InvalidOperationException($"SubProcess node '{nodeDef.Name}' requires a 'subProcess' definition");
+            throw new InvalidOperationException($"Le nœud SubProcess '{nodeDef.Name}' nécessite une définition 'subProcess'");
 
         var subDefinition = BuildFromJson(nodeDef.SubProcess);
 
@@ -213,7 +213,7 @@ public static class ProcessJsonLoader
                         nodeDef.OutputMapping = spn.OutputMapping;
                     break;
                 case EndNode:
-                    // End nodes have no additional properties
+                    // Les nœuds End n'ont pas de propriétés supplémentaires
                     break;
             }
 
@@ -250,20 +250,20 @@ public class NodeJsonDefinition
     public NodeType Type { get; set; }
     public string? DisplayName { get; set; }
 
-    // Business node
+    // Nœud métier
     public string? Command { get; set; }
 
-    // Decision node
+    // Nœud de décision
     public string? Query { get; set; }
     public Dictionary<string, string>? Routes { get; set; }
 
-    // WaitForSignal node
+    // Nœud WaitForSignal
     public string? Signal { get; set; }
 
-    // WaitUntilDate node
+    // Nœud WaitUntilDate
     public string? DateKey { get; set; }
 
-    // SubProcess node
+    // Nœud SubProcess
     public ProcessJsonDefinition? SubProcess { get; set; }
     public bool? InheritAggregateId { get; set; }
     public Dictionary<string, string>? InputMapping { get; set; }

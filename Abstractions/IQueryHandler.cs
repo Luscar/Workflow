@@ -1,9 +1,9 @@
 namespace SimpleBPM.Abstractions;
 
 /// <summary>
-/// Handles a specific decision query identified by <see cref="QueryName"/>.
-/// Implement this interface for each decision in the client project;
-/// all implementations are discovered and registered automatically
+/// Traite une requête de décision spécifique identifiée par <see cref="QueryName"/>.
+/// Implémentez cette interface pour chaque décision dans le projet client ;
+/// toutes les implémentations sont découvertes et enregistrées automatiquement
 /// via <see cref="Localisation.ServiceCollectionExtensions.AddCommandHandlers"/>.
 /// </summary>
 public interface IQueryHandler

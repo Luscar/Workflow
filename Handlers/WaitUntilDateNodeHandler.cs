@@ -36,7 +36,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
             return new NodeExecutionResult
             {
                 IsCompleted = false,
-                ErrorMessage = "No target date configured"
+                ErrorMessage = "Aucune date cible configurée"
             };
         }
 

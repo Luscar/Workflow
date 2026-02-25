@@ -47,9 +47,9 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Registers only the read-only monitoring services (IProcessMonitor) without
-    /// the execution engine or node handlers. Use this in monitoring-only clients
-    /// (e.g. Blazor dashboards) that do not need IBpmMediator.
+    /// Enregistre uniquement les services de surveillance en lecture seule (IProcessMonitor) sans
+    /// le moteur d'exécution ni les handlers de nœuds. À utiliser dans les clients de surveillance uniquement
+    /// (ex. tableaux de bord Blazor) qui n'ont pas besoin de IBpmMediator.
     /// </summary>
     public static IServiceCollection AddProcessMonitoring(this IServiceCollection services)
     {
@@ -64,10 +64,10 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Scans the given assemblies for all <see cref="ICommandHandler"/> and
-    /// <see cref="IQueryHandler"/> implementations and registers them in the DI container.
-    /// Also registers <see cref="BpmMediator"/> as the <see cref="IBpmMediator"/>,
-    /// so the client no longer needs to implement <see cref="IBpmMediator"/> directly.
+    /// Scanne les assemblies données pour toutes les implémentations de <see cref="ICommandHandler"/> et
+    /// <see cref="IQueryHandler"/> et les enregistre dans le conteneur DI.
+    /// Enregistre également <see cref="BpmMediator"/> comme <see cref="IBpmMediator"/>,
+    /// de sorte que le client n'a plus besoin d'implémenter <see cref="IBpmMediator"/> directement.
     /// </summary>
     public static IServiceCollection AddCommandHandlers(
         this IServiceCollection services,
@@ -134,15 +134,15 @@ public static class ServiceCollectionExtensions
         var builder = new SimpleBPMBuilder(services);
         configure(builder);
 
-        // 1. Scan and register command/query handlers
+        // 1. Scanner et enregistrer les handlers de commandes/requêtes
         if (builder.HandlerAssemblies.Count > 0)
             services.AddCommandHandlers(builder.HandlerAssemblies.ToArray());
 
-        // 2. Register process definitions
+        // 2. Enregistrer les définitions de processus
         foreach (var definition in builder.ProcessDefinitions)
             services.AddSingleton(definition);
 
-        // 3. Register infrastructure and core services
+        // 3. Enregistrer l'infrastructure et les services principaux
         if (builder.OracleTablePrefix is not null)
         {
             services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(builder.OracleTablePrefix));

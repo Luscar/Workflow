@@ -98,7 +98,7 @@ public class DecisionNodeHandler : INodeHandler
         return new NodeExecutionResult
         {
             IsCompleted = false,
-            ErrorMessage = $"No route found for decision result: {decisionResult}"
+            ErrorMessage = $"Aucune route trouvée pour le résultat de décision : {decisionResult}"
         };
     }
 }
