@@ -1,11 +1,37 @@
 <nav class="nav-menu">
+    <span class="nav-section-label">Navigation</span>
+
     <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-        <span class="nav-icon">&#9776;</span> Dashboard
+        <span class="nav-icon">
+            <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+        </span>
+        Dashboard
     </NavLink>
+
     <NavLink class="nav-link" href="definitions">
-        <span class="nav-icon">&#9881;</span> Definitions
+        <span class="nav-icon">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="5" r="2"/>
+                <circle cx="5" cy="19" r="2"/>
+                <circle cx="19" cy="19" r="2"/>
+                <line x1="12" y1="7" x2="5" y2="17"/>
+                <line x1="12" y1="7" x2="19" y2="17"/>
+            </svg>
+        </span>
+        Definitions
     </NavLink>
+
     <NavLink class="nav-link" href="instances">
-        <span class="nav-icon">&#9654;</span> Instances
+        <span class="nav-icon">
+            <svg viewBox="0 0 24 24">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+        </span>
+        Instances
     </NavLink>
 </nav>

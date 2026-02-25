@@ -2,7 +2,7 @@
 @inject IProcessMonitor Monitor
 
 <div class="page-header">
-    <h1>Process Monitor Dashboard</h1>
+    <h1>Dashboard</h1>
     <p>Overview of process definitions and instance status</p>
 </div>
 
@@ -23,11 +23,9 @@ else
         </div>
         @foreach (var kvp in _statusSummary.Where(s => s.Value > 0))
         {
-            <div class="summary-card">
+            <div class="summary-card @GetAccentClass(kvp.Key)">
                 <div class="summary-value">@kvp.Value</div>
-                <div class="summary-label">
-                    <span class="status-badge status-@kvp.Key">@FormatStatus(kvp.Key)</span>
-                </div>
+                <div class="summary-label">@FormatStatus(kvp.Key)</div>
             </div>
         }
     </div>
@@ -69,7 +67,7 @@ else
     <div class="card">
         <div class="card-header">
             <span class="card-title">Recent Instances</span>
-            <a href="instances" class="back-link">View all</a>
+            <a href="instances" class="back-link">View all &rarr;</a>
         </div>
         @if (_recentInstances.Count == 0)
         {
@@ -135,5 +133,16 @@ else
         ProcessStatus.Completed => "Completed",
         ProcessStatus.Failed => "Failed",
         _ => status.ToString()
+    };
+
+    private static string GetAccentClass(ProcessStatus status) => status switch
+    {
+        ProcessStatus.Running => "accent-running",
+        ProcessStatus.Completed => "accent-completed",
+        ProcessStatus.Failed => "accent-failed",
+        ProcessStatus.WaitingInteraction => "accent-interaction",
+        ProcessStatus.WaitingDate => "accent-date",
+        ProcessStatus.WaitingSignal => "accent-signal",
+        _ => ""
     };
 }
