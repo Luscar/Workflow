@@ -41,8 +41,7 @@
                    maxlength="2"
                    placeholder="AA"
                    class="env-cellule-input @(_celluleError ? "input-error" : "")"
-                   @bind="_selectedCellule"
-                   @bind:event="oninput"
+                   value="@_selectedCellule"
                    @oninput="OnCelluleInput" />
             @if (_celluleError)
             {
