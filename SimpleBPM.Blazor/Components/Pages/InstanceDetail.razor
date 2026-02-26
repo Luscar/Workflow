@@ -1,8 +1,17 @@
 @page "/instances/{Id:long}"
 @inject IProcessMonitor Monitor
 @inject NavigationManager Navigation
+@inject EnvironmentContext Env
 
-<a href="instances" class="back-link">&larr; Back to instances</a>
+<div class="detail-top-bar">
+    <a href="instances" class="back-link">&larr; Back to instances</a>
+    @if (Env.IsConfigured)
+    {
+        <span class="env-badge env-badge-@Env.Niveau.ToString().ToLower()">
+            @Env.GetDescription()
+        </span>
+    }
+</div>
 
 @if (_loading)
 {

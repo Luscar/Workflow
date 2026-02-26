@@ -618,3 +618,137 @@ body {
     margin-bottom: 0;
     font-size: 0.75rem;
 }
+
+/* ── Environment pane ─────────────────────────────────────── */
+
+.env-pane {
+    margin-bottom: 1.5rem;
+}
+
+.env-selectors {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.env-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.env-field label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
+}
+
+.env-field select,
+.env-cellule-input {
+    padding: 0.4rem 0.65rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #f8fafc;
+    color: var(--color-text);
+    font-size: 0.825rem;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.12s, box-shadow 0.12s;
+    height: 2rem;
+}
+
+.env-field select {
+    min-width: 9rem;
+    cursor: pointer;
+}
+
+.env-cellule-input {
+    width: 5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+}
+
+.env-field select:focus,
+.env-cellule-input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    background: #fff;
+}
+
+.env-cellule-input.input-error {
+    border-color: var(--color-failed);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.env-field-error {
+    font-size: 0.68rem;
+    color: var(--color-failed);
+    font-weight: 500;
+}
+
+.env-apply-btn {
+    padding: 0 1.1rem;
+    height: 2rem;
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.825rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, box-shadow 0.12s;
+    box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+    white-space: nowrap;
+}
+
+.env-apply-btn:hover:not(:disabled) {
+    background: #4f46e5;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+.env-apply-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Environment level badges */
+.env-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.env-badge-unitaire {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.env-badge-acceptation {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.env-badge-production {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+/* Detail page top bar (back link + env badge side by side) */
+.detail-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
