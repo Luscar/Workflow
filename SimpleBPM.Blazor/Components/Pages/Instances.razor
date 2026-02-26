@@ -1,31 +1,84 @@
 @page "/instances"
 @inject IProcessMonitor Monitor
+@inject EnvironmentContext Env
 
 <div class="page-header">
     <h1>Process Instances</h1>
     <p>All process instances with status filtering</p>
 </div>
 
-<div class="filter-bar">
-    <button class="filter-btn @(_selectedStatus == null ? "active" : "")"
-            @onclick="() => FilterByStatus(null)">
-        All (@_allInstances.Count)
-    </button>
-    @foreach (var kvp in _statusCounts.Where(s => s.Value > 0))
-    {
-        <button class="filter-btn @(_selectedStatus == kvp.Key ? "active" : "")"
-                @onclick="() => FilterByStatus(kvp.Key)">
-            @FormatStatus(kvp.Key) (@kvp.Value)
+<div class="card env-pane">
+    <div class="card-header">
+        <span class="card-title">Environment</span>
+        @if (Env.IsConfigured)
+        {
+            <span class="env-badge env-badge-@Env.Niveau.ToString().ToLower()">@Env.GetDescription()</span>
+        }
+    </div>
+    <div class="env-selectors">
+        <div class="env-field">
+            <label for="env-niveau">Niveau</label>
+            <select id="env-niveau" @bind="_selectedNiveau">
+                <option value="@Niveau.Unitaire">Unitaire</option>
+                <option value="@Niveau.Acceptation">Acceptation</option>
+                <option value="@Niveau.Production">Production</option>
+            </select>
+        </div>
+        <div class="env-field">
+            <label for="env-phase">Phase</label>
+            <select id="env-phase" @bind="_selectedPhase">
+                @for (int i = 1; i <= 9; i++)
+                {
+                    var phase = i;
+                    <option value="@phase">@phase</option>
+                }
+            </select>
+        </div>
+        <div class="env-field">
+            <label for="env-cellule">Cellule</label>
+            <input id="env-cellule"
+                   type="text"
+                   maxlength="2"
+                   placeholder="AA"
+                   class="env-cellule-input @(_celluleError ? "input-error" : "")"
+                   @bind="_selectedCellule"
+                   @bind:event="oninput"
+                   @oninput="OnCelluleInput" />
+            @if (_celluleError)
+            {
+                <span class="env-field-error">2 letters required</span>
+            }
+        </div>
+        <button class="env-apply-btn" @onclick="ApplyEnvironment" disabled="@_celluleError">
+            Apply
         </button>
-    }
+    </div>
 </div>
 
-@if (_loading)
+@if (!Env.IsConfigured)
+{
+    <div class="empty-state">Select an environment above and click Apply to load instances.</div>
+}
+else if (_loading)
 {
     <div class="loading">Loading...</div>
 }
 else
 {
+    <div class="filter-bar">
+        <button class="filter-btn @(_selectedStatus == null ? "active" : "")"
+                @onclick="() => FilterByStatus(null)">
+            All (@_allInstances.Count)
+        </button>
+        @foreach (var kvp in _statusCounts.Where(s => s.Value > 0))
+        {
+            <button class="filter-btn @(_selectedStatus == kvp.Key ? "active" : "")"
+                    @onclick="() => FilterByStatus(kvp.Key)">
+                @FormatStatus(kvp.Key) (@kvp.Value)
+            </button>
+        }
+    </div>
+
     <div class="card">
         @if (_filteredInstances.Count == 0)
         {
@@ -67,14 +120,54 @@ else
 }
 
 @code {
-    private bool _loading = true;
+    private bool _loading = false;
     private List<Processus> _allInstances = new();
     private List<Processus> _filteredInstances = new();
     private Dictionary<ProcessStatus, int> _statusCounts = new();
     private ProcessStatus? _selectedStatus;
 
-    protected override async Task OnInitializedAsync()
+    // Environment selector state
+    private Niveau _selectedNiveau = Niveau.Unitaire;
+    private int _selectedPhase = 1;
+    private string _selectedCellule = "";
+    private bool _celluleError = false;
+
+    protected override void OnInitialized()
     {
+        // Initialise selectors from current context (useful if user navigates back)
+        _selectedNiveau = Env.Niveau;
+        _selectedPhase = Env.Phase;
+        _selectedCellule = Env.IsConfigured ? Env.Cellule : "";
+    }
+
+    private void OnCelluleInput(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "";
+        _selectedCellule = value.ToUpper();
+        _celluleError = !IsCelluleValid(_selectedCellule);
+    }
+
+    private static bool IsCelluleValid(string value) =>
+        value.Length == 2 && value.All(char.IsLetter);
+
+    private async Task ApplyEnvironment()
+    {
+        if (!IsCelluleValid(_selectedCellule))
+        {
+            _celluleError = true;
+            return;
+        }
+
+        Env.SetEnvironment(_selectedNiveau, _selectedPhase, _selectedCellule);
+        await LoadInstances();
+    }
+
+    private async Task LoadInstances()
+    {
+        _loading = true;
+        _selectedStatus = null;
+        StateHasChanged();
+
         _allInstances = await Monitor.GetAllInstancesAsync();
         _statusCounts = await Monitor.GetStatusSummaryAsync();
         _filteredInstances = _allInstances;

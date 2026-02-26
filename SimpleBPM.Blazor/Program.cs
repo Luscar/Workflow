@@ -1,12 +1,15 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using SimpleBPM.Blazor.Components;
+using SimpleBPM.Blazor.Services;
 using SimpleBPM.Localisation;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddScoped<EnvironmentContext>();
 
 // Use Autofac as the DI container.
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
