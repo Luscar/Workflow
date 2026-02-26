@@ -159,6 +159,33 @@ else
                     }
                 </tbody>
             </table>
+
+            @foreach (var sub in _subprocesses.OrderBy(s => s.StartedAt))
+            {
+                @if (_subprocessDefinitions.TryGetValue(sub.Id, out var subDef) && subDef != null)
+                {
+                    <div style="margin-top: 1.5rem; border-top: 1px solid var(--color-border); padding-top: 1rem;">
+                        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem;">
+                            <span style="font-weight:600; font-size:0.95rem;">
+                                <a href="instances/@sub.Id" style="color:inherit; text-decoration:none;">
+                                    #@sub.Id
+                                </a>
+                                — @sub.DefinitionName
+                                @if (!string.IsNullOrEmpty(sub.ParentNodeName))
+                                {
+                                    <span style="font-weight:400; color: var(--color-text-secondary); font-size:0.85rem;">
+                                        (spawned by @sub.ParentNodeName)
+                                    </span>
+                                }
+                            </span>
+                            <span class="status-badge status-@sub.Status">@FormatStatus(sub.Status)</span>
+                        </div>
+                        <div class="definition-graph" id="subprocess-graph-@sub.Id">
+                            <div class="loading">Rendering graph...</div>
+                        </div>
+                    </div>
+                }
+            }
         </div>
     }
 
@@ -359,6 +386,9 @@ else
     private List<NodeInstance> _history = new();
     private List<Processus> _subprocesses = new();
     private ProcessDefinition? _definition;
+    private Dictionary<long, List<NodeInstance>> _subprocessHistories = new();
+    private Dictionary<long, ProcessDefinition?> _subprocessDefinitions = new();
+    private HashSet<long> _renderedSubGraphIds = new();
 
     // Flow service (optional — only available when IFlowService is registered)
     private IFlowService? _flowService;
@@ -378,6 +408,7 @@ else
             _instance = await Monitor.GetInstanceAsync(Id);
             _history = await Monitor.GetExecutionHistoryAsync(Id);
             _subprocesses = await Monitor.GetAllDescendantsAsync(Id);
+            await LoadSubprocessData();
 
             // Find the matching process definition for the graph
             if (_instance != null)
@@ -421,6 +452,17 @@ else
             _graphRendered = true;
             var syntax = GenerateInstanceGraphSyntax(_definition, _instance, _history);
             await JS.InvokeVoidAsync("renderMermaid", "instance-flow-graph", syntax);
+        }
+
+        foreach (var sub in _subprocesses)
+        {
+            if (_renderedSubGraphIds.Contains(sub.Id)) continue;
+            if (!_subprocessDefinitions.TryGetValue(sub.Id, out var subDef) || subDef == null) continue;
+            if (!_subprocessHistories.TryGetValue(sub.Id, out var subHist)) continue;
+
+            _renderedSubGraphIds.Add(sub.Id);
+            var subSyntax = GenerateInstanceGraphSyntax(subDef, sub, subHist);
+            await JS.InvokeVoidAsync("renderMermaid", $"subprocess-graph-{sub.Id}", subSyntax);
         }
     }
 
@@ -498,9 +540,24 @@ else
         }
     }
 
+    private async Task LoadSubprocessData()
+    {
+        _subprocessHistories.Clear();
+        _subprocessDefinitions.Clear();
+        foreach (var sub in _subprocesses)
+        {
+            _subprocessHistories[sub.Id] = await Monitor.GetExecutionHistoryAsync(sub.Id);
+            _subprocessDefinitions[sub.Id] = Monitor.GetDefinitions()
+                .FirstOrDefault(d => d.Name == sub.DefinitionName && d.Version == sub.DefinitionVersion)
+                ?? Monitor.GetDefinitions()
+                          .FirstOrDefault(d => d.Name == sub.DefinitionName);
+        }
+    }
+
     private async Task ReloadInstance()
     {
         _graphRendered = false;
+        _renderedSubGraphIds.Clear();
         _loading = true;
         StateHasChanged();
 
@@ -509,6 +566,7 @@ else
             _instance = await Monitor.GetInstanceAsync(Id);
             _history = await Monitor.GetExecutionHistoryAsync(Id);
             _subprocesses = await Monitor.GetAllDescendantsAsync(Id);
+            await LoadSubprocessData();
 
             if (_instance?.Status == ProcessStatus.WaitingSignal && _flowService != null)
             {
