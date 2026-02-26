@@ -41,6 +41,15 @@ public class WaitUntilDateNodeHandler : INodeHandler
                 };
             }
 
+            // Exécuter la query pour obtenir la date dynamiquement
+            if (targetDate == null && !string.IsNullOrEmpty(waitNode.DateQueryName) && _executor != null)
+            {
+                var parameters = waitNode.DateQueryParameters.Count > 0 ? waitNode.DateQueryParameters : null;
+                var dateStr = await _executor.EvaluateDecisionAsync(waitNode.DateQueryName, instance.ProcessId, instance.AggregateId, parameters);
+                if (DateTime.TryParse(dateStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var queriedDate))
+                    targetDate = queriedDate;
+            }
+
             // Stocker la date résolue dans la banque de l'instance pour les reprises futures
             if (targetDate != null)
             {
