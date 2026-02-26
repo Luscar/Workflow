@@ -62,7 +62,8 @@ public class OracleProcessRepository : IProcessRepository
                     ID_NOEUD_PARENT VARCHAR2(255),
                     ID_AGREGAT VARCHAR2(255),
                     DONNEES CLOB,
-                    ETAT_INTERNE CLOB,
+                    DATE_ATTENTE TIMESTAMP,
+                    SIGNAL_ATTENTE VARCHAR2(255),
                     DATE_DEBUT TIMESTAMP,
                     DATE_DERNIERE_EXECUTION TIMESTAMP,
                     DATE_COMPLETION TIMESTAMP,
@@ -81,9 +82,21 @@ public class OracleProcessRepository : IProcessRepository
                     END IF;
             END;";
 
-        var addEtatInterneColumnSql = $@"
+        var addDateAttenteColumnSql = $@"
             BEGIN
-                EXECUTE IMMEDIATE 'ALTER TABLE {_processContextTable} ADD (ETAT_INTERNE CLOB)';
+                EXECUTE IMMEDIATE 'ALTER TABLE {_processContextTable} ADD (DATE_ATTENTE TIMESTAMP)';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    IF SQLCODE = -1430 THEN
+                        NULL;
+                    ELSE
+                        RAISE;
+                    END IF;
+            END;";
+
+        var addSignalAttenteColumnSql = $@"
+            BEGIN
+                EXECUTE IMMEDIATE 'ALTER TABLE {_processContextTable} ADD (SIGNAL_ATTENTE VARCHAR2(255))';
             EXCEPTION
                 WHEN OTHERS THEN
                     IF SQLCODE = -1430 THEN
@@ -94,7 +107,8 @@ public class OracleProcessRepository : IProcessRepository
             END;";
 
         await _connection.ExecuteAsync(createTableSql);
-        await _connection.ExecuteAsync(addEtatInterneColumnSql);
+        await _connection.ExecuteAsync(addDateAttenteColumnSql);
+        await _connection.ExecuteAsync(addSignalAttenteColumnSql);
 
         var createIndex01Sql = $@"
             BEGIN
@@ -143,9 +157,9 @@ public class OracleProcessRepository : IProcessRepository
     {
         var sql = $@"
             INSERT INTO {_processContextTable}
-            (ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, ETAT_INTERNE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT)
+            (ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_ATTENTE, SIGNAL_ATTENTE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT)
             VALUES
-            (:IdProcessus, :IdProcessusParent, :IdNoeudParent, :IdAgregat, :Donnees, :EtatInterne, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :Statut)";
+            (:IdProcessus, :IdProcessusParent, :IdNoeudParent, :IdAgregat, :Donnees, :DateAttente, :SignalAttente, :DateDebut, :DateDerniereExecution, :DateCompletion, :IdNoeudCourant, :NomDefinition, :VersionDefinition, :Statut)";
 
         var parameters = new
         {
@@ -154,7 +168,8 @@ public class OracleProcessRepository : IProcessRepository
             IdNoeudParent = instance.ParentNodeName,
             IdAgregat = instance.AggregateId,
             Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
-            EtatInterne = System.Text.Json.JsonSerializer.Serialize(instance.InternalState),
+            DateAttente = instance.InternalState.TryGetValue("WaitUntilDate", out var d) ? (DateTime?)d : null,
+            SignalAttente = instance.InternalState.TryGetValue("WaitingForSignal", out var s) ? s?.ToString() : null,
             DateDebut = instance.StartedAt,
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
@@ -170,7 +185,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetProcessInstanceAsync(long processId)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, ETAT_INTERNE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_ATTENTE, SIGNAL_ATTENTE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS = :IdProcessus";
 
@@ -193,7 +208,8 @@ public class OracleProcessRepository : IProcessRepository
             UPDATE {_processContextTable}
             SET ID_AGREGAT = :IdAgregat,
                 DONNEES = :Donnees,
-                ETAT_INTERNE = :EtatInterne,
+                DATE_ATTENTE = :DateAttente,
+                SIGNAL_ATTENTE = :SignalAttente,
                 DATE_DERNIERE_EXECUTION = :DateDerniereExecution,
                 DATE_COMPLETION = :DateCompletion,
                 ID_NOEUD_COURANT = :IdNoeudCourant,
@@ -206,7 +222,8 @@ public class OracleProcessRepository : IProcessRepository
         {
             IdAgregat = instance.AggregateId,
             Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
-            EtatInterne = System.Text.Json.JsonSerializer.Serialize(instance.InternalState),
+            DateAttente = instance.InternalState.TryGetValue("WaitUntilDate", out var d) ? (DateTime?)d : null,
+            SignalAttente = instance.InternalState.TryGetValue("WaitingForSignal", out var s) ? s?.ToString() : null,
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
             IdNoeudCourant = instance.CurrentNodeName,
@@ -236,7 +253,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<List<ProcessInstance>> SearchByVariableAsync(List<FiltreVariable> filtres)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, ETAT_INTERNE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_ATTENTE, SIGNAL_ATTENTE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
             FROM {_processContextTable}
             WHERE DONNEES IS NOT NULL";
 
@@ -272,7 +289,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, ETAT_INTERNE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_ATTENTE, SIGNAL_ATTENTE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS_PARENT = :IdProcessusParent AND ID_NOEUD_PARENT = :IdNoeudParent";
 
@@ -289,7 +306,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId)
     {
         var sql = $@"
-            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, ETAT_INTERNE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
+            SELECT ID_PROCESSUS, ID_PROCESSUS_PARENT, ID_NOEUD_PARENT, ID_AGREGAT, DONNEES, DATE_ATTENTE, SIGNAL_ATTENTE, DATE_DEBUT, DATE_DERNIERE_EXECUTION, DATE_COMPLETION, ID_NOEUD_COURANT, NOM_DEFINITION, VERSION_DEFINITION, STATUT
             FROM {_processContextTable}
             WHERE ID_PROCESSUS_PARENT = :IdProcessusParent";
 
@@ -308,6 +325,12 @@ public class OracleProcessRepository : IProcessRepository
 
     private ProcessInstance MapToInstance(ProcessInstanceDto result)
     {
+        var internalState = new Dictionary<string, object>();
+        if (result.DATE_ATTENTE.HasValue)
+            internalState["WaitUntilDate"] = result.DATE_ATTENTE.Value;
+        if (!string.IsNullOrEmpty(result.SIGNAL_ATTENTE))
+            internalState["WaitingForSignal"] = result.SIGNAL_ATTENTE;
+
         return new ProcessInstance(result.ID_PROCESSUS)
         {
             ParentProcessId = result.ID_PROCESSUS_PARENT,
@@ -318,9 +341,7 @@ public class OracleProcessRepository : IProcessRepository
             Variables = string.IsNullOrEmpty(result.DONNEES)
                 ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>(),
-            InternalState = string.IsNullOrEmpty(result.ETAT_INTERNE)
-                ? new Dictionary<string, object>()
-                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.ETAT_INTERNE) ?? new Dictionary<string, object>(),
+            InternalState = internalState,
             StartedAt = result.DATE_DEBUT,
             LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
             CompletedAt = result.DATE_COMPLETION,
@@ -336,7 +357,8 @@ public class OracleProcessRepository : IProcessRepository
         public string? ID_NOEUD_PARENT { get; set; }
         public string? ID_AGREGAT { get; set; }
         public string DONNEES { get; set; } = string.Empty;
-        public string? ETAT_INTERNE { get; set; }
+        public DateTime? DATE_ATTENTE { get; set; }
+        public string? SIGNAL_ATTENTE { get; set; }
         public DateTime DATE_DEBUT { get; set; }
         public DateTime? DATE_DERNIERE_EXECUTION { get; set; }
         public DateTime? DATE_COMPLETION { get; set; }
