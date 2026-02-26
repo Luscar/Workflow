@@ -122,6 +122,46 @@ else
         </div>
     }
 
+    <!-- ── Subprocesses ────────────────────────────────────────── -->
+    @if (_subprocesses.Count > 0)
+    {
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Subprocesses</span>
+                <span style="color: var(--color-text-secondary); font-size: 0.85rem;">
+                    @_subprocesses.Count subprocess(es)
+                </span>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Definition</th>
+                        <th>Status</th>
+                        <th>Current Node</th>
+                        <th>Spawned By</th>
+                        <th>Started</th>
+                        <th>Completed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sub in _subprocesses.OrderBy(s => s.StartedAt))
+                    {
+                        <tr>
+                            <td><a href="instances/@sub.Id">@sub.Id</a></td>
+                            <td>@sub.DefinitionName</td>
+                            <td><span class="status-badge status-@sub.Status">@FormatStatus(sub.Status)</span></td>
+                            <td>@(sub.CurrentNodeName ?? "-")</td>
+                            <td>@(sub.ParentNodeName ?? "-")</td>
+                            <td>@sub.StartedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@(sub.CompletedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
     <!-- ── Flow Actions ────────────────────────────────────────── -->
     @if (_instance.Status is ProcessStatus.WaitingInteraction
                           or ProcessStatus.WaitingSignal
@@ -317,6 +357,7 @@ else
     private bool _graphRendered = false;
     private Processus? _instance;
     private List<NodeInstance> _history = new();
+    private List<Processus> _subprocesses = new();
     private ProcessDefinition? _definition;
 
     // Flow service (optional — only available when IFlowService is registered)
@@ -336,6 +377,7 @@ else
         {
             _instance = await Monitor.GetInstanceAsync(Id);
             _history = await Monitor.GetExecutionHistoryAsync(Id);
+            _subprocesses = await Monitor.GetAllDescendantsAsync(Id);
 
             // Find the matching process definition for the graph
             if (_instance != null)
@@ -466,6 +508,7 @@ else
         {
             _instance = await Monitor.GetInstanceAsync(Id);
             _history = await Monitor.GetExecutionHistoryAsync(Id);
+            _subprocesses = await Monitor.GetAllDescendantsAsync(Id);
 
             if (_instance?.Status == ProcessStatus.WaitingSignal && _flowService != null)
             {

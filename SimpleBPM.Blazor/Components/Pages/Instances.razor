@@ -7,7 +7,7 @@
 
 <div class="page-header">
     <h1>Process Instances</h1>
-    <p>All process instances with status filtering</p>
+    <p>Root process instances with status filtering</p>
 </div>
 
 <div class="card env-pane">
@@ -190,8 +190,10 @@ else
         _selectedStatus = null;
         StateHasChanged();
 
-        _allInstances = await Monitor.GetAllInstancesAsync();
-        _statusCounts = await Monitor.GetStatusSummaryAsync();
+        _allInstances = await Monitor.GetRootInstancesAsync();
+        _statusCounts = _allInstances
+            .GroupBy(i => i.Status)
+            .ToDictionary(g => g.Key, g => g.Count());
         _filteredInstances = _allInstances;
         _loading = false;
     }
