@@ -539,11 +539,14 @@ else
         var executedNodes = history.Where(h => h.Success).Select(h => h.NodeId).ToHashSet();
         var failedNodes   = history.Where(h => !h.Success).Select(h => h.NodeId).ToHashSet();
 
-        // For waiting states the FlowEngine stores the *next* node in CurrentNodeName (where
-        // execution will resume), but the actual blocking node is the last history entry.
-        // Use that as the node to highlight as "current".
+        // For waiting/running states the FlowEngine stores the *next* node in CurrentNodeName
+        // (where execution will resume), but the actual blocking/active node is the last history
+        // entry. Use that as the node to highlight as "current".
+        // Running is included so that an in-progress SubProcess node is shown as current (orange)
+        // rather than executed (green).
         string? currentNode = instance.Status switch
         {
+            ProcessStatus.Running or
             ProcessStatus.WaitingSignal or
             ProcessStatus.WaitingInteraction or
             ProcessStatus.WaitingDate => history.LastOrDefault()?.NodeId,
