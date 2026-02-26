@@ -491,9 +491,10 @@ else
         Processus instance,
         List<NodeInstance> history)
     {
-        // Build lookup sets for styling
-        var executedNodes = history.Where(h => h.Success).Select(h => h.NodeName).ToHashSet();
-        var failedNodes   = history.Where(h => !h.Success).Select(h => h.NodeName).ToHashSet();
+        // Build lookup sets for styling.
+        // NodeInstance.NodeId holds node.Name (the dict key); NodeInstance.NodeName holds DisplayName.
+        var executedNodes = history.Where(h => h.Success).Select(h => h.NodeId).ToHashSet();
+        var failedNodes   = history.Where(h => !h.Success).Select(h => h.NodeId).ToHashSet();
         var currentNode   = instance.CurrentNodeName;
 
         var sb = new System.Text.StringBuilder();
@@ -546,7 +547,7 @@ else
             }
         }
 
-        // Type-based class definitions
+        // ── Type-based classDefs (base styling) ─────────────────────
         sb.AppendLine("    classDef business fill:#dbeafe,stroke:#3b82f6,color:#1e293b");
         sb.AppendLine("    classDef decision fill:#fef3c7,stroke:#f59e0b,color:#1e293b");
         sb.AppendLine("    classDef interactive fill:#dcfce7,stroke:#22c55e,color:#1e293b");
@@ -554,6 +555,13 @@ else
         sb.AppendLine("    classDef waitDate fill:#ede9fe,stroke:#8b5cf6,color:#1e293b");
         sb.AppendLine("    classDef subProcess fill:#fce7f3,stroke:#ec4899,color:#1e293b");
 
+        // ── Highlight classDefs — defined AFTER type classes so they
+        //    win the CSS cascade when both are applied to the same node.
+        sb.AppendLine("    classDef nodeExecuted fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#064e3b");
+        sb.AppendLine("    classDef nodeFailed fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#7f1d1d");
+        sb.AppendLine("    classDef nodeCurrent fill:#fed7aa,stroke:#f97316,stroke-width:3px,color:#7c2d12");
+
+        // Apply type classes first
         foreach (var (id, node) in definition.Nodes)
         {
             var cls = node.Type switch
@@ -569,27 +577,26 @@ else
             sb.AppendLine($"    class {SanitizeId(id)} {cls}");
         }
 
-        // Start node thick border
+        // Mark start node with a thick border (via inline style — additive, doesn't conflict)
         if (definition.StartNodeId != null)
             sb.AppendLine($"    style {SanitizeId(definition.StartNodeId)} stroke-width:3px");
 
-        // Highlight executed nodes (green)
-        foreach (var nodeName in executedNodes)
+        // Apply highlight classes last so they override the type classes above
+        foreach (var nodeId in executedNodes)
         {
-            if (definition.Nodes.ContainsKey(nodeName))
-                sb.AppendLine($"    style {SanitizeId(nodeName)} fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#064e3b");
+            if (definition.Nodes.ContainsKey(nodeId))
+                sb.AppendLine($"    class {SanitizeId(nodeId)} nodeExecuted");
         }
 
-        // Highlight failed nodes (red) — overwrites executed if same node failed after success
-        foreach (var nodeName in failedNodes)
+        foreach (var nodeId in failedNodes)
         {
-            if (definition.Nodes.ContainsKey(nodeName))
-                sb.AppendLine($"    style {SanitizeId(nodeName)} fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#7f1d1d");
+            if (definition.Nodes.ContainsKey(nodeId))
+                sb.AppendLine($"    class {SanitizeId(nodeId)} nodeFailed");
         }
 
-        // Highlight current node (orange, thick) — highest priority
+        // Current node last — highest visual priority
         if (!string.IsNullOrEmpty(currentNode) && definition.Nodes.ContainsKey(currentNode))
-            sb.AppendLine($"    style {SanitizeId(currentNode)} fill:#fed7aa,stroke:#f97316,stroke-width:3px,color:#7c2d12");
+            sb.AppendLine($"    class {SanitizeId(currentNode)} nodeCurrent");
 
         return sb.ToString();
     }
