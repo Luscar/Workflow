@@ -207,8 +207,7 @@ public class FlowEngine
                 $"Impossible d'envoyer un signal au processus '{instance.ProcessId}' : le statut est '{instance.Status}', attendu '{ProcessStatus.WaitingSignal}'");
         }
 
-        if (instance.InternalState.TryGetValue("WaitingForSignal", out var waitingSignal) &&
-            waitingSignal?.ToString() == signalName)
+        if (instance.ExpectedSignal == signalName)
         {
             return await ContinueInternalAsync(instance);
         }

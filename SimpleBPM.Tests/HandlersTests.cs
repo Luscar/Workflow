@@ -325,7 +325,7 @@ public class WaitForSignalNodeHandlerTests
         Assert.True(result.RequiresStop);
         Assert.Equal("nextStep", result.NextNodeName);
         Assert.Equal(ProcessStatus.WaitingSignal, instance.Status);
-        Assert.Equal("approval-signal", instance.InternalState["WaitingForSignal"]?.ToString());
+        Assert.Equal("approval-signal", instance.ExpectedSignal);
     }
 
     [Fact]
@@ -602,7 +602,7 @@ public class WaitUntilDateNodeHandlerTests
         Assert.True(result.IsCompleted);
         Assert.True(result.RequiresStop);
         Assert.Equal(ProcessStatus.WaitingDate, instance.Status);
-        Assert.Equal(futureDate, instance.InternalState["WaitUntilDate"]);
+        Assert.Equal(futureDate, instance.WaitDate);
         await executor.Received(1).EvaluateDecisionAsync("GetDueDate", 1, null, null);
     }
 
@@ -671,7 +671,7 @@ public class WaitUntilDateNodeHandlerTests
 
         // La banque contient déjà une date passée — la query ne doit pas être rappelée
         var instance = new ProcessInstance(1);
-        instance.InternalState["WaitUntilDate"] = DateTime.UtcNow.AddDays(-1);
+        instance.WaitDate = DateTime.UtcNow.AddDays(-1);
 
         var result = await handler.HandleAsync(node, instance);
 

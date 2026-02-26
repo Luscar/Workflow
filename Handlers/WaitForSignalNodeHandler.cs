@@ -20,7 +20,7 @@ public class WaitForSignalNodeHandler : INodeHandler
 
         instance.Status = ProcessStatus.WaitingSignal;
         instance.CurrentNodeName = node.Name;
-        instance.InternalState["WaitingForSignal"] = signalNode.SignalName;
+        instance.ExpectedSignal = signalNode.SignalName;
 
         if (_executor != null && !string.IsNullOrEmpty(node.OnEnterCommandName))
         {

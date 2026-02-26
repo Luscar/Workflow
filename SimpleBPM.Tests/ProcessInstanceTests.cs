@@ -14,8 +14,8 @@ public class ProcessInstanceTests
         Assert.Equal(ProcessStatus.Running, instance.Status);
         Assert.NotNull(instance.Variables);
         Assert.Empty(instance.Variables);
-        Assert.NotNull(instance.InternalState);
-        Assert.Empty(instance.InternalState);
+        Assert.Null(instance.WaitDate);
+        Assert.Null(instance.ExpectedSignal);
         Assert.NotNull(instance.ExecutionHistory);
         Assert.Empty(instance.ExecutionHistory);
     }
@@ -108,12 +108,12 @@ public class ProcessInstanceTests
     }
 
     [Fact]
-    public void InternalState_CanBeSetAndRetrieved()
+    public void ExpectedSignal_CanBeSetAndRetrieved()
     {
         var instance = new ProcessInstance(1);
-        instance.InternalState["WaitingForSignal"] = "approval";
+        instance.ExpectedSignal = "approval";
 
-        Assert.Equal("approval", instance.InternalState["WaitingForSignal"]);
+        Assert.Equal("approval", instance.ExpectedSignal);
     }
 
     [Fact]

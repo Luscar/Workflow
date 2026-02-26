@@ -214,7 +214,7 @@ public class FlowEngineTests
         instance = await engine.ExecuteAsync(instance);
 
         Assert.Equal(ProcessStatus.WaitingSignal, instance.Status);
-        Assert.Equal("approval", instance.InternalState["WaitingForSignal"]?.ToString());
+        Assert.Equal("approval", instance.ExpectedSignal);
 
         instance = await engine.SignalAsync(instance, "approval");
 
@@ -363,7 +363,7 @@ public class FlowEngineTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WaitUntilDate_WithDateKey_StoresDateInInternalState()
+    public async Task ExecuteAsync_WaitUntilDate_WithDateKey_StoresDateInWaitDate()
     {
         var def = new ProcessDefinition("WaitTest", "1.0");
         var waitNode = new WaitUntilDateNode("targetDate")
@@ -382,9 +382,7 @@ public class FlowEngineTests
         var result = await engine.ExecuteAsync(instance);
 
         Assert.Equal(ProcessStatus.WaitingDate, result.Status);
-        // La date doit être stockée dans InternalState (banque du noeud)
-        Assert.True(result.InternalState.ContainsKey("WaitUntilDate"));
-        Assert.Equal(futureDate, result.InternalState["WaitUntilDate"]);
+        Assert.Equal(futureDate, result.WaitDate);
     }
 
     [Fact]
@@ -411,8 +409,8 @@ public class FlowEngineTests
         instance = await engine.ExecuteAsync(instance);
         Assert.Equal(ProcessStatus.WaitingDate, instance.Status);
 
-        // Simuler une reprise : la date dans la banque est passée, la variable a changé
-        instance.InternalState["WaitUntilDate"] = DateTime.UtcNow.AddDays(-1);
+        // Simuler une reprise : la date est passée, la variable a changé
+        instance.WaitDate = DateTime.UtcNow.AddDays(-1);
         instance.Variables["targetDate"] = DateTime.UtcNow.AddDays(10); // variable modifiée
 
         instance = await engine.ContinueAsync(instance);

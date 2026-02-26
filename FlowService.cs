@@ -57,9 +57,9 @@ public class FlowService : IFlowService
             ?? throw new InvalidOperationException($"Processus '{idInstanceProcessus}' introuvable");
 
         if (instance.Status == ProcessStatus.WaitingSignal &&
-            instance.InternalState.TryGetValue("WaitingForSignal", out var signal))
+            instance.ExpectedSignal != null)
         {
-            return new[] { signal?.ToString() ?? string.Empty };
+            return new[] { instance.ExpectedSignal };
         }
 
         return Enumerable.Empty<string>();
