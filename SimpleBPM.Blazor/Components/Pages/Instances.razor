@@ -111,7 +111,7 @@ else
                             <td>@inst.DefinitionName</td>
                             <td>@inst.DefinitionVersion</td>
                             <td><span class="status-badge status-@inst.Status">@FormatStatus(inst.Status)</span></td>
-                            <td>@(inst.CurrentNodeId ?? "-")</td>
+                            <td>@(inst.CurrentNodeName ?? "-")</td>
                             <td>@inst.StartedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
                             <td>@(inst.CompletedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
                         </tr>
