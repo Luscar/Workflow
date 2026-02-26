@@ -495,15 +495,21 @@ else
         // NodeInstance.NodeId holds node.Name (the dict key); NodeInstance.NodeName holds DisplayName.
         var executedNodes = history.Where(h => h.Success).Select(h => h.NodeId).ToHashSet();
         var failedNodes   = history.Where(h => !h.Success).Select(h => h.NodeId).ToHashSet();
-        var currentNode   = instance.CurrentNodeName;
 
-        // The current node may also appear in history (e.g. WaitForSignal is logged as
-        // Success=true when entered). Remove it from both sets so only nodeCurrent applies.
-        if (!string.IsNullOrEmpty(currentNode))
+        // For waiting states the FlowEngine stores the *next* node in CurrentNodeName (where
+        // execution will resume), but the actual blocking node is the last history entry.
+        // Use that as the node to highlight as "current".
+        string? currentNode = instance.Status switch
         {
+            ProcessStatus.WaitingSignal or
+            ProcessStatus.WaitingInteraction or
+            ProcessStatus.WaitingDate => history.LastOrDefault()?.NodeId,
+            _ => null
+        };
+
+        // Remove the blocking node from the executed set — it is paused, not done.
+        if (!string.IsNullOrEmpty(currentNode))
             executedNodes.Remove(currentNode);
-            failedNodes.Remove(currentNode);
-        }
 
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("graph LR");
