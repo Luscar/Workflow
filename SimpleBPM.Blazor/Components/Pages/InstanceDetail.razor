@@ -1,7 +1,10 @@
 @page "/instances/{Id:long}"
+@using Autofac
 @inject IProcessMonitor Monitor
 @inject NavigationManager Navigation
 @inject EnvironmentContext Env
+@inject ILifetimeScope Scope
+@inject IJSRuntime JS
 
 <div class="detail-top-bar">
     <a href="instances" class="back-link">&larr; Back to instances</a>
@@ -30,6 +33,7 @@ else
         <p>@_instance.DefinitionName v@_instance.DefinitionVersion</p>
     </div>
 
+    <!-- ── Instance Details ─────────────────────────────────────── -->
     <div class="card">
         <div class="card-header">
             <span class="card-title">Instance Details</span>
@@ -43,7 +47,7 @@ else
             </div>
             <div class="detail-item">
                 <label>Aggregate ID</label>
-                <span>@(_instance.AggregateId ?? "-")</span>
+                <span>@(_instance.AggregateId?.ToString() ?? "-")</span>
             </div>
             <div class="detail-item">
                 <label>Definition</label>
@@ -55,7 +59,7 @@ else
             </div>
             <div class="detail-item">
                 <label>Current Node</label>
-                <span>@(_instance.CurrentNodeId ?? "-")</span>
+                <span>@(_instance.CurrentNodeName ?? "-")</span>
             </div>
             <div class="detail-item">
                 <label>Started At</label>
@@ -75,6 +79,162 @@ else
         }
     </div>
 
+    <!-- ── Process Flow Graph ──────────────────────────────────── -->
+    @if (_definition != null)
+    {
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Process Flow</span>
+                <div class="graph-legend" style="margin-bottom:0;">
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:#fed7aa;border-color:#f97316;"></span>
+                        Current
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:#d1fae5;border-color:#10b981;"></span>
+                        Executed
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:#fee2e2;border-color:#ef4444;"></span>
+                        Failed
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:#dbeafe;border-color:#3b82f6;"></span>
+                        Business
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-swatch legend-diamond" style="background:#fef3c7;border-color:#f59e0b;"></span>
+                        Decision
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:#dcfce7;border-color:#22c55e;border-radius:8px;"></span>
+                        Interactive
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:#cffafe;border-color:#06b6d4;"></span>
+                        Wait Signal
+                    </div>
+                </div>
+            </div>
+            <div class="definition-graph" id="instance-flow-graph">
+                <div class="loading">Rendering graph...</div>
+            </div>
+        </div>
+    }
+
+    <!-- ── Flow Actions ────────────────────────────────────────── -->
+    @if (_instance.Status is ProcessStatus.WaitingInteraction
+                          or ProcessStatus.WaitingSignal
+                          or ProcessStatus.WaitingDate)
+    {
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Flow Actions</span>
+                @if (_flowService == null)
+                {
+                    <span class="flow-action-note">IFlowService not registered — actions are disabled</span>
+                }
+            </div>
+
+            @if (_actionSuccess != null)
+            {
+                <div class="flow-action-feedback flow-action-success">@_actionSuccess</div>
+            }
+            @if (_actionError != null)
+            {
+                <div class="flow-action-feedback flow-action-error">@_actionError</div>
+            }
+
+            @if (_instance.Status == ProcessStatus.WaitingInteraction)
+            {
+                <div class="flow-action-section">
+                    <p class="flow-action-desc">
+                        The process is paused at an interactive step. You can complete the step,
+                        optionally providing variable values to inject into the process context.
+                    </p>
+
+                    <div class="flow-vars-editor">
+                        @foreach (var (key, idx) in _actionVars.Select((v, i) => (v, i)))
+                        {
+                            <div class="flow-var-row">
+                                <input class="flow-var-input"
+                                       placeholder="Variable name"
+                                       value="@key.Key"
+                                       @oninput="e => UpdateVarKey(idx, e.Value?.ToString() ?? "")" />
+                                <input class="flow-var-input"
+                                       placeholder="Value"
+                                       value="@key.Value"
+                                       @oninput="e => UpdateVarValue(idx, e.Value?.ToString() ?? "")" />
+                                <button class="flow-var-remove" @onclick="() => RemoveVar(idx)" title="Remove">✕</button>
+                            </div>
+                        }
+                        <button class="flow-action-link" @onclick="AddVar">+ Add variable</button>
+                    </div>
+
+                    <div class="flow-action-buttons">
+                        <button class="flow-action-btn flow-action-btn-primary"
+                                disabled="@(_flowService == null || _actionBusy)"
+                                @onclick="CompleteStep">
+                            @if (_actionBusy)
+                            {
+                                <span>Processing…</span>
+                            }
+                            else
+                            {
+                                <span>Complete Current Step</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            }
+            else if (_instance.Status == ProcessStatus.WaitingSignal)
+            {
+                <div class="flow-action-section">
+                    <p class="flow-action-desc">
+                        The process is waiting for a signal to continue.
+                        @if (_waitingSignals?.Any() == true)
+                        {
+                            <span> Expected signal: <strong>@string.Join(", ", _waitingSignals)</strong></span>
+                        }
+                    </p>
+
+                    <div class="flow-signal-row">
+                        <label class="flow-signal-label">Signal name</label>
+                        <input class="flow-signal-input"
+                               type="text"
+                               placeholder="e.g. DocumentSigned"
+                               @bind="_signalName" />
+                    </div>
+
+                    <div class="flow-action-buttons">
+                        <button class="flow-action-btn flow-action-btn-primary"
+                                disabled="@(_flowService == null || _actionBusy || string.IsNullOrWhiteSpace(_signalName))"
+                                @onclick="SendSignal">
+                            @if (_actionBusy)
+                            {
+                                <span>Sending…</span>
+                            }
+                            else
+                            {
+                                <span>Send Signal</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            }
+            else if (_instance.Status == ProcessStatus.WaitingDate)
+            {
+                <div class="flow-action-section">
+                    <p class="flow-action-desc">
+                        The process is paused until a scheduled date/time condition is met.
+                        No manual action is required; the engine will resume it automatically.
+                    </p>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- ── Variables ───────────────────────────────────────────── -->
     <div class="card">
         <div class="card-header">
             <span class="card-title">Variables</span>
@@ -106,6 +266,7 @@ else
         }
     </div>
 
+    <!-- ── Execution History ────────────────────────────────────── -->
     <div class="card">
         <div class="card-header">
             <span class="card-title">Execution History</span>
@@ -153,8 +314,21 @@ else
     public long Id { get; set; }
 
     private bool _loading = true;
+    private bool _graphRendered = false;
     private Processus? _instance;
-    private List<NodeExecutionHistory> _history = new();
+    private List<NodeInstance> _history = new();
+    private ProcessDefinition? _definition;
+
+    // Flow service (optional — only available when IFlowService is registered)
+    private IFlowService? _flowService;
+    private IEnumerable<string>? _waitingSignals;
+
+    // Action state
+    private bool _actionBusy = false;
+    private string? _actionSuccess;
+    private string? _actionError;
+    private string _signalName = "";
+    private List<(string Key, string Value)> _actionVars = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -162,6 +336,33 @@ else
         {
             _instance = await Monitor.GetInstanceAsync(Id);
             _history = await Monitor.GetExecutionHistoryAsync(Id);
+
+            // Find the matching process definition for the graph
+            if (_instance != null)
+            {
+                _definition = Monitor.GetDefinitions()
+                    .FirstOrDefault(d => d.Name == _instance.DefinitionName
+                                      && d.Version == _instance.DefinitionVersion)
+                    // Fallback: match by name only
+                    ?? Monitor.GetDefinitions()
+                              .FirstOrDefault(d => d.Name == _instance.DefinitionName);
+            }
+
+            // Resolve IFlowService optionally — it may not be registered in monitoring-only setups
+            _flowService = Scope.ResolveOptional<IFlowService>();
+
+            // Pre-fill signal name if the service knows what signal is expected
+            if (_flowService != null && _instance?.Status == ProcessStatus.WaitingSignal)
+            {
+                try
+                {
+                    _waitingSignals = await _flowService.ObtenirSignauxEnAttenteAsync(Id);
+                    var first = _waitingSignals?.FirstOrDefault();
+                    if (!string.IsNullOrEmpty(first))
+                        _signalName = first;
+                }
+                catch { /* best-effort */ }
+            }
         }
         catch (InvalidOperationException)
         {
@@ -171,14 +372,271 @@ else
         _loading = false;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_graphRendered && _definition != null && _instance != null && !_loading)
+        {
+            _graphRendered = true;
+            var syntax = GenerateInstanceGraphSyntax(_definition, _instance, _history);
+            await JS.InvokeVoidAsync("renderMermaid", "instance-flow-graph", syntax);
+        }
+    }
+
+    // ── Flow Action Helpers ──────────────────────────────────────
+
+    private void AddVar() => _actionVars.Add(("", ""));
+
+    private void RemoveVar(int idx)
+    {
+        if (idx >= 0 && idx < _actionVars.Count)
+            _actionVars.RemoveAt(idx);
+    }
+
+    private void UpdateVarKey(int idx, string key)
+    {
+        if (idx >= 0 && idx < _actionVars.Count)
+            _actionVars[idx] = (key, _actionVars[idx].Value);
+    }
+
+    private void UpdateVarValue(int idx, string value)
+    {
+        if (idx >= 0 && idx < _actionVars.Count)
+            _actionVars[idx] = (_actionVars[idx].Key, value);
+    }
+
+    private async Task CompleteStep()
+    {
+        if (_flowService == null || _instance == null) return;
+        _actionBusy = true;
+        _actionSuccess = null;
+        _actionError = null;
+
+        try
+        {
+            Dictionary<string, object>? vars = _actionVars
+                .Where(v => !string.IsNullOrWhiteSpace(v.Key))
+                .ToDictionary(v => v.Key, v => (object)v.Value);
+
+            await _flowService.TerminerEtapeEnCoursAsync(_instance.Id, vars.Count > 0 ? vars : null);
+
+            _actionSuccess = "Step completed successfully. Reloading…";
+            _actionVars.Clear();
+            await ReloadInstance();
+        }
+        catch (Exception ex)
+        {
+            _actionError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _actionBusy = false;
+        }
+    }
+
+    private async Task SendSignal()
+    {
+        if (_flowService == null || _instance == null || string.IsNullOrWhiteSpace(_signalName)) return;
+        _actionBusy = true;
+        _actionSuccess = null;
+        _actionError = null;
+
+        try
+        {
+            await _flowService.EnvoyerSignalAsync(_instance.Id, _signalName.Trim());
+            _actionSuccess = $"Signal \"{_signalName.Trim()}\" sent. Reloading…";
+            await ReloadInstance();
+        }
+        catch (Exception ex)
+        {
+            _actionError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _actionBusy = false;
+        }
+    }
+
+    private async Task ReloadInstance()
+    {
+        _graphRendered = false;
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _instance = await Monitor.GetInstanceAsync(Id);
+            _history = await Monitor.GetExecutionHistoryAsync(Id);
+
+            if (_instance?.Status == ProcessStatus.WaitingSignal && _flowService != null)
+            {
+                try
+                {
+                    _waitingSignals = await _flowService.ObtenirSignauxEnAttenteAsync(Id);
+                    var first = _waitingSignals?.FirstOrDefault();
+                    if (!string.IsNullOrEmpty(first))
+                        _signalName = first;
+                }
+                catch { /* best-effort */ }
+            }
+        }
+        catch { _instance = null; }
+
+        _loading = false;
+    }
+
+    // ── Graph Generation ─────────────────────────────────────────
+
+    private string GenerateInstanceGraphSyntax(
+        ProcessDefinition definition,
+        Processus instance,
+        List<NodeInstance> history)
+    {
+        // Build lookup sets for styling
+        var executedNodes = history.Where(h => h.Success).Select(h => h.NodeName).ToHashSet();
+        var failedNodes   = history.Where(h => !h.Success).Select(h => h.NodeName).ToHashSet();
+        var currentNode   = instance.CurrentNodeName;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("graph LR");
+
+        // Node declarations
+        foreach (var (id, node) in definition.Nodes)
+        {
+            var safeId = SanitizeId(id);
+            var label  = EscapeLabel(!string.IsNullOrEmpty(node.DisplayName) ? node.DisplayName : id);
+            sb.AppendLine(MermaidNodeDeclaration(safeId, label, node.Type));
+        }
+
+        // Edges
+        foreach (var (id, node) in definition.Nodes)
+        {
+            var safeId = SanitizeId(id);
+
+            if (node is DecisionNode decision)
+            {
+                var handled = new HashSet<string>();
+
+                foreach (var (condition, targetId) in decision.ConditionToNodeId)
+                {
+                    sb.AppendLine($"    {safeId} -->|\"{EscapeLabel(condition)}\"| {SanitizeId(targetId)}");
+                    handled.Add(targetId);
+                }
+
+                foreach (var cond in decision.Conditions)
+                {
+                    if (handled.Contains(cond.NoeudCible)) continue;
+                    var condLabel = $"{cond.NomVariable} {FormatOperator(cond.Operateur)} {cond.Valeur}";
+                    sb.AppendLine($"    {safeId} -->|\"{EscapeLabel(condLabel)}\"| {SanitizeId(cond.NoeudCible)}");
+                    handled.Add(cond.NoeudCible);
+                }
+
+                if (decision.NoeudParDefaut != null && !handled.Contains(decision.NoeudParDefaut))
+                {
+                    sb.AppendLine($"    {safeId} -->|\"default\"| {SanitizeId(decision.NoeudParDefaut)}");
+                    handled.Add(decision.NoeudParDefaut);
+                }
+
+                foreach (var nextId in node.NextNodeIds.Where(n => !handled.Contains(n)))
+                    sb.AppendLine($"    {safeId} --> {SanitizeId(nextId)}");
+            }
+            else
+            {
+                foreach (var nextId in node.NextNodeIds)
+                    sb.AppendLine($"    {safeId} --> {SanitizeId(nextId)}");
+            }
+        }
+
+        // Type-based class definitions
+        sb.AppendLine("    classDef business fill:#dbeafe,stroke:#3b82f6,color:#1e293b");
+        sb.AppendLine("    classDef decision fill:#fef3c7,stroke:#f59e0b,color:#1e293b");
+        sb.AppendLine("    classDef interactive fill:#dcfce7,stroke:#22c55e,color:#1e293b");
+        sb.AppendLine("    classDef waitSignal fill:#cffafe,stroke:#06b6d4,color:#1e293b");
+        sb.AppendLine("    classDef waitDate fill:#ede9fe,stroke:#8b5cf6,color:#1e293b");
+        sb.AppendLine("    classDef subProcess fill:#fce7f3,stroke:#ec4899,color:#1e293b");
+
+        foreach (var (id, node) in definition.Nodes)
+        {
+            var cls = node.Type switch
+            {
+                NodeType.Business      => "business",
+                NodeType.Decision      => "decision",
+                NodeType.Interactive   => "interactive",
+                NodeType.WaitForSignal => "waitSignal",
+                NodeType.WaitUntilDate => "waitDate",
+                NodeType.SubProcess    => "subProcess",
+                _                      => "business"
+            };
+            sb.AppendLine($"    class {SanitizeId(id)} {cls}");
+        }
+
+        // Start node thick border
+        if (definition.StartNodeId != null)
+            sb.AppendLine($"    style {SanitizeId(definition.StartNodeId)} stroke-width:3px");
+
+        // Highlight executed nodes (green)
+        foreach (var nodeName in executedNodes)
+        {
+            if (definition.Nodes.ContainsKey(nodeName))
+                sb.AppendLine($"    style {SanitizeId(nodeName)} fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#064e3b");
+        }
+
+        // Highlight failed nodes (red) — overwrites executed if same node failed after success
+        foreach (var nodeName in failedNodes)
+        {
+            if (definition.Nodes.ContainsKey(nodeName))
+                sb.AppendLine($"    style {SanitizeId(nodeName)} fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#7f1d1d");
+        }
+
+        // Highlight current node (orange, thick) — highest priority
+        if (!string.IsNullOrEmpty(currentNode) && definition.Nodes.ContainsKey(currentNode))
+            sb.AppendLine($"    style {SanitizeId(currentNode)} fill:#fed7aa,stroke:#f97316,stroke-width:3px,color:#7c2d12");
+
+        return sb.ToString();
+    }
+
+    private static string MermaidNodeDeclaration(string id, string label, NodeType type)
+    {
+        return type switch
+        {
+            NodeType.Decision      => $"    {id}{{\"{label}\"}}",
+            NodeType.Interactive   => $"    {id}([\"{label}\"])",
+            NodeType.WaitForSignal => "    " + id + "{{\"" + label + "\"}}",
+            NodeType.WaitUntilDate => $"    {id}[/\"{label}\"/]",
+            NodeType.SubProcess    => $"    {id}[[\"{label}\"]]",
+            _                      => $"    {id}[\"{label}\"]"
+        };
+    }
+
+    private static string SanitizeId(string id)
+        => new string(id.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray());
+
+    private static string EscapeLabel(string text)
+        => text.Replace("\"", "#quot;").Replace("<", "#lt;").Replace(">", "#gt;");
+
+    private static string FormatOperator(OperateurFiltre op) => op switch
+    {
+        OperateurFiltre.Egal              => "=",
+        OperateurFiltre.Different         => "!=",
+        OperateurFiltre.Superieur         => ">",
+        OperateurFiltre.SuperieurOuEgal   => ">=",
+        OperateurFiltre.Inferieur         => "<",
+        OperateurFiltre.InferieurOuEgal   => "<=",
+        OperateurFiltre.Contient          => "contains",
+        OperateurFiltre.CommencePar       => "starts with",
+        OperateurFiltre.FinitPar          => "ends with",
+        _ => op.ToString()
+    };
+
+    // ── Formatting helpers ───────────────────────────────────────
+
     private static string FormatStatus(ProcessStatus status) => status switch
     {
-        ProcessStatus.Running => "Running",
-        ProcessStatus.WaitingInteraction => "Waiting Interaction",
-        ProcessStatus.WaitingDate => "Waiting Date",
-        ProcessStatus.WaitingSignal => "Waiting Signal",
-        ProcessStatus.Completed => "Completed",
-        ProcessStatus.Failed => "Failed",
+        ProcessStatus.Running              => "Running",
+        ProcessStatus.WaitingInteraction   => "Waiting Interaction",
+        ProcessStatus.WaitingDate          => "Waiting Date",
+        ProcessStatus.WaitingSignal        => "Waiting Signal",
+        ProcessStatus.Completed            => "Completed",
+        ProcessStatus.Failed               => "Failed",
         _ => status.ToString()
     };
 
