@@ -16,6 +16,16 @@ public interface IProcessMonitor
     Task<List<Processus>> GetAllInstancesAsync();
 
     /// <summary>
+    /// Retourne uniquement les instances racines (sans processus parent).
+    /// </summary>
+    Task<List<Processus>> GetRootInstancesAsync();
+
+    /// <summary>
+    /// Retourne tous les sous-processus descendants d'une instance (récursivement).
+    /// </summary>
+    Task<List<Processus>> GetAllDescendantsAsync(long processId);
+
+    /// <summary>
     /// Retourne les instances de processus filtrées par statut.
     /// </summary>
     Task<List<Processus>> GetInstancesByStatusAsync(ProcessStatus status);

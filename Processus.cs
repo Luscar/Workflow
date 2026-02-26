@@ -3,6 +3,8 @@ namespace SimpleBPM;
 public class Processus
 {
     public long Id { get; set; }
+    public long? ParentProcessId { get; set; }
+    public string? ParentNodeName { get; set; }
     public long? AggregateId { get; set; }
     public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }
@@ -16,6 +18,8 @@ public class Processus
     internal static Processus FromInstance(ProcessInstance instance) => new()
     {
         Id = instance.ProcessId,
+        ParentProcessId = instance.ParentProcessId,
+        ParentNodeName = instance.ParentNodeName,
         AggregateId = instance.AggregateId,
         DefinitionName = instance.DefinitionName,
         DefinitionVersion = instance.DefinitionVersion,

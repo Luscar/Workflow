@@ -45,6 +45,13 @@ else
                 <label>Process ID</label>
                 <span>@_instance.Id</span>
             </div>
+            @if (_instance.ParentProcessId.HasValue)
+            {
+                <div class="detail-item">
+                    <label>Parent Process</label>
+                    <span><a href="instances/@_instance.ParentProcessId">Process #@_instance.ParentProcessId</a></span>
+                </div>
+            }
             <div class="detail-item">
                 <label>Aggregate ID</label>
                 <span>@(_instance.AggregateId?.ToString() ?? "-")</span>
@@ -59,7 +66,7 @@ else
             </div>
             <div class="detail-item">
                 <label>Current Node</label>
-                <span>@(_instance.CurrentNodeName ?? "-")</span>
+                <span>@(_instance.CurrentNodeName ?? _history.LastOrDefault()?.NodeName ?? "-")</span>
             </div>
             <div class="detail-item">
                 <label>Started At</label>
@@ -91,7 +98,7 @@ else
                         Current
                     </div>
                     <div class="legend-item">
-                        <span class="legend-swatch" style="background:#bbf7d0;border-color:#15803d;"></span>
+                        <span class="legend-swatch" style="background:#c8d6cc;border-color:#15803d;"></span>
                         Executed
                     </div>
                     <div class="legend-item">
@@ -119,6 +126,73 @@ else
             <div class="definition-graph" id="instance-flow-graph">
                 <div class="loading">Rendering graph...</div>
             </div>
+        </div>
+    }
+
+    <!-- ── Subprocesses ────────────────────────────────────────── -->
+    @if (_subprocesses.Count > 0)
+    {
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Subprocesses</span>
+                <span style="color: var(--color-text-secondary); font-size: 0.85rem;">
+                    @_subprocesses.Count subprocess(es)
+                </span>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Definition</th>
+                        <th>Status</th>
+                        <th>Current Node</th>
+                        <th>Spawned By</th>
+                        <th>Started</th>
+                        <th>Completed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sub in _subprocesses.OrderBy(s => s.StartedAt))
+                    {
+                        <tr>
+                            <td><a href="instances/@sub.Id">@sub.Id</a></td>
+                            <td>@sub.DefinitionName</td>
+                            <td><span class="status-badge status-@sub.Status">@FormatStatus(sub.Status)</span></td>
+                            <td>@(sub.CurrentNodeName ?? "-")</td>
+                            <td>@(sub.ParentNodeName ?? "-")</td>
+                            <td>@sub.StartedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@(sub.CompletedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @foreach (var sub in _subprocesses.OrderBy(s => s.StartedAt))
+            {
+                @if (_subprocessDefinitions.TryGetValue(sub.Id, out var subDef) && subDef != null)
+                {
+                    <div style="margin-top: 1.5rem; border-top: 1px solid var(--color-border); padding-top: 1rem;">
+                        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem;">
+                            <span style="font-weight:600; font-size:0.95rem;">
+                                <a href="instances/@sub.Id" style="color:inherit; text-decoration:none;">
+                                    #@sub.Id
+                                </a>
+                                — @sub.DefinitionName
+                                @if (!string.IsNullOrEmpty(sub.ParentNodeName))
+                                {
+                                    <span style="font-weight:400; color: var(--color-text-secondary); font-size:0.85rem;">
+                                        (spawned by @sub.ParentNodeName)
+                                    </span>
+                                }
+                            </span>
+                            <span class="status-badge status-@sub.Status">@FormatStatus(sub.Status)</span>
+                        </div>
+                        <div class="definition-graph" id="subprocess-graph-@sub.Id">
+                            <div class="loading">Rendering graph...</div>
+                        </div>
+                    </div>
+                }
+            }
         </div>
     }
 
@@ -313,11 +387,16 @@ else
     [Parameter]
     public long Id { get; set; }
 
+    private long _loadedId;
     private bool _loading = true;
     private bool _graphRendered = false;
     private Processus? _instance;
     private List<NodeInstance> _history = new();
+    private List<Processus> _subprocesses = new();
     private ProcessDefinition? _definition;
+    private Dictionary<long, List<NodeInstance>> _subprocessHistories = new();
+    private Dictionary<long, ProcessDefinition?> _subprocessDefinitions = new();
+    private HashSet<long> _renderedSubGraphIds = new();
 
     // Flow service (optional — only available when IFlowService is registered)
     private IFlowService? _flowService;
@@ -332,10 +411,40 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _flowService = Scope.ResolveOptional<IFlowService>();
+        await LoadInstanceData(Id);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != _loadedId)
+            await LoadInstanceData(Id);
+    }
+
+    private async Task LoadInstanceData(long id)
+    {
+        _loadedId = id;
+        _loading = true;
+        _graphRendered = false;
+        _renderedSubGraphIds.Clear();
+        _instance = null;
+        _history = new();
+        _subprocesses = new();
+        _definition = null;
+        _subprocessHistories = new();
+        _subprocessDefinitions = new();
+        _actionSuccess = null;
+        _actionError = null;
+        _actionVars = new();
+        _signalName = "";
+        _waitingSignals = null;
+
         try
         {
-            _instance = await Monitor.GetInstanceAsync(Id);
-            _history = await Monitor.GetExecutionHistoryAsync(Id);
+            _instance = await Monitor.GetInstanceAsync(id);
+            _history = await Monitor.GetExecutionHistoryAsync(id);
+            _subprocesses = await Monitor.GetAllDescendantsAsync(id);
+            await LoadSubprocessData();
 
             // Find the matching process definition for the graph
             if (_instance != null)
@@ -348,15 +457,12 @@ else
                               .FirstOrDefault(d => d.Name == _instance.DefinitionName);
             }
 
-            // Resolve IFlowService optionally — it may not be registered in monitoring-only setups
-            _flowService = Scope.ResolveOptional<IFlowService>();
-
             // Pre-fill signal name if the service knows what signal is expected
             if (_flowService != null && _instance?.Status == ProcessStatus.WaitingSignal)
             {
                 try
                 {
-                    _waitingSignals = await _flowService.ObtenirSignauxEnAttenteAsync(Id);
+                    _waitingSignals = await _flowService.ObtenirSignauxEnAttenteAsync(id);
                     var first = _waitingSignals?.FirstOrDefault();
                     if (!string.IsNullOrEmpty(first))
                         _signalName = first;
@@ -379,6 +485,17 @@ else
             _graphRendered = true;
             var syntax = GenerateInstanceGraphSyntax(_definition, _instance, _history);
             await JS.InvokeVoidAsync("renderMermaid", "instance-flow-graph", syntax);
+        }
+
+        foreach (var sub in _subprocesses)
+        {
+            if (_renderedSubGraphIds.Contains(sub.Id)) continue;
+            if (!_subprocessDefinitions.TryGetValue(sub.Id, out var subDef) || subDef == null) continue;
+            if (!_subprocessHistories.TryGetValue(sub.Id, out var subHist)) continue;
+
+            _renderedSubGraphIds.Add(sub.Id);
+            var subSyntax = GenerateInstanceGraphSyntax(subDef, sub, subHist);
+            await JS.InvokeVoidAsync("renderMermaid", $"subprocess-graph-{sub.Id}", subSyntax);
         }
     }
 
@@ -456,32 +573,24 @@ else
         }
     }
 
+    private async Task LoadSubprocessData()
+    {
+        _subprocessHistories.Clear();
+        _subprocessDefinitions.Clear();
+        foreach (var sub in _subprocesses)
+        {
+            _subprocessHistories[sub.Id] = await Monitor.GetExecutionHistoryAsync(sub.Id);
+            _subprocessDefinitions[sub.Id] = Monitor.GetDefinitions()
+                .FirstOrDefault(d => d.Name == sub.DefinitionName && d.Version == sub.DefinitionVersion)
+                ?? Monitor.GetDefinitions()
+                          .FirstOrDefault(d => d.Name == sub.DefinitionName);
+        }
+    }
+
     private async Task ReloadInstance()
     {
-        _graphRendered = false;
-        _loading = true;
         StateHasChanged();
-
-        try
-        {
-            _instance = await Monitor.GetInstanceAsync(Id);
-            _history = await Monitor.GetExecutionHistoryAsync(Id);
-
-            if (_instance?.Status == ProcessStatus.WaitingSignal && _flowService != null)
-            {
-                try
-                {
-                    _waitingSignals = await _flowService.ObtenirSignauxEnAttenteAsync(Id);
-                    var first = _waitingSignals?.FirstOrDefault();
-                    if (!string.IsNullOrEmpty(first))
-                        _signalName = first;
-                }
-                catch { /* best-effort */ }
-            }
-        }
-        catch { _instance = null; }
-
-        _loading = false;
+        await LoadInstanceData(Id);
     }
 
     // ── Graph Generation ─────────────────────────────────────────
@@ -496,11 +605,14 @@ else
         var executedNodes = history.Where(h => h.Success).Select(h => h.NodeId).ToHashSet();
         var failedNodes   = history.Where(h => !h.Success).Select(h => h.NodeId).ToHashSet();
 
-        // For waiting states the FlowEngine stores the *next* node in CurrentNodeName (where
-        // execution will resume), but the actual blocking node is the last history entry.
-        // Use that as the node to highlight as "current".
+        // For waiting/running states the FlowEngine stores the *next* node in CurrentNodeName
+        // (where execution will resume), but the actual blocking/active node is the last history
+        // entry. Use that as the node to highlight as "current".
+        // Running is included so that an in-progress SubProcess node is shown as current (orange)
+        // rather than executed (green).
         string? currentNode = instance.Status switch
         {
+            ProcessStatus.Running or
             ProcessStatus.WaitingSignal or
             ProcessStatus.WaitingInteraction or
             ProcessStatus.WaitingDate => history.LastOrDefault()?.NodeId,
@@ -571,9 +683,9 @@ else
 
         // ── Highlight classDefs — defined AFTER type classes so they
         //    win the CSS cascade when both are applied to the same node.
-        sb.AppendLine("    classDef nodeExecuted fill:#bbf7d0,stroke:#15803d,stroke-width:2px,color:#14532d");
+        sb.AppendLine("    classDef nodeExecuted fill:#c8d6cc,stroke:#15803d,stroke-width:2px,color:#14532d");
         sb.AppendLine("    classDef nodeFailed fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#7f1d1d");
-        sb.AppendLine("    classDef nodeCurrent fill:#fed7aa,stroke:#f97316,stroke-width:3px,color:#7c2d12");
+        sb.AppendLine("    classDef nodeCurrent fill:#fed7aa,stroke:#f97316,stroke-width:5px,color:#7c2d12");
 
         // Apply type classes first
         foreach (var (id, node) in definition.Nodes)

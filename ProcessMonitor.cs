@@ -22,6 +22,32 @@ public class ProcessMonitor : IProcessMonitor
         return instances.Select(Processus.FromInstance).ToList();
     }
 
+    public async Task<List<Processus>> GetRootInstancesAsync()
+    {
+        var instances = await _repository.GetAllProcessInstancesAsync();
+        return instances
+            .Where(i => i.ParentProcessId == null)
+            .Select(Processus.FromInstance)
+            .ToList();
+    }
+
+    public async Task<List<Processus>> GetAllDescendantsAsync(long processId)
+    {
+        var all = await _repository.GetAllProcessInstancesAsync();
+        var result = new List<Processus>();
+        CollectDescendants(processId, all, result);
+        return result;
+    }
+
+    private static void CollectDescendants(long parentId, List<ProcessInstance> all, List<Processus> result)
+    {
+        foreach (var child in all.Where(i => i.ParentProcessId == parentId))
+        {
+            result.Add(Processus.FromInstance(child));
+            CollectDescendants(child.ProcessId, all, result);
+        }
+    }
+
     public async Task<List<Processus>> GetInstancesByStatusAsync(ProcessStatus status)
     {
         var instances = await _repository.GetAllProcessInstancesAsync();
