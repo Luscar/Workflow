@@ -45,6 +45,13 @@ else
                 <label>Process ID</label>
                 <span>@_instance.Id</span>
             </div>
+            @if (_instance.ParentProcessId.HasValue)
+            {
+                <div class="detail-item">
+                    <label>Parent Process</label>
+                    <span><a href="instances/@_instance.ParentProcessId">Process #@_instance.ParentProcessId</a></span>
+                </div>
+            }
             <div class="detail-item">
                 <label>Aggregate ID</label>
                 <span>@(_instance.AggregateId?.ToString() ?? "-")</span>
@@ -59,7 +66,7 @@ else
             </div>
             <div class="detail-item">
                 <label>Current Node</label>
-                <span>@(_instance.CurrentNodeName ?? "-")</span>
+                <span>@(_instance.CurrentNodeName ?? _history.LastOrDefault()?.NodeName ?? "-")</span>
             </div>
             <div class="detail-item">
                 <label>Started At</label>
