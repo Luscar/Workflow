@@ -1,6 +1,9 @@
 @page "/instances"
+@using Autofac
 @inject IProcessMonitor Monitor
 @inject EnvironmentContext Env
+@inject ILifetimeScope Scope
+@implements IDisposable
 
 <div class="page-header">
     <h1>Process Instances</h1>
@@ -132,6 +135,11 @@ else
     private string _selectedCellule = "";
     private bool _celluleError = false;
 
+    // Child scope that owns the current IAccesDbPlus instance.
+    // A new scope is created each time the user applies a different environment.
+    private ILifetimeScope? _envScope;
+    private IAccesDbPlus? _acces;
+
     protected override void OnInitialized()
     {
         // Initialise selectors from current context (useful if user navigates back)
@@ -158,9 +166,23 @@ else
             return;
         }
 
+        // Dispose the previous environment scope (and the IAccesDbPlus it owns).
+        _envScope?.Dispose();
+
+        // Create a child lifetime scope with the new IParamUtilisateur instance.
+        // AccesDbPlus is registered in the parent, but resolved here so it receives
+        // this scope's IParamUtilisateur rather than anything from the root.
+        var param = new ParamUtilisateur(_selectedNiveau, _selectedPhase, _selectedCellule);
+        _envScope = Scope.BeginLifetimeScope(cb =>
+            cb.RegisterInstance(param).As<IParamUtilisateur>());
+
+        _acces = _envScope.Resolve<IAccesDbPlus>();
+
         Env.SetEnvironment(_selectedNiveau, _selectedPhase, _selectedCellule);
         await LoadInstances();
     }
+
+    public void Dispose() => _envScope?.Dispose();
 
     private async Task LoadInstances()
     {
