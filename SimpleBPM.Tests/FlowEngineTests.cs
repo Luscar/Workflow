@@ -363,6 +363,65 @@ public class FlowEngineTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WaitUntilDate_WithDateKey_StoresDateInInternalState()
+    {
+        var def = new ProcessDefinition("WaitTest", "1.0");
+        var waitNode = new WaitUntilDateNode("targetDate")
+        {
+            Name = "Wait",
+            DisplayName = "Wait"
+        };
+        def.AddNode(waitNode);
+
+        var engine = new FlowEngine(new[] { def });
+
+        var futureDate = DateTime.UtcNow.AddDays(5);
+        var instance = new ProcessInstance(1) { DefinitionName = "WaitTest" };
+        instance.Variables["targetDate"] = futureDate;
+
+        var result = await engine.ExecuteAsync(instance);
+
+        Assert.Equal(ProcessStatus.WaitingDate, result.Status);
+        // La date doit être stockée dans InternalState (banque du noeud)
+        Assert.True(result.InternalState.ContainsKey("WaitUntilDate"));
+        Assert.Equal(futureDate, result.InternalState["WaitUntilDate"]);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WaitUntilDate_WithDateKey_UsesStoredDateOnResume()
+    {
+        var def = new ProcessDefinition("WaitTest", "1.0");
+        var waitNode = new WaitUntilDateNode("targetDate")
+        {
+            Name = "Wait",
+            DisplayName = "Wait"
+        };
+        var final = new BusinessNode("Final") { Name = "Final", DisplayName = "Final" };
+        waitNode.NextNodeIds.Add("Final");
+        def.AddNode(waitNode);
+        def.AddNode(final);
+
+        var businessHandler = CreateSuccessfulBusinessHandler();
+        var engine = new FlowEngine(new[] { def }, handlers: new[] { businessHandler });
+
+        // Première exécution avec une date future
+        var futureDate = DateTime.UtcNow.AddDays(5);
+        var instance = new ProcessInstance(1) { DefinitionName = "WaitTest" };
+        instance.Variables["targetDate"] = futureDate;
+        instance = await engine.ExecuteAsync(instance);
+        Assert.Equal(ProcessStatus.WaitingDate, instance.Status);
+
+        // Simuler une reprise : la date dans la banque est passée, la variable a changé
+        instance.InternalState["WaitUntilDate"] = DateTime.UtcNow.AddDays(-1);
+        instance.Variables["targetDate"] = DateTime.UtcNow.AddDays(10); // variable modifiée
+
+        instance = await engine.ContinueAsync(instance);
+
+        // Le processus doit continuer grâce à la date de la banque, pas de la variable
+        Assert.Equal(ProcessStatus.Completed, instance.Status);
+    }
+
+    [Fact]
     public void GetLatestDefinition_ReturnsHighestVersion()
     {
         var def1 = new ProcessDefinition("MyProcess", "1.0");
