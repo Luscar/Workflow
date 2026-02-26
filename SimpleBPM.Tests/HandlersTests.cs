@@ -578,4 +578,105 @@ public class WaitUntilDateNodeHandlerTests
         Assert.False(result.IsCompleted);
         Assert.Equal("Command failed", result.ErrorMessage);
     }
+
+    [Fact]
+    public async Task HandleAsync_DateQuery_FutureDate_StopsAndStoresDate()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(5);
+        var executor = Substitute.For<IBpmMediateur>();
+        executor.EvaluateDecisionAsync("GetDueDate", Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<Dictionary<string, object>?>())
+            .Returns(futureDate.ToString("O"));
+
+        var handler = new WaitUntilDateNodeHandler(executor);
+        var node = new WaitUntilDateNode
+        {
+            Name = "wait",
+            DisplayName = "Wait",
+            DateQueryName = "GetDueDate"
+        };
+        node.NextNodeIds.Add("next");
+        var instance = new ProcessInstance(1);
+
+        var result = await handler.HandleAsync(node, instance);
+
+        Assert.True(result.IsCompleted);
+        Assert.True(result.RequiresStop);
+        Assert.Equal(ProcessStatus.WaitingDate, instance.Status);
+        Assert.Equal(futureDate, instance.InternalState["WaitUntilDate"]);
+        await executor.Received(1).EvaluateDecisionAsync("GetDueDate", 1, null, null);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DateQuery_PastDate_CompletesImmediately()
+    {
+        var pastDate = DateTime.UtcNow.AddDays(-1);
+        var executor = Substitute.For<IBpmMediateur>();
+        executor.EvaluateDecisionAsync("GetDueDate", Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<Dictionary<string, object>?>())
+            .Returns(pastDate.ToString("O"));
+
+        var handler = new WaitUntilDateNodeHandler(executor);
+        var node = new WaitUntilDateNode
+        {
+            Name = "wait",
+            DisplayName = "Wait",
+            DateQueryName = "GetDueDate"
+        };
+        node.NextNodeIds.Add("next");
+        var instance = new ProcessInstance(1);
+
+        var result = await handler.HandleAsync(node, instance);
+
+        Assert.True(result.IsCompleted);
+        Assert.False(result.RequiresStop);
+        Assert.Equal("next", result.NextNodeName);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DateQuery_WithParameters_PassesParameters()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(3);
+        var executor = Substitute.For<IBpmMediateur>();
+        executor.EvaluateDecisionAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<Dictionary<string, object>?>())
+            .Returns(futureDate.ToString("O"));
+
+        var handler = new WaitUntilDateNodeHandler(executor);
+        var node = new WaitUntilDateNode
+        {
+            Name = "wait",
+            DisplayName = "Wait",
+            DateQueryName = "GetDueDate",
+            DateQueryParameters = new Dictionary<string, object> { ["delayDays"] = 3 }
+        };
+        var instance = new ProcessInstance(1);
+
+        await handler.HandleAsync(node, instance);
+
+        await executor.Received(1).EvaluateDecisionAsync(
+            "GetDueDate", 1, null,
+            Arg.Is<Dictionary<string, object>>(d => d.ContainsKey("delayDays")));
+    }
+
+    [Fact]
+    public async Task HandleAsync_DateQuery_StoredDateUsedOnResume()
+    {
+        var executor = Substitute.For<IBpmMediateur>();
+        var handler = new WaitUntilDateNodeHandler(executor);
+        var node = new WaitUntilDateNode
+        {
+            Name = "wait",
+            DisplayName = "Wait",
+            DateQueryName = "GetDueDate"
+        };
+        node.NextNodeIds.Add("next");
+
+        // La banque contient déjà une date passée — la query ne doit pas être rappelée
+        var instance = new ProcessInstance(1);
+        instance.InternalState["WaitUntilDate"] = DateTime.UtcNow.AddDays(-1);
+
+        var result = await handler.HandleAsync(node, instance);
+
+        Assert.True(result.IsCompleted);
+        Assert.False(result.RequiresStop);
+        await executor.DidNotReceive().EvaluateDecisionAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<Dictionary<string, object>?>());
+    }
 }

@@ -129,11 +129,19 @@ public static class ProcessJsonLoader
                 Name = nodeDef.Name,
                 DisplayName = nodeDef.DisplayName ?? nodeDef.Name
             },
-            NodeType.WaitUntilDate => new WaitUntilDateNode(nodeDef.DateKey ?? "WaitUntilDate")
-            {
-                Name = nodeDef.Name,
-                DisplayName = nodeDef.DisplayName ?? nodeDef.Name
-            },
+            NodeType.WaitUntilDate => !string.IsNullOrEmpty(nodeDef.DateQuery)
+                ? new WaitUntilDateNode
+                {
+                    Name = nodeDef.Name,
+                    DisplayName = nodeDef.DisplayName ?? nodeDef.Name,
+                    DateQueryName = nodeDef.DateQuery,
+                    DateQueryParameters = nodeDef.DateQueryParameters ?? new()
+                }
+                : new WaitUntilDateNode(nodeDef.DateKey ?? "WaitUntilDate")
+                {
+                    Name = nodeDef.Name,
+                    DisplayName = nodeDef.DisplayName ?? nodeDef.Name
+                },
             NodeType.SubProcess => CreateSubProcessNode(nodeDef),
             NodeType.End => new EndNode
             {
@@ -203,6 +211,9 @@ public static class ProcessJsonLoader
                     break;
                 case WaitUntilDateNode wdn:
                     nodeDef.DateKey = wdn.DateKey;
+                    nodeDef.DateQuery = wdn.DateQueryName;
+                    if (wdn.DateQueryParameters.Count > 0)
+                        nodeDef.DateQueryParameters = wdn.DateQueryParameters;
                     break;
                 case SubProcessNode spn:
                     nodeDef.SubProcess = BuildJsonDefinition(spn.SubProcessDefinition);
@@ -262,6 +273,8 @@ public class NodeJsonDefinition
 
     // Nœud WaitUntilDate
     public string? DateKey { get; set; }
+    public string? DateQuery { get; set; }
+    public Dictionary<string, object>? DateQueryParameters { get; set; }
 
     // Nœud SubProcess
     public ProcessJsonDefinition? SubProcess { get; set; }

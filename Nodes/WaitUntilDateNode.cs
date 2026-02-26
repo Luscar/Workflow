@@ -5,6 +5,8 @@ public class WaitUntilDateNode : NodeDefinition
     public DateTime? TargetDate { get; set; }
     public Func<ProcessInstance, DateTime>? DateProvider { get; set; }
     public string? DateKey { get; set; }
+    public string? DateQueryName { get; set; }
+    public Dictionary<string, object> DateQueryParameters { get; set; } = new();
 
     public WaitUntilDateNode() : base(NodeType.WaitUntilDate)
     {

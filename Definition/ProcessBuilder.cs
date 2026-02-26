@@ -88,6 +88,21 @@ public class ProcessBuilder
     }
 
     /// <summary>
+    /// Ajoute un nœud d'attente dont la date est retournée par une query du médiateur
+    /// </summary>
+    public ProcessBuilder WaitUntilDateQuery(string name, string dateQueryName, Dictionary<string, object>? queryParameters = null, string? displayName = null)
+    {
+        var node = new WaitUntilDateNode
+        {
+            Name = name,
+            DisplayName = displayName ?? name,
+            DateQueryName = dateQueryName,
+            DateQueryParameters = queryParameters ?? new()
+        };
+        return AddNode(name, node);
+    }
+
+    /// <summary>
     /// Ajoute un sous-processus
     /// </summary>
     public ProcessBuilder SubProcess(string name, ProcessDefinition subProcessDefinition,

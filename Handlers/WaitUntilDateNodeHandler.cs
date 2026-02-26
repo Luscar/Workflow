@@ -18,17 +18,43 @@ public class WaitUntilDateNodeHandler : INodeHandler
     {
         var waitNode = (WaitUntilDateNode)node;
 
-        DateTime? targetDate = waitNode.TargetDate ?? waitNode.DateProvider?.Invoke(instance);
+        DateTime? targetDate = null;
 
-        // Essayer de récupérer la date depuis le contexte via DateKey
-        if (targetDate == null && !string.IsNullOrEmpty(waitNode.DateKey) && instance.Variables.TryGetValue(waitNode.DateKey, out var dateValue))
+        // Lire la date depuis la banque de l'instance (InternalState) si elle a déjà été résolue
+        if (instance.InternalState.TryGetValue("WaitUntilDate", out var storedDate) && storedDate is DateTime storedDateTime)
         {
-            targetDate = dateValue switch
+            targetDate = storedDateTime;
+        }
+        else
+        {
+            // Résoudre la date depuis la définition du noeud
+            targetDate = waitNode.TargetDate ?? waitNode.DateProvider?.Invoke(instance);
+
+            // Essayer de récupérer la date depuis les variables via DateKey
+            if (targetDate == null && !string.IsNullOrEmpty(waitNode.DateKey) && instance.Variables.TryGetValue(waitNode.DateKey, out var dateValue))
             {
-                DateTime dt => dt,
-                string s when DateTime.TryParse(s, out var parsed) => parsed,
-                _ => null
-            };
+                targetDate = dateValue switch
+                {
+                    DateTime dt => dt,
+                    string s when DateTime.TryParse(s, out var parsed) => parsed,
+                    _ => null
+                };
+            }
+
+            // Exécuter la query pour obtenir la date dynamiquement
+            if (targetDate == null && !string.IsNullOrEmpty(waitNode.DateQueryName) && _executor != null)
+            {
+                var parameters = waitNode.DateQueryParameters.Count > 0 ? waitNode.DateQueryParameters : null;
+                var dateStr = await _executor.EvaluateDecisionAsync(waitNode.DateQueryName, instance.ProcessId, instance.AggregateId, parameters);
+                if (DateTime.TryParse(dateStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var queriedDate))
+                    targetDate = queriedDate;
+            }
+
+            // Stocker la date résolue dans la banque de l'instance pour les reprises futures
+            if (targetDate != null)
+            {
+                instance.InternalState["WaitUntilDate"] = targetDate.Value;
+            }
         }
 
         if (targetDate == null)
@@ -52,7 +78,6 @@ public class WaitUntilDateNodeHandler : INodeHandler
 
         instance.Status = ProcessStatus.WaitingDate;
         instance.CurrentNodeName = node.Name;
-        instance.InternalState["WaitUntilDate"] = targetDate.Value;
 
         if (_executor != null && !string.IsNullOrEmpty(node.OnEnterCommandName))
         {
