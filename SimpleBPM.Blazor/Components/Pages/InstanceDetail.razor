@@ -91,7 +91,7 @@ else
                         Current
                     </div>
                     <div class="legend-item">
-                        <span class="legend-swatch" style="background:#d1fae5;border-color:#10b981;"></span>
+                        <span class="legend-swatch" style="background:#bbf7d0;border-color:#15803d;"></span>
                         Executed
                     </div>
                     <div class="legend-item">
@@ -497,6 +497,14 @@ else
         var failedNodes   = history.Where(h => !h.Success).Select(h => h.NodeId).ToHashSet();
         var currentNode   = instance.CurrentNodeName;
 
+        // The current node may also appear in history (e.g. WaitForSignal is logged as
+        // Success=true when entered). Remove it from both sets so only nodeCurrent applies.
+        if (!string.IsNullOrEmpty(currentNode))
+        {
+            executedNodes.Remove(currentNode);
+            failedNodes.Remove(currentNode);
+        }
+
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("graph LR");
 
@@ -557,7 +565,7 @@ else
 
         // ── Highlight classDefs — defined AFTER type classes so they
         //    win the CSS cascade when both are applied to the same node.
-        sb.AppendLine("    classDef nodeExecuted fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#064e3b");
+        sb.AppendLine("    classDef nodeExecuted fill:#bbf7d0,stroke:#15803d,stroke-width:2px,color:#14532d");
         sb.AppendLine("    classDef nodeFailed fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#7f1d1d");
         sb.AppendLine("    classDef nodeCurrent fill:#fed7aa,stroke:#f97316,stroke-width:3px,color:#7c2d12");
 
