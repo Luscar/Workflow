@@ -196,6 +196,101 @@ public class ProcessBuilderTests
     }
 
     [Fact]
+    public void Build_WithWaitUntilDate_StaticDate()
+    {
+        var targetDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+
+        var def = ProcessBuilder.Create("DateProcess")
+            .Business("Init")
+            .WaitUntilDate("WaitDeadline", targetDate, "Attente deadline")
+            .Business("Finalize")
+            .Build();
+
+        var waitNode = def.GetNode("WaitDeadline") as WaitUntilDateNode;
+        Assert.NotNull(waitNode);
+        Assert.Equal(targetDate, waitNode.TargetDate);
+        Assert.Equal("Attente deadline", waitNode.DisplayName);
+    }
+
+    [Fact]
+    public void Build_WithWaitUntilDate_DateProvider()
+    {
+        Func<ProcessInstance, DateTime> provider = _ => DateTime.UtcNow.AddDays(7);
+
+        var def = ProcessBuilder.Create("DateProcess")
+            .Business("Init")
+            .WaitUntilDate("WaitDynamic", provider)
+            .Business("Finalize")
+            .Build();
+
+        var waitNode = def.GetNode("WaitDynamic") as WaitUntilDateNode;
+        Assert.NotNull(waitNode);
+        Assert.NotNull(waitNode.DateProvider);
+        Assert.Null(waitNode.TargetDate);
+        Assert.Null(waitNode.DateKey);
+    }
+
+    [Fact]
+    public void Build_WithOnEnterCommand_SetsProperty()
+    {
+        var def = ProcessBuilder.Create("NotifyProcess")
+            .Business("Init")
+            .Interactive("Review")
+                .WithOnEnterCommand("NotifyReviewer")
+            .Business("Complete")
+            .Build();
+
+        var reviewNode = def.GetNode("Review");
+        Assert.NotNull(reviewNode);
+        Assert.Equal("NotifyReviewer", reviewNode.OnEnterCommandName);
+    }
+
+    [Fact]
+    public void Build_WithOnEnterCommand_OnWaitForSignal()
+    {
+        var def = ProcessBuilder.Create("SignalProcess")
+            .Business("Init")
+            .WaitForSignal("approval")
+                .WithOnEnterCommand("SendApprovalRequest")
+            .Business("Done")
+            .Build();
+
+        var signalNode = def.GetNode("approval");
+        Assert.Equal("SendApprovalRequest", signalNode!.OnEnterCommandName);
+    }
+
+    [Fact]
+    public void Build_WithOnEnterCommandParameter_SetsParameters()
+    {
+        var def = ProcessBuilder.Create("NotifyProcess")
+            .Business("Init")
+            .Interactive("Review")
+                .WithOnEnterCommand("NotifyReviewer")
+                .WithOnEnterCommandParameter("priority", "high")
+                .WithOnEnterCommandParameter("dueInDays", 3)
+            .Business("Complete")
+            .Build();
+
+        var node = def.GetNode("Review");
+        Assert.Equal("high", node!.OnEnterCommandParameters["priority"]);
+        Assert.Equal(3, node.OnEnterCommandParameters["dueInDays"]);
+    }
+
+    [Fact]
+    public void WithOnEnterCommandParameter_NoCurrentNode_Throws()
+    {
+        var builder = ProcessBuilder.Create("Test");
+        Assert.Throws<InvalidOperationException>(() => builder.WithOnEnterCommandParameter("key", "val"));
+    }
+
+    [Fact]
+    public void WithOnEnterCommand_NoCurrentNode_Throws()
+    {
+        var builder = ProcessBuilder.Create("Test");
+        Assert.Throws<InvalidOperationException>(() => builder.WithOnEnterCommand("Cmd"));
+    }
+
+    [Fact]
     public void Build_InvalidReference_Throws()
     {
         var builder = ProcessBuilder.Create("Test")

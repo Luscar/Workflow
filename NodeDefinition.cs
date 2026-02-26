@@ -19,6 +19,7 @@ public class NodeDefinition
     public List<string> NextNodeIds { get; set; } = new();
     public Dictionary<string, object> Parameters { get; set; } = new();
     public string? OnEnterCommandName { get; set; }
+    public Dictionary<string, object> OnEnterCommandParameters { get; set; } = new();
 
     public NodeDefinition(NodeType type)
     {

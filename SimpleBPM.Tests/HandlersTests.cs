@@ -271,10 +271,28 @@ public class InteractiveNodeHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_WithOnEnterCommandParameters_PassesParameters()
+    {
+        var executor = Substitute.For<ICommandExecutor>();
+        var handler = new InteractiveNodeHandler(executor: executor);
+        var node = new InteractiveNode { Name = "review", DisplayName = "Review", OnEnterCommandName = "NotifyReviewPending" };
+        node.OnEnterCommandParameters["priority"] = "high";
+        node.OnEnterCommandParameters["dueDate"] = "2026-12-31";
+        var instance = new ProcessInstance(1, 1L);
+
+        await handler.HandleAsync(node, instance);
+
+        await executor.Received(1).ExecuteCommandAsync(
+            "NotifyReviewPending", 1, 1L,
+            Arg.Is<Dictionary<string, object>>(p =>
+                p.ContainsKey("priority") && p.ContainsKey("dueDate")));
+    }
+
+    [Fact]
     public async Task HandleAsync_OnEnterCommandThrows_ReturnsFailed()
     {
         var executor = Substitute.For<IBpmMediateur>();
-        executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string?>(), Arg.Any<Dictionary<string, object>?>())
+        executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<Dictionary<string, object>?>())
             .ThrowsAsync(new Exception("Command failed"));
         var handler = new InteractiveNodeHandler(executor: executor);
         var node = new InteractiveNode { Name = "review", DisplayName = "Review", OnEnterCommandName = "NotifyReviewPending" };
@@ -351,10 +369,31 @@ public class WaitForSignalNodeHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_WithOnEnterCommandParameters_PassesParameters()
+    {
+        var executor = Substitute.For<ICommandExecutor>();
+        var handler = new WaitForSignalNodeHandler(executor);
+        var node = new WaitForSignalNode("approval-signal")
+        {
+            Name = "waitApproval",
+            DisplayName = "Wait Approval",
+            OnEnterCommandName = "NotifyAwaitingApproval"
+        };
+        node.OnEnterCommandParameters["requestId"] = 42;
+        var instance = new ProcessInstance(1, 1L);
+
+        await handler.HandleAsync(node, instance);
+
+        await executor.Received(1).ExecuteCommandAsync(
+            "NotifyAwaitingApproval", 1, 1L,
+            Arg.Is<Dictionary<string, object>>(p => p.ContainsKey("requestId")));
+    }
+
+    [Fact]
     public async Task HandleAsync_OnEnterCommandThrows_ReturnsFailed()
     {
         var executor = Substitute.For<IBpmMediateur>();
-        executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string?>(), Arg.Any<Dictionary<string, object>?>())
+        executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<Dictionary<string, object>?>())
             .ThrowsAsync(new Exception("Command failed"));
         var handler = new WaitForSignalNodeHandler(executor);
         var node = new WaitForSignalNode("signal") { Name = "wait", DisplayName = "Wait", OnEnterCommandName = "Notify" };
@@ -503,10 +542,32 @@ public class WaitUntilDateNodeHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_FutureDate_WithOnEnterCommandParameters_PassesParameters()
+    {
+        var executor = Substitute.For<ICommandExecutor>();
+        var handler = new WaitUntilDateNodeHandler(executor);
+        var node = new WaitUntilDateNode(DateTime.UtcNow.AddDays(5))
+        {
+            Name = "wait",
+            DisplayName = "Wait",
+            OnEnterCommandName = "NotifyWaiting"
+        };
+        node.OnEnterCommandParameters["escalate"] = true;
+        node.NextNodeIds.Add("next");
+        var instance = new ProcessInstance(1, 1L);
+
+        await handler.HandleAsync(node, instance);
+
+        await executor.Received(1).ExecuteCommandAsync(
+            "NotifyWaiting", 1, 1L,
+            Arg.Is<Dictionary<string, object>>(p => p.ContainsKey("escalate")));
+    }
+
+    [Fact]
     public async Task HandleAsync_FutureDate_OnEnterCommandThrows_ReturnsFailed()
     {
         var executor = Substitute.For<IBpmMediateur>();
-        executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string?>(), Arg.Any<Dictionary<string, object>?>())
+        executor.ExecuteCommandAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<Dictionary<string, object>?>())
             .ThrowsAsync(new Exception("Command failed"));
         var handler = new WaitUntilDateNodeHandler(executor);
         var node = new WaitUntilDateNode(DateTime.UtcNow.AddDays(5)) { Name = "wait", DisplayName = "Wait", OnEnterCommandName = "Notify" };

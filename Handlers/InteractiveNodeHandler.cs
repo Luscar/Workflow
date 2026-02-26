@@ -31,7 +31,8 @@ public class InteractiveNodeHandler : INodeHandler
         {
             try
             {
-                await _executor.ExecuteCommandAsync(node.OnEnterCommandName, instance.ProcessId, instance.AggregateId);
+                var parameters = node.OnEnterCommandParameters.Count > 0 ? node.OnEnterCommandParameters : null;
+                await _executor.ExecuteCommandAsync(node.OnEnterCommandName, instance.ProcessId, instance.AggregateId, parameters);
             }
             catch (Exception ex)
             {
