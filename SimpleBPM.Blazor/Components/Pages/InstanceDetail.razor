@@ -380,6 +380,7 @@ else
     [Parameter]
     public long Id { get; set; }
 
+    private long _loadedId;
     private bool _loading = true;
     private bool _graphRendered = false;
     private Processus? _instance;
@@ -403,11 +404,39 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _flowService = Scope.ResolveOptional<IFlowService>();
+        await LoadInstanceData(Id);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != _loadedId)
+            await LoadInstanceData(Id);
+    }
+
+    private async Task LoadInstanceData(long id)
+    {
+        _loadedId = id;
+        _loading = true;
+        _graphRendered = false;
+        _renderedSubGraphIds.Clear();
+        _instance = null;
+        _history = new();
+        _subprocesses = new();
+        _definition = null;
+        _subprocessHistories = new();
+        _subprocessDefinitions = new();
+        _actionSuccess = null;
+        _actionError = null;
+        _actionVars = new();
+        _signalName = "";
+        _waitingSignals = null;
+
         try
         {
-            _instance = await Monitor.GetInstanceAsync(Id);
-            _history = await Monitor.GetExecutionHistoryAsync(Id);
-            _subprocesses = await Monitor.GetAllDescendantsAsync(Id);
+            _instance = await Monitor.GetInstanceAsync(id);
+            _history = await Monitor.GetExecutionHistoryAsync(id);
+            _subprocesses = await Monitor.GetAllDescendantsAsync(id);
             await LoadSubprocessData();
 
             // Find the matching process definition for the graph
@@ -421,15 +450,12 @@ else
                               .FirstOrDefault(d => d.Name == _instance.DefinitionName);
             }
 
-            // Resolve IFlowService optionally — it may not be registered in monitoring-only setups
-            _flowService = Scope.ResolveOptional<IFlowService>();
-
             // Pre-fill signal name if the service knows what signal is expected
             if (_flowService != null && _instance?.Status == ProcessStatus.WaitingSignal)
             {
                 try
                 {
-                    _waitingSignals = await _flowService.ObtenirSignauxEnAttenteAsync(Id);
+                    _waitingSignals = await _flowService.ObtenirSignauxEnAttenteAsync(id);
                     var first = _waitingSignals?.FirstOrDefault();
                     if (!string.IsNullOrEmpty(first))
                         _signalName = first;
@@ -556,33 +582,8 @@ else
 
     private async Task ReloadInstance()
     {
-        _graphRendered = false;
-        _renderedSubGraphIds.Clear();
-        _loading = true;
         StateHasChanged();
-
-        try
-        {
-            _instance = await Monitor.GetInstanceAsync(Id);
-            _history = await Monitor.GetExecutionHistoryAsync(Id);
-            _subprocesses = await Monitor.GetAllDescendantsAsync(Id);
-            await LoadSubprocessData();
-
-            if (_instance?.Status == ProcessStatus.WaitingSignal && _flowService != null)
-            {
-                try
-                {
-                    _waitingSignals = await _flowService.ObtenirSignauxEnAttenteAsync(Id);
-                    var first = _waitingSignals?.FirstOrDefault();
-                    if (!string.IsNullOrEmpty(first))
-                        _signalName = first;
-                }
-                catch { /* best-effort */ }
-            }
-        }
-        catch { _instance = null; }
-
-        _loading = false;
+        await LoadInstanceData(Id);
     }
 
     // ── Graph Generation ─────────────────────────────────────────
