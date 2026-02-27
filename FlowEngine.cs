@@ -101,16 +101,16 @@ public class FlowEngine
             await _repository.SaveProcessInstanceAsync(instance);
         }
 
-        var currentNodeId = instance.CurrentNodeName ?? definition.StartNodeId;
+        var currentNodeName = instance.CurrentNodeName ?? definition.StartNodeId;
 
-        while (!string.IsNullOrEmpty(currentNodeId))
+        while (!string.IsNullOrEmpty(currentNodeName))
         {
-            var node = definition.GetNode(currentNodeId);
+            var node = definition.GetNode(currentNodeName);
 
             if (node == null)
             {
                 instance.Status = ProcessStatus.Failed;
-                instance.ErrorMessage = $"Nœud '{currentNodeId}' introuvable dans la définition '{definition.Name}'";
+                instance.ErrorMessage = $"Nœud '{currentNodeName}' introuvable dans la définition '{definition.Name}'";
                 await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
@@ -142,12 +142,12 @@ public class FlowEngine
 
             if (result.RequiresStop)
             {
-                instance.CurrentNodeName = result.NextNodeName;
+                instance.CurrentNodeName = node.Name;
                 await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
 
-            currentNodeId = result.NextNodeName;
+            currentNodeName = result.NextNodeName;
         }
 
         instance.Status = ProcessStatus.Completed;
