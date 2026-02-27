@@ -168,8 +168,8 @@ public class OracleProcessRepository : IProcessRepository
             IdNoeudParent = instance.ParentNodeName,
             IdAgregat = instance.AggregateId,
             Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
-            DateAttente = instance.InternalState.TryGetValue("WaitUntilDate", out var d) ? (DateTime?)d : null,
-            SignalAttente = instance.InternalState.TryGetValue("WaitingForSignal", out var s) ? s?.ToString() : null,
+            DateAttente = instance.WaitDate,
+            SignalAttente = instance.ExpectedSignal,
             DateDebut = instance.StartedAt,
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
@@ -222,8 +222,8 @@ public class OracleProcessRepository : IProcessRepository
         {
             IdAgregat = instance.AggregateId,
             Donnees = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
-            DateAttente = instance.InternalState.TryGetValue("WaitUntilDate", out var d) ? (DateTime?)d : null,
-            SignalAttente = instance.InternalState.TryGetValue("WaitingForSignal", out var s) ? s?.ToString() : null,
+            DateAttente = instance.WaitDate,
+            SignalAttente = instance.ExpectedSignal,
             DateDerniereExecution = instance.LastExecutedAt,
             DateCompletion = instance.CompletedAt,
             IdNoeudCourant = instance.CurrentNodeName,
@@ -325,12 +325,6 @@ public class OracleProcessRepository : IProcessRepository
 
     private ProcessInstance MapToInstance(ProcessInstanceDto result)
     {
-        var internalState = new Dictionary<string, object>();
-        if (result.DATE_ATTENTE.HasValue)
-            internalState["WaitUntilDate"] = result.DATE_ATTENTE.Value;
-        if (!string.IsNullOrEmpty(result.SIGNAL_ATTENTE))
-            internalState["WaitingForSignal"] = result.SIGNAL_ATTENTE;
-
         return new ProcessInstance(result.ID_PROCESSUS)
         {
             ParentProcessId = result.ID_PROCESSUS_PARENT,
@@ -341,7 +335,8 @@ public class OracleProcessRepository : IProcessRepository
             Variables = string.IsNullOrEmpty(result.DONNEES)
                 ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.DONNEES) ?? new Dictionary<string, object>(),
-            InternalState = internalState,
+            WaitDate = result.DATE_ATTENTE,
+            ExpectedSignal = result.SIGNAL_ATTENTE,
             StartedAt = result.DATE_DEBUT,
             LastExecutedAt = result.DATE_DERNIERE_EXECUTION,
             CompletedAt = result.DATE_COMPLETION,

@@ -20,10 +20,10 @@ public class WaitUntilDateNodeHandler : INodeHandler
 
         DateTime? targetDate = null;
 
-        // Lire la date depuis la banque de l'instance (InternalState) si elle a déjà été résolue
-        if (instance.InternalState.TryGetValue("WaitUntilDate", out var storedDate) && storedDate is DateTime storedDateTime)
+        // Lire la date depuis l'instance si elle a déjà été résolue
+        if (instance.WaitDate.HasValue)
         {
-            targetDate = storedDateTime;
+            targetDate = instance.WaitDate.Value;
         }
         else
         {
@@ -50,10 +50,10 @@ public class WaitUntilDateNodeHandler : INodeHandler
                     targetDate = queriedDate;
             }
 
-            // Stocker la date résolue dans la banque de l'instance pour les reprises futures
+            // Stocker la date résolue sur l'instance pour les reprises futures
             if (targetDate != null)
             {
-                instance.InternalState["WaitUntilDate"] = targetDate.Value;
+                instance.WaitDate = targetDate.Value;
             }
         }
 
