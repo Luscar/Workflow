@@ -15,7 +15,6 @@ public class ProcessInstance
     public DateTime? LastExecutedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public string? CurrentNodeName { get; set; }
-    public long? CurrentNodeId { get; set; }
     public ProcessStatus Status { get; set; }
     public string? ErrorMessage { get; set; }
     public List<NodeInstance> ExecutionHistory { get; set; } = new();

@@ -142,7 +142,7 @@ public class FlowEngineTests
         var result = await engine.ExecuteAsync(instance);
 
         Assert.Equal(ProcessStatus.WaitingInteraction, result.Status);
-        Assert.Equal("Final", result.CurrentNodeName);
+        Assert.Equal("Review", result.CurrentNodeName);
     }
 
     [Fact]
