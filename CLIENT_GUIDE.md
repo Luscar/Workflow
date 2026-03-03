@@ -1,17 +1,17 @@
-# SimpleBPM — Client Integration Guide
+# SimpleBPM — Guide d'intégration client
 
-This guide walks you through integrating SimpleBPM into a client application from scratch.
-It covers defining processes with the fluent builder, implementing business logic handlers,
-wiring up dependency injection, and operating processes at runtime.
+Ce guide explique comment intégrer SimpleBPM dans une application cliente de zéro.
+Il couvre la définition de processus avec le builder fluide, l'implémentation des handlers métier,
+la configuration de l'injection de dépendances et l'exploitation des processus à l'exécution.
 
 ---
 
-## Table of contents
+## Table des matières
 
-1. [Prerequisites](#1-prerequisites)
-2. [Package reference](#2-package-reference)
-3. [Defining a process — the Fluent Builder](#3-defining-a-process--the-fluent-builder)
-   - [Builder basics](#31-builder-basics)
+1. [Prérequis](#1-prérequis)
+2. [Référence de projet](#2-référence-de-projet)
+3. [Définir un processus — le Fluent Builder](#3-définir-un-processus--le-fluent-builder)
+   - [Bases du builder](#31-bases-du-builder)
    - [BusinessNode](#32-businessnode)
    - [DecisionNode](#33-decisionnode)
    - [InteractiveNode](#34-interactivenode)
@@ -19,47 +19,47 @@ wiring up dependency injection, and operating processes at runtime.
    - [WaitUntilDateNode](#36-waituntildatenode)
    - [SubProcessNode](#37-subprocessnode)
    - [EndNode](#38-endnode)
-   - [Node parameters](#39-node-parameters)
-   - [OnEnter command](#310-onenter-command)
-   - [Manual chaining with Then and Break](#311-manual-chaining-with-then-and-break)
-4. [Defining a process — JSON](#4-defining-a-process--json)
-5. [Implementing business logic](#5-implementing-business-logic)
+   - [Paramètres de nœud](#39-paramètres-de-nœud)
+   - [Commande OnEnter](#310-commande-onenter)
+   - [Chaînage manuel avec Then et Break](#311-chaînage-manuel-avec-then-et-break)
+4. [Définir un processus — JSON](#4-définir-un-processus--json)
+5. [Implémenter la logique métier](#5-implémenter-la-logique-métier)
    - [ICommandHandler](#51-icommandhandler)
    - [IQueryHandler](#52-iqueryhandler)
-   - [IBpmMediateur (direct approach)](#53-ibpmmediateur-direct-approach)
-   - [IGestionTache (optional task management)](#54-igestiontache-optional-task-management)
-6. [Dependency injection setup](#6-dependency-injection-setup)
-   - [Microsoft DI — unified builder](#61-microsoft-di--unified-builder)
-   - [Microsoft DI — step-by-step](#62-microsoft-di--step-by-step)
-   - [Autofac module](#63-autofac-module)
-   - [Oracle persistence](#64-oracle-persistence)
-7. [Operating processes at runtime](#7-operating-processes-at-runtime)
-   - [Creating a process instance](#71-creating-a-process-instance)
-   - [Completing an interactive step](#72-completing-an-interactive-step)
-   - [Sending a signal](#73-sending-a-signal)
-   - [Querying process state](#74-querying-process-state)
-   - [Searching by variable](#75-searching-by-variable)
-8. [Monitoring](#8-monitoring)
-9. [Version migration](#9-version-migration)
-10. [Complete example — loan approval workflow](#10-complete-example--loan-approval-workflow)
+   - [IBpmMediateur (approche directe)](#53-ibpmmediateur-approche-directe)
+   - [IGestionTache (gestion de tâches optionnelle)](#54-igestiontache-gestion-de-tâches-optionnelle)
+6. [Configuration de l'injection de dépendances](#6-configuration-de-linjection-de-dépendances)
+   - [Microsoft DI — builder unifié](#61-microsoft-di--builder-unifié-recommandé)
+   - [Microsoft DI — étape par étape](#62-microsoft-di--étape-par-étape)
+   - [Module Autofac](#63-module-autofac)
+   - [Persistance Oracle](#64-persistance-oracle)
+7. [Exploiter les processus à l'exécution](#7-exploiter-les-processus-à-lexécution)
+   - [Créer une instance de processus](#71-créer-une-instance-de-processus)
+   - [Terminer une étape interactive](#72-terminer-une-étape-interactive)
+   - [Envoyer un signal](#73-envoyer-un-signal)
+   - [Consulter l'état d'un processus](#74-consulter-létat-dun-processus)
+   - [Rechercher par variable](#75-rechercher-par-variable)
+8. [Surveillance](#8-surveillance)
+9. [Migration de version](#9-migration-de-version)
+10. [Exemple complet — workflow d'approbation de prêt](#10-exemple-complet--workflow-dapprobation-de-prêt)
 
 ---
 
-## 1. Prerequisites
+## 1. Prérequis
 
-- .NET 8 or later
-- Oracle database (or use the built-in in-memory store for testing)
-- A reference to the `SimpleBPM` project/package
+- .NET 8 ou version ultérieure
+- Base de données Oracle (ou stockage en mémoire intégré pour les tests)
+- Une référence au projet / package `SimpleBPM`
 
 ---
 
-## 2. Package reference
+## 2. Référence de projet
 
 ```xml
 <ProjectReference Include="../SimpleBPM/SimpleBPM.csproj" />
 ```
 
-For Oracle persistence you also need:
+Pour la persistance Oracle, ajoutez également :
 
 ```xml
 <PackageReference Include="Dapper" Version="2.*" />
@@ -68,291 +68,286 @@ For Oracle persistence you also need:
 
 ---
 
-## 3. Defining a process — the Fluent Builder
+## 3. Définir un processus — le Fluent Builder
 
-`ProcessBuilder` is the recommended way to define processes. It gives you compile-time validation, IntelliSense, and automatic node chaining.
+`ProcessBuilder` est la méthode recommandée pour définir les processus. Il offre une validation à la compilation, l'IntelliSense et le chaînage automatique des nœuds.
 
-### 3.1 Builder basics
+### 3.1 Bases du builder
 
 ```csharp
 using SimpleBPM;
 using SimpleBPM.Definition;
 
-ProcessDefinition process = ProcessBuilder.Create("MyProcess", "1.0")
-    .Business("Step1", "First step")
-    .Business("Step2", "Second step")
+ProcessDefinition processus = ProcessBuilder.Create("MonProcessus", "1.0")
+    .Business("Etape1", "Première étape")
+    .Business("Etape2", "Deuxième étape")
     .Build();
 ```
 
-**Automatic chaining rule**: Every node is automatically linked to the previous node, *unless*:
-- The previous node is a `DecisionNode` (it manages its own routes), or
-- The previous node already has an explicit successor set via `.Then()`, or
-- A `.Break()` was called to sever the chain.
+**Règle de chaînage automatique** : chaque nœud est automatiquement lié au précédent, *sauf si* :
+- Le nœud précédent est un `DecisionNode` (il gère ses propres routes), ou
+- Le nœud précédent a déjà un successeur explicite défini via `.Then()`, ou
+- Un `.Break()` a été appelé pour rompre la chaîne.
 
-`Build()` validates that every `NextNodeId` and every decision route references a node that actually exists, throwing `InvalidOperationException` if not.
+`Build()` valide que tout `NextNodeId` et toute route de décision référencent un nœud qui existe réellement, en levant une `InvalidOperationException` dans le cas contraire.
 
 ---
 
 ### 3.2 BusinessNode
 
-A `BusinessNode` executes a named command by calling `IBpmMediateur.ExecuteCommandAsync`.
+Un `BusinessNode` exécute une commande nommée en appelant `IBpmMediateur.ExecuteCommandAsync`.
 
 ```csharp
-ProcessBuilder.Create("OrderProcess")
-    .Business("ValidateOrder", "Validate the order")
-    .Business("SendConfirmation", "Send confirmation email")
+ProcessBuilder.Create("ProcessusCommande")
+    .Business("ValiderCommande", "Valider la commande")
+    .Business("EnvoyerConfirmation", "Envoyer l'e-mail de confirmation")
     .Build();
 ```
 
-The string passed as the first argument is *both* the node name *and* the command name dispatched to `ICommandHandler`.
+La chaîne passée en premier argument est *à la fois* le nom du nœud *et* le nom de la commande dispatchée vers `ICommandHandler`.
 
-If the command throws an exception, the node marks the process as `Failed` with the exception message.
+Si la commande lève une exception, le nœud marque le processus comme `Failed` avec le message de l'exception.
 
 ---
 
 ### 3.3 DecisionNode
 
-A `DecisionNode` routes the process to different branches. It supports two modes.
+Un `DecisionNode` route le processus vers différentes branches. Il supporte deux modes.
 
-#### Mode A — Variable conditions (recommended)
-
-Conditions are evaluated in declaration order. The first matching condition determines the next node. If none match, the default node is used.
+#### Mode A — Requête externe (via handler)
 
 ```csharp
-ProcessBuilder.Create("LoanProcess")
-    .Business("CheckCredit", "Check credit score")
-    .Decision("CreditDecision", "Credit routing", routes => routes
-        .When("approved", "CalculateTerms")
-        .When("rejected",  "RejectApplication"))
-    .Business("CalculateTerms", "Calculate loan terms")
-        .Then("Disburse")
-    .Business("RejectApplication", "Send rejection letter")
-        .End("Rejected", "Application rejected")
-    .Business("Disburse", "Disburse funds")
+ProcessBuilder.Create("ProcessusPret")
+    .Business("VerifierCredit", "Vérifier le score de crédit")
+    .Decision("DecisionCredit", "Routage crédit", routes => routes
+        .When("approuve",  "CalculerConditions")
+        .When("rejete",    "RejeterDemande"))
+    .Business("CalculerConditions", "Calculer les conditions du prêt")
+        .Then("Decaisser")
+    .Business("RejeterDemande", "Envoyer la lettre de refus")
+        .End("Rejete", "Demande rejetée")
+    .Business("Decaisser", "Décaisser les fonds")
     .Build();
 ```
 
-The `.When(condition, targetNodeId)` calls on `DecisionRouteBuilder` map a *result string* to a *node name*.
-The result string is returned by `IQueryHandler.HandleAsync`.
+Les appels `.When(resultat, idNoeudCible)` sur `DecisionRouteBuilder` associent une *chaîne de résultat* à un *nom de nœud*. Cette chaîne est retournée par `IQueryHandler.HandleAsync`.
 
-#### Mode B — Inline variable conditions
+#### Mode B — Conditions sur variables (sans handler)
 
-Instead of a query handler, you can evaluate process variables directly — no extra handler class needed:
+Au lieu d'un handler de requête, vous pouvez évaluer directement les variables du processus — aucune classe de handler supplémentaire n'est nécessaire :
 
 ```csharp
-var decisionNode = new DecisionNode
+var noeudDecision = new DecisionNode
 {
-    Name = "CheckAmount",
-    DisplayName = "Check order amount"
+    Name = "VerifierMontant",
+    DisplayName = "Vérifier le montant de la commande"
 };
 
-decisionNode
-    .AddCondition("Amount", 10_000, OperateurFiltre.SuperieurOuEgal, TypeDonnee.Nombre, "HighValueRoute")
-    .AddCondition("Amount", 1_000,  OperateurFiltre.Superieur,       TypeDonnee.Nombre, "StandardRoute")
-    .SetNoeudParDefaut("StandardRoute");
+noeudDecision
+    .AddCondition("Montant", 10_000, OperateurFiltre.SuperieurOuEgal, TypeDonnee.Nombre, "CircuitVIP")
+    .AddCondition("Montant",  1_000, OperateurFiltre.Superieur,       TypeDonnee.Nombre, "CircuitStandard")
+    .SetNoeudParDefaut("CircuitStandard");
 ```
 
-You can mix inline conditions into a fluent builder by calling `.Build()` on an existing `ProcessDefinition` and adding the node manually, but for most cases Mode A (query handler) is cleaner inside the builder.
+**Opérateurs disponibles** (`OperateurFiltre`) :
 
-**Available operators** (`OperateurFiltre`):
-
-| Operator | Meaning | Applicable types |
+| Opérateur | Signification | Types applicables |
 |---|---|---|
-| `Egal` | Equals | All |
-| `Different` | Not equal | All |
-| `Superieur` | Strictly greater | `Nombre`, `Date`, `Texte` |
-| `SuperieurOuEgal` | Greater or equal | `Nombre`, `Date`, `Texte` |
-| `Inferieur` | Strictly less | `Nombre`, `Date`, `Texte` |
-| `InferieurOuEgal` | Less or equal | `Nombre`, `Date`, `Texte` |
-| `Contient` | Contains substring | `Texte` |
-| `CommencePar` | Starts with | `Texte` |
-| `FinitPar` | Ends with | `Texte` |
+| `Egal` | Égalité | Tous |
+| `Different` | Différence | Tous |
+| `Superieur` | Strictement supérieur | `Nombre`, `Date`, `Texte` |
+| `SuperieurOuEgal` | Supérieur ou égal | `Nombre`, `Date`, `Texte` |
+| `Inferieur` | Strictement inférieur | `Nombre`, `Date`, `Texte` |
+| `InferieurOuEgal` | Inférieur ou égal | `Nombre`, `Date`, `Texte` |
+| `Contient` | Contient la sous-chaîne | `Texte` |
+| `CommencePar` | Commence par | `Texte` |
+| `FinitPar` | Finit par | `Texte` |
 
-**Available data types** (`TypeDonnee`): `Texte`, `Nombre`, `Date`, `Booleen`
+**Types de données disponibles** (`TypeDonnee`) : `Texte`, `Nombre`, `Date`, `Booleen`
 
 ---
 
 ### 3.4 InteractiveNode
 
-An `InteractiveNode` pauses the process and waits for a human to call `TerminerEtapeAsync` or `TerminerEtapeEnCoursAsync`.
+Un `InteractiveNode` met le processus en pause et attend qu'un humain appelle `TerminerEtapeAsync` ou `TerminerEtapeEnCoursAsync`.
 
 ```csharp
-ProcessBuilder.Create("ApprovalProcess")
-    .Business("Prepare", "Prepare documents")
-    .Interactive("ManagerApproval", "Manager approval")
-    .Business("Archive", "Archive approved documents")
+ProcessBuilder.Create("ProcessusApprobation")
+    .Business("Préparer", "Préparer les documents")
+    .Interactive("ApprobationManager", "Approbation du manager")
+    .Business("Archiver", "Archiver les documents approuvés")
     .Build();
 ```
 
-When the engine reaches this node:
-1. `ProcessStatus` is set to `WaitingInteraction`.
-2. `CurrentNodeId` is recorded so the engine knows where to resume.
-3. If `IGestionTache` is registered, `CreerTacheAsync` is called (creates a task visible to users).
-4. If an `OnEnterCommand` is configured (see §3.10), it is executed before stopping.
+Quand le moteur atteint ce nœud :
+1. `ProcessStatus` passe à `WaitingInteraction`.
+2. `CurrentNodeId` est enregistré pour que le moteur sache où reprendre.
+3. Si `IGestionTache` est enregistré, `CreerTacheAsync` est appelé (crée une tâche visible par les utilisateurs).
+4. Si une `OnEnterCommand` est configurée (voir §3.10), elle est exécutée avant l'arrêt.
 
-When the user completes the step, call `TerminerEtapeEnCoursAsync` (or `TerminerEtapeAsync`).
-The engine calls `OnLeaveAsync` → `FermerTacheAsync` (if `IGestionTache` is registered), then continues from the next node.
+Quand l'utilisateur termine l'étape, appelez `TerminerEtapeEnCoursAsync` (ou `TerminerEtapeAsync`).
+Le moteur appelle `OnLeaveAsync` → `FermerTacheAsync` (si `IGestionTache` est enregistré), puis reprend à partir du nœud suivant.
 
 ---
 
 ### 3.5 WaitForSignalNode
 
-A `WaitForSignalNode` pauses the process until an external system sends a named signal.
+Un `WaitForSignalNode` met le processus en pause jusqu'à ce qu'un système externe envoie un signal nommé.
 
 ```csharp
-ProcessBuilder.Create("OrderProcess")
-    .Business("PlaceOrder", "Place order")
-    .WaitForSignal("WaitPayment", "Waiting for payment confirmation")
-    .Business("FulfillOrder", "Fulfill order")
+ProcessBuilder.Create("ProcessusCommande")
+    .Business("PasserCommande", "Passer la commande")
+    .WaitForSignal("AttenteConfirmationPaiement", "Attente de la confirmation de paiement")
+    .Business("ExpedierCommande", "Expédier la commande")
     .Build();
 ```
 
-The node name is also used as the expected signal name. Send the signal via:
+Le nom du nœud est aussi utilisé comme nom de signal attendu. Envoyez le signal via :
 
 ```csharp
-await flowService.EnvoyerSignalAsync(processId, "WaitPayment");
+await flowService.EnvoyerSignalAsync(processId, "AttenteConfirmationPaiement");
 ```
 
-The engine only resumes if the received signal name matches `WaitForSignalNode.SignalName`.
+Le moteur ne reprend que si le nom du signal reçu correspond à `WaitForSignalNode.SignalName`.
 
 ---
 
 ### 3.6 WaitUntilDateNode
 
-A `WaitUntilDateNode` pauses the process until a specific date/time. Three date resolution strategies are available:
+Un `WaitUntilDateNode` met le processus en pause jusqu'à une date/heure précise. Trois stratégies de résolution de date sont disponibles :
 
-#### Fixed date
+#### Date fixe
 
 ```csharp
-.WaitUntilDate("WaitDeadline", new DateTime(2025, 12, 31), "Wait until year-end")
+.WaitUntilDate("AttenteEcheance", new DateTime(2025, 12, 31), "Attendre la fin d'année")
 ```
 
-#### Date read from a process variable
+#### Date lue depuis une variable du processus
 
 ```csharp
-// The process must have a variable named "ScheduledDate" containing a DateTime
-.WaitUntilDate("WaitScheduled", "ScheduledDate", "Wait until scheduled date")
+// Le processus doit avoir une variable "DatePlanifiee" contenant un DateTime
+.WaitUntilDate("AttentePlanifiee", "DatePlanifiee", "Attendre la date planifiée")
 ```
 
-#### Dynamically computed date (lambda)
+#### Date calculée dynamiquement (lambda)
 
 ```csharp
-.WaitUntilDate("WaitCooldown",
+.WaitUntilDate("AttenteDelai",
     instance => instance.StartedAt.AddDays(7),
-    "Wait 7 days after start")
+    "Attendre 7 jours après le démarrage")
 ```
 
-#### Date returned by a query handler
+#### Date retournée par un handler de requête
 
 ```csharp
-.WaitUntilDateQuery("WaitDynamic", "GetProcessingDate",
+.WaitUntilDateQuery("AttenteDynamique", "ObtenirDateTraitement",
     queryParameters: new() { ["Type"] = "express" },
-    displayName: "Wait for processing date")
+    displayName: "Attendre la date de traitement")
 ```
 
-The scheduler responsible for resuming date-paused instances is typically implemented by the client (e.g. a background job that calls `TerminerEtapeEnCoursAsync` when the date is reached).
+Le planificateur chargé de reprendre les instances en attente de date est typiquement implémenté par le client (ex. un job de fond qui appelle `TerminerEtapeEnCoursAsync` lorsque la date est atteinte).
 
 ---
 
 ### 3.7 SubProcessNode
 
-A `SubProcessNode` delegates execution to a nested process definition. Variables flow between parent and child via explicit mappings.
+Un `SubProcessNode` délègue l'exécution à une définition de processus imbriquée. Les variables circulent entre parent et enfant via des mappings explicites.
 
-#### Using an existing ProcessDefinition
+#### Avec une ProcessDefinition existante
 
 ```csharp
-var verificationProcess = ProcessBuilder.Create("Verification")
-    .Business("VerifyId",     "Verify identity")
-    .Business("VerifyIncome", "Verify income")
+var processusVerification = ProcessBuilder.Create("Verification")
+    .Business("VerifierIdentite", "Vérifier l'identité")
+    .Business("VerifierRevenus",  "Vérifier les revenus")
     .Build();
 
-ProcessBuilder.Create("LoanProcess")
-    .Business("Start", "Start application")
-    .SubProcess("Verification", verificationProcess,
-        inputMapping:  new() { ["ApplicantId"] = "ClientId" },
-        outputMapping: new() { ["VerificationResult"] = "IsVerified" },
+ProcessBuilder.Create("ProcessusPret")
+    .Business("Demarrage", "Démarrer la demande")
+    .SubProcess("Verification", processusVerification,
+        inputMapping:  new() { ["IdDemandeur"] = "IdClient" },
+        outputMapping: new() { ["ResultatVerification"] = "EstVerifie" },
         inheritAggregateId: true,
-        displayName: "Applicant Verification")
-    .Business("Continue", "Continue after verification")
+        displayName: "Vérification du demandeur")
+    .Business("Continuer", "Continuer après vérification")
     .Build();
 ```
 
-#### Using an inline builder
+#### Avec un builder inline
 
 ```csharp
-ProcessBuilder.Create("LoanProcess")
-    .Business("Start", "Start application")
+ProcessBuilder.Create("ProcessusPret")
+    .Business("Demarrage", "Démarrer la demande")
     .SubProcess("Verification", sub => sub
-        .Business("VerifyId",     "Verify identity")
-        .Business("VerifyIncome", "Verify income"),
-        inputMapping:  new() { ["ApplicantId"] = "ClientId" },
-        outputMapping: new() { ["VerificationResult"] = "IsVerified" })
-    .Business("Continue", "Continue after verification")
+        .Business("VerifierIdentite", "Vérifier l'identité")
+        .Business("VerifierRevenus",  "Vérifier les revenus"),
+        inputMapping:  new() { ["IdDemandeur"] = "IdClient" },
+        outputMapping: new() { ["ResultatVerification"] = "EstVerifie" })
+    .Business("Continuer", "Continuer après vérification")
     .Build();
 ```
 
-**Mapping rules**:
+**Règles de mapping** :
 
-- `inputMapping`  — `{ "ParentVar": "SubVar" }` copies `ParentVar` from the parent into `SubVar` in the child before execution.
-- `outputMapping` — `{ "SubVar": "ParentVar" }` copies `SubVar` from the child back into `ParentVar` in the parent after completion.
+- `inputMapping`  — `{ "VarParent": "VarEnfant" }` copie `VarParent` du parent vers `VarEnfant` dans l'enfant avant l'exécution.
+- `outputMapping` — `{ "VarEnfant": "VarParent" }` copie `VarEnfant` de l'enfant vers `VarParent` dans le parent après la complétion.
 
-If the sub-process itself reaches a waiting node, the parent is also paused with `RequiresStop = true`. On the next call to `ContinueAsync` on the parent, the engine detects the existing child instance and resumes it.
+Si le sous-processus atteint lui-même un nœud d'attente, le parent est aussi mis en pause (`RequiresStop = true`). Au prochain appel à `ContinueAsync` sur le parent, le moteur détecte l'instance enfant existante et la reprend.
 
 ---
 
 ### 3.8 EndNode
 
-An `EndNode` explicitly terminates a branch. The engine marks the instance as `Completed` and stops.
+Un `EndNode` termine explicitement une branche. Le moteur marque l'instance comme `Completed` et s'arrête.
 
 ```csharp
-ProcessBuilder.Create("OrderProcess")
-    .Business("ProcessApproved", "Handle approved order")
-        .Then("Deliver")
-    .Business("ProcessRejected", "Handle rejected order")
-        .End("OrderRejected", "Order was rejected")   // branch terminates here
-    .Business("Deliver", "Deliver the order")
+ProcessBuilder.Create("ProcessusCommande")
+    .Business("TraiterApprouve", "Traiter la commande approuvée")
+        .Then("Livrer")
+    .Business("TraiterRejete", "Traiter la commande rejetée")
+        .End("CommandeRejetee", "Commande rejetée")   // la branche se termine ici
+    .Business("Livrer", "Livrer la commande")
     .Build();
 ```
 
-After `.End(...)`, the automatic chain is broken — the next node added by the builder starts a fresh, unconnected segment. This is how you define multiple terminal branches in a single builder call.
+Après `.End(...)`, la chaîne automatique est rompue — le nœud suivant ajouté par le builder commence un segment indépendant. C'est ainsi que l'on définit plusieurs branches terminales dans un seul appel au builder.
 
-You do *not* need an `EndNode` for the natural end of a linear process. When `FlowEngine` reaches a node with no `NextNodeIds` and the node completes without `RequiresStop`, it sets `Status = Completed` automatically.
+Il n'est *pas* nécessaire d'ajouter un `EndNode` pour la fin naturelle d'un processus linéaire. Lorsque `FlowEngine` atteint un nœud sans `NextNodeIds` et que celui-ci se termine sans `RequiresStop`, il passe automatiquement le statut à `Completed`.
 
 ---
 
-### 3.9 Node parameters
+### 3.9 Paramètres de nœud
 
-Every node can carry a static `Dictionary<string, object>` of parameters. These are passed verbatim to `IBpmMediateur` (and therefore to `ICommandHandler` / `IQueryHandler`) at execution time.
+Chaque nœud peut porter un `Dictionary<string, object>` statique de paramètres. Ceux-ci sont transmis tels quels à `IBpmMediateur` (et donc à `ICommandHandler` / `IQueryHandler`) lors de l'exécution.
 
 ```csharp
-ProcessBuilder.Create("NotificationProcess")
-    .Business("SendEmail", "Send confirmation email")
-        .WithParameter("Template",  "OrderConfirmation")
-        .WithParameter("Priority",  "High")
-    .Business("Archive", "Archive document")
+ProcessBuilder.Create("ProcessusNotification")
+    .Business("EnvoyerEmail", "Envoyer l'e-mail de confirmation")
+        .WithParameter("Template", "ConfirmationCommande")
+        .WithParameter("Priorite", "Haute")
+    .Business("Archiver", "Archiver le document")
         .WithParameters(new()
         {
-            ["RetentionDays"] = 90,
-            ["Compress"]      = true
+            ["DureeConservation"] = 90,
+            ["Compresser"]        = true
         })
     .Build();
 ```
 
-`WithParameter` and `WithParameters` operate on the *most recently added* node. Calling them before any node has been added throws `InvalidOperationException`.
+`WithParameter` et `WithParameters` opèrent sur le *dernier nœud ajouté*. Les appeler avant qu'un nœud ait été ajouté lève une `InvalidOperationException`.
 
-Receiving the parameters in a handler:
+Réception des paramètres dans un handler :
 
 ```csharp
-public class SendEmailHandler : ICommandHandler
+public class EnvoyerEmailHandler : ICommandHandler
 {
-    public string CommandName => "SendEmail";
+    public string CommandName => "EnvoyerEmail";
 
     public Task HandleAsync(long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
-        var template = parameters?["Template"]?.ToString() ?? "Default";
-        var priority = parameters?["Priority"]?.ToString() ?? "Normal";
-        // ... send email logic
+        var template = parameters?["Template"]?.ToString() ?? "Defaut";
+        var priorite = parameters?["Priorite"]?.ToString() ?? "Normale";
+        // ... logique d'envoi d'e-mail
         return Task.CompletedTask;
     }
 }
@@ -360,211 +355,211 @@ public class SendEmailHandler : ICommandHandler
 
 ---
 
-### 3.10 OnEnter command
+### 3.10 Commande OnEnter
 
-Blocking nodes (`Interactive`, `WaitForSignal`, `WaitUntilDate`) can execute a command *just before* pausing. This is useful for sending notifications or logging.
+Les nœuds bloquants (`Interactive`, `WaitForSignal`, `WaitUntilDate`) peuvent exécuter une commande *juste avant* de se mettre en pause. Utile pour envoyer des notifications ou journaliser.
 
 ```csharp
-ProcessBuilder.Create("ApprovalProcess")
-    .Business("Prepare", "Prepare documents")
-    .Interactive("ManagerApproval", "Manager approval")
-        .WithOnEnterCommand("NotifyManager")
-        .WithOnEnterCommandParameter("Channel", "email")
-    .Business("Archive", "Archive")
+ProcessBuilder.Create("ProcessusApprobation")
+    .Business("Preparer", "Préparer les documents")
+    .Interactive("ApprobationManager", "Approbation du manager")
+        .WithOnEnterCommand("NotifierManager")
+        .WithOnEnterCommandParameter("Canal", "email")
+    .Business("Archiver", "Archiver")
     .Build();
 ```
 
-When the engine reaches `ManagerApproval`:
-1. `NotifyManager` is dispatched via `IBpmMediateur.ExecuteCommandAsync` with `{ "Channel": "email" }`.
-2. The engine then pauses with `WaitingInteraction`.
+Quand le moteur atteint `ApprobationManager` :
+1. `NotifierManager` est dispatché via `IBpmMediateur.ExecuteCommandAsync` avec `{ "Canal": "email" }`.
+2. Le moteur se met ensuite en pause avec `WaitingInteraction`.
 
-If the `OnEnter` command throws, the node fails (status `Failed`).
+Si la commande `OnEnter` lève une exception, le nœud échoue (statut `Failed`).
 
 ---
 
-### 3.11 Manual chaining with Then and Break
+### 3.11 Chaînage manuel avec Then et Break
 
-By default the builder links each new node to the previous one. Use `.Then()` and `.Break()` for fine-grained control.
+Par défaut, le builder relie chaque nouveau nœud au précédent. Utilisez `.Then()` et `.Break()` pour un contrôle fin.
 
 ```csharp
-ProcessBuilder.Create("FlexibleProcess")
-    .Business("NodeA", "A")
-        .Then("NodeC")          // explicit link: A → C (auto-chain to B is suppressed)
-    .Business("NodeB", "B")     // NodeB is added but NOT auto-linked from A
-        .Then("NodeD")
-    .Business("NodeC", "C")     // referenced by NodeA
-    .Business("NodeD", "D")     // referenced by NodeB
+ProcessBuilder.Create("ProcessusFlexi")
+    .Business("NoeudA", "A")
+        .Then("NoeudC")          // lien explicite : A → C (le chaînage auto vers B est supprimé)
+    .Business("NoeudB", "B")     // NoeudB est ajouté mais NON lié automatiquement depuis A
+        .Then("NoeudD")
+    .Business("NoeudC", "C")     // référencé par NoeudA
+    .Business("NoeudD", "D")     // référencé par NoeudB
     .Build();
 ```
 
-`.Break()` sets the current node pointer to `null`, so the next node added has no automatic predecessor:
+`.Break()` réinitialise le pointeur de nœud courant à `null`, de sorte que le nœud suivant ajouté n'a pas de prédécesseur automatique :
 
 ```csharp
-ProcessBuilder.Create("ParallelBranches")
-    .Business("Root", "Root node")
-        .Then("BranchA")
-        .Then("BranchB")
+ProcessBuilder.Create("BranchesParalleles")
+    .Business("Racine", "Nœud racine")
+        .Then("BrancheA")
+        .Then("BrancheB")
     .Break()
-    .Business("BranchA", "Branch A")
+    .Business("BrancheA", "Branche A")
     .Break()
-    .Business("BranchB", "Branch B")
+    .Business("BrancheB", "Branche B")
     .Build();
 ```
 
 ---
 
-## 4. Defining a process — JSON
+## 4. Définir un processus — JSON
 
-JSON definitions are useful for external configuration, dynamic loading, or tooling integration.
+Les définitions JSON sont utiles pour la configuration externe, le chargement dynamique ou l'intégration d'outils.
 
 ```json
 {
-  "name": "OrderProcess",
+  "name": "ProcessusCommande",
   "version": "1.0",
-  "startNode": "ValidateOrder",
+  "startNode": "ValiderCommande",
   "nodes": [
     {
-      "name": "ValidateOrder",
+      "name": "ValiderCommande",
       "type": "Business",
-      "command": "ValidateOrder",
-      "parameters": { "StrictMode": true },
-      "next": ["CheckInventory"]
+      "command": "ValiderCommande",
+      "parameters": { "ModeStrict": true },
+      "next": ["VerifierStock"]
     },
     {
-      "name": "CheckInventory",
+      "name": "VerifierStock",
       "type": "Business",
-      "command": "CheckInventory",
-      "next": ["RouteDecision"]
+      "command": "VerifierStock",
+      "next": ["DecisionRoutage"]
     },
     {
-      "name": "RouteDecision",
+      "name": "DecisionRoutage",
       "type": "Decision",
-      "query": "RouteDecision",
+      "query": "DecisionRoutage",
       "routes": {
-        "in_stock": "ProcessOrder",
-        "out_of_stock": "BackOrder"
+        "en_stock":       "TraiterCommande",
+        "rupture_stock":  "CommandeAnterieure"
       }
     },
     {
-      "name": "ProcessOrder",
+      "name": "TraiterCommande",
       "type": "Business",
-      "command": "ProcessOrder",
-      "next": ["WaitPayment"]
+      "command": "TraiterCommande",
+      "next": ["AttenteConfirmationPaiement"]
     },
     {
-      "name": "WaitPayment",
+      "name": "AttenteConfirmationPaiement",
       "type": "WaitForSignal",
-      "signal": "PaymentReceived"
+      "signal": "PaiementRecu"
     },
     {
-      "name": "BackOrder",
+      "name": "CommandeAnterieure",
       "type": "Interactive",
-      "next": ["ProcessOrder"]
+      "next": ["TraiterCommande"]
     },
     {
-      "name": "OrderRejected",
+      "name": "CommandeRejetee",
       "type": "End"
     }
   ]
 }
 ```
 
-Loading:
+Chargement :
 
 ```csharp
 using SimpleBPM.Definition;
 
-// From a JSON string
-ProcessDefinition process = ProcessJsonLoader.FromJson(json);
+// Depuis une chaîne JSON
+ProcessDefinition processus = ProcessJsonLoader.FromJson(json);
 
-// From a file
-ProcessDefinition process = ProcessJsonLoader.FromJsonFile("processes/order.json");
+// Depuis un fichier
+ProcessDefinition processus = ProcessJsonLoader.FromJsonFile("processus/commande.json");
 
-// Export to JSON
-string json = ProcessJsonLoader.ToJson(process);
+// Export en JSON
+string json = ProcessJsonLoader.ToJson(processus);
 ```
 
 ---
 
-## 5. Implementing business logic
+## 5. Implémenter la logique métier
 
 ### 5.1 ICommandHandler
 
-Implement one `ICommandHandler` per business command. The `CommandName` property must match the node name (or the command name passed to `.Business(...)`) in the process definition.
+Implémentez un `ICommandHandler` par commande métier. La propriété `CommandName` doit correspondre au nom du nœud (ou à la commande passée à `.Business(...)`) dans la définition du processus.
 
 ```csharp
 using SimpleBPM.Abstractions;
 
-public class ValidateOrderHandler : ICommandHandler
+public class ValiderCommandeHandler : ICommandHandler
 {
-    private readonly IOrderRepository _orders;
+    private readonly ICommandeRepository _commandes;
 
-    public ValidateOrderHandler(IOrderRepository orders)
+    public ValiderCommandeHandler(ICommandeRepository commandes)
     {
-        _orders = orders;
+        _commandes = commandes;
     }
 
-    public string CommandName => "ValidateOrder";
+    public string CommandName => "ValiderCommande";
 
     public async Task HandleAsync(long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
-        var strictMode = parameters?["StrictMode"] is true;
-        var order = await _orders.GetByProcessIdAsync(processId);
-        order.Validate(strictMode);
-        await _orders.SaveAsync(order);
+        var modeStrict = parameters?["ModeStrict"] is true;
+        var commande = await _commandes.ObtenirParProcessIdAsync(processId);
+        commande.Valider(modeStrict);
+        await _commandes.SauvegarderAsync(commande);
     }
 }
 ```
 
-Key rules:
-- Constructors are resolved by the DI container — inject whatever you need.
-- Throwing any exception marks the node (and the process) as `Failed`.
-- The `processId` identifies the running workflow; `aggregateId` is the optional domain aggregate ID you passed at creation time.
+Règles importantes :
+- Les constructeurs sont résolus par le conteneur DI — injectez ce dont vous avez besoin.
+- Lever une exception marque le nœud (et le processus) comme `Failed`.
+- `processId` identifie le workflow en cours ; `aggregateId` est l'identifiant optionnel de l'agrégat métier passé à la création.
 
 ### 5.2 IQueryHandler
 
-`IQueryHandler` is used for `DecisionNode` external queries. The handler must return a string that matches one of the routes defined on the decision node.
+`IQueryHandler` est utilisé pour les requêtes externes des `DecisionNode`. Le handler doit retourner une chaîne qui correspond à l'une des routes définies sur le nœud de décision.
 
 ```csharp
-public class CreditDecisionHandler : IQueryHandler
+public class DecisionCreditHandler : IQueryHandler
 {
-    private readonly ICreditService _credit;
+    private readonly IServiceCredit _credit;
 
-    public CreditDecisionHandler(ICreditService credit)
+    public DecisionCreditHandler(IServiceCredit credit)
     {
         _credit = credit;
     }
 
-    public string QueryName => "CreditDecision";
+    public string QueryName => "DecisionCredit";
 
     public async Task<string> HandleAsync(long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
-        var score = await _credit.GetScoreAsync(aggregateId);
-        return score >= 650 ? "approved" : "rejected";
+        var score = await _credit.ObtenirScoreAsync(aggregateId);
+        return score >= 650 ? "approuve" : "rejete";
     }
 }
 ```
 
-If the returned string does not match any defined route, the engine marks the process `Failed` with a descriptive message.
+Si la chaîne retournée ne correspond à aucune route définie, le moteur marque le processus `Failed` avec un message explicite.
 
-### 5.3 IBpmMediateur (direct approach)
+### 5.3 IBpmMediateur (approche directe)
 
-If you prefer a single centralised mediator class instead of individual handlers, implement `IBpmMediateur` directly. This is mutually exclusive with `AddCommandHandlers` — choose one approach.
+Si vous préférez une classe médiateur centralisée plutôt que des handlers individuels, implémentez `IBpmMediateur` directement. Cette approche est mutuellement exclusive avec `AddCommandHandlers` — choisissez l'une ou l'autre.
 
 ```csharp
-public class MyBpmMediateur : IBpmMediateur
+public class MonBpmMediateur : IBpmMediateur
 {
     public async Task ExecuteCommandAsync(string commandName, long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
         switch (commandName)
         {
-            case "ValidateOrder":   await ValidateOrderAsync(processId, parameters); break;
-            case "CheckInventory":  await CheckInventoryAsync(processId); break;
+            case "ValiderCommande":  await ValiderCommandeAsync(processId, parameters); break;
+            case "VerifierStock":    await VerifierStockAsync(processId); break;
             default:
-                throw new InvalidOperationException($"Unknown command: {commandName}");
+                throw new InvalidOperationException($"Commande inconnue : {commandName}");
         }
     }
 
@@ -573,65 +568,65 @@ public class MyBpmMediateur : IBpmMediateur
     {
         return decisionName switch
         {
-            "RouteDecision" => await EvaluateRouteAsync(processId),
-            _ => throw new InvalidOperationException($"Unknown decision: {decisionName}")
+            "DecisionRoutage" => await EvaluerRoutageAsync(processId),
+            _ => throw new InvalidOperationException($"Décision inconnue : {decisionName}")
         };
     }
 
-    // ... private methods
+    // ... méthodes privées
 }
 ```
 
-Register it:
+Enregistrement :
 
 ```csharp
-services.AddSingleton<IBpmMediateur, MyBpmMediateur>();
+services.AddSingleton<IBpmMediateur, MonBpmMediateur>();
 ```
 
-### 5.4 IGestionTache (optional task management)
+### 5.4 IGestionTache (gestion de tâches optionnelle)
 
-If your application has a task inbox or work queue, implement `IGestionTache` to automatically create and close tasks when `InteractiveNode`s are entered and exited.
+Si votre application dispose d'une boîte de réception de tâches ou d'une file de travail, implémentez `IGestionTache` pour créer et fermer automatiquement des tâches lorsque les `InteractiveNode` sont entrés et quittés.
 
 ```csharp
-public class MyGestionTache : IGestionTache
+public class MaGestionTache : IGestionTache
 {
-    private readonly ITaskRepository _tasks;
+    private readonly IDepotTaches _taches;
 
-    public MyGestionTache(ITaskRepository tasks)
+    public MaGestionTache(IDepotTaches taches)
     {
-        _tasks = tasks;
+        _taches = taches;
     }
 
     public async Task CreerTacheAsync(long processId, long? aggregateId,
         string definitionName, string nodeName)
     {
-        await _tasks.CreateAsync(new WorkTask
+        await _taches.CreerAsync(new TacheMetier
         {
             ProcessId      = processId,
             AggregateId    = aggregateId,
-            ProcessName    = definitionName,
-            TaskName       = nodeName,
-            AssignedAt     = DateTime.UtcNow
+            NomProcessus   = definitionName,
+            NomTache       = nodeName,
+            AssigneeA      = DateTime.UtcNow
         });
     }
 
     public async Task FermerTacheAsync(long processId, long? aggregateId,
         string definitionName, string nodeName)
     {
-        await _tasks.CloseAsync(processId, nodeName);
+        await _taches.FermerAsync(processId, nodeName);
     }
 }
 ```
 
-The lifecycle is automatic:
-1. Engine enters `InteractiveNode` → `CreerTacheAsync` is called.
-2. Client calls `TerminerEtapeEnCoursAsync` → `FermerTacheAsync` is called before execution resumes.
+Le cycle de vie est automatique :
+1. Le moteur entre dans un `InteractiveNode` → `CreerTacheAsync` est appelé.
+2. Le client appelle `TerminerEtapeEnCoursAsync` → `FermerTacheAsync` est appelé avant la reprise de l'exécution.
 
 ---
 
-## 6. Dependency injection setup
+## 6. Configuration de l'injection de dépendances
 
-### 6.1 Microsoft DI — unified builder (recommended)
+### 6.1 Microsoft DI — builder unifié (recommandé)
 
 ```csharp
 using System.Reflection;
@@ -640,22 +635,22 @@ using SimpleBPM.Localisation;
 // Program.cs
 services.AddSimpleBPM(options =>
 {
-    // Auto-discover all ICommandHandler and IQueryHandler in this assembly
+    // Découverte automatique de tous les ICommandHandler et IQueryHandler de l'assembly
     options.ScanHandlers(Assembly.GetExecutingAssembly());
 
-    // Optional: register a task manager
-    options.UseTaskManager<MyGestionTache>();
+    // Optionnel : enregistrer un gestionnaire de tâches
+    options.UseTaskManager<MaGestionTache>();
 
-    // Oracle persistence (omit to use in-memory)
-    options.UseOracle("ORD");   // prefix: 3-10 uppercase letters
+    // Persistance Oracle (omettre pour le stockage en mémoire)
+    options.UseOracle("CMD");   // préfixe : 3 à 10 lettres majuscules
 
-    // Register process definitions
-    options.AddProcess(OrderProcessDefinitions.CreateOrderProcess());
-    options.AddProcess(OrderProcessDefinitions.CreateRefundProcess());
+    // Enregistrer les définitions de processus
+    options.AddProcess(ProcessusCommandeDefinitions.CreerProcessusCommande());
+    options.AddProcess(ProcessusCommandeDefinitions.CreerProcessusRemboursement());
 });
 ```
 
-Then register your Oracle connection:
+Puis enregistrez la connexion Oracle :
 
 ```csharp
 services.AddScoped<IDbConnection>(sp =>
@@ -666,18 +661,18 @@ services.AddScoped<IDbConnection>(sp =>
 });
 ```
 
-### 6.2 Microsoft DI — step-by-step
+### 6.2 Microsoft DI — étape par étape
 
-For finer control:
+Pour un contrôle plus fin :
 
 ```csharp
-// 1. Register individual command / query handlers (auto-discovers all ICommandHandler / IQueryHandler)
+// 1. Enregistrer les handlers de commandes / requêtes (découverte automatique)
 services.AddCommandHandlers(Assembly.GetExecutingAssembly());
 
-// 2. Optional services
-services.AddSingleton<IGestionTache, MyGestionTache>();
+// 2. Services optionnels
+services.AddSingleton<IGestionTache, MaGestionTache>();
 
-// 3. Oracle connection (managed by the client)
+// 3. Connexion Oracle (gérée par le client)
 services.AddScoped<IDbConnection>(sp =>
 {
     var conn = new OracleConnection(connectionString);
@@ -685,17 +680,17 @@ services.AddScoped<IDbConnection>(sp =>
     return conn;
 });
 
-// 4. Process definitions (each as a singleton)
-services.AddSingleton(OrderProcessDefinitions.CreateOrderProcess());
-services.AddSingleton(OrderProcessDefinitions.CreateRefundProcess());
+// 4. Définitions de processus (chacune en singleton)
+services.AddSingleton(ProcessusCommandeDefinitions.CreerProcessusCommande());
+services.AddSingleton(ProcessusCommandeDefinitions.CreerProcessusRemboursement());
 
-// 5. SimpleBPM core (Oracle backend)
-services.AddSimpleBPM(tablePrefix: "ORD");
-// or in-memory:
+// 5. SimpleBPM principal (backend Oracle)
+services.AddSimpleBPM(tablePrefix: "CMD");
+// ou en mémoire :
 // services.AddSimpleBPM();
 ```
 
-### 6.3 Autofac module
+### 6.3 Module Autofac
 
 ```csharp
 using Autofac;
@@ -706,12 +701,12 @@ var builder = new ContainerBuilder();
 builder.RegisterModule(new SimpleBPMAutofacModule(module =>
 {
     module.ScanHandlers(Assembly.GetExecutingAssembly());
-    module.UseTaskManager<MyGestionTache>();
-    module.UseOracle("ORD");
-    module.AddProcess(OrderProcessDefinitions.CreateOrderProcess());
+    module.UseTaskManager<MaGestionTache>();
+    module.UseOracle("CMD");
+    module.AddProcess(ProcessusCommandeDefinitions.CreerProcessusCommande());
 }));
 
-// Oracle connection — register separately
+// Connexion Oracle — enregistrée séparément
 builder.Register(ctx =>
 {
     var conn = new OracleConnection(connectionString);
@@ -722,126 +717,125 @@ builder.Register(ctx =>
 var container = builder.Build();
 ```
 
-### 6.4 Oracle persistence
+### 6.4 Persistance Oracle
 
-The `OracleProcessRepository` requires an open `IDbConnection` (injected by scope). It uses Dapper for all queries.
+`OracleProcessRepository` nécessite une `IDbConnection` ouverte (injectée par scope). Il utilise Dapper pour toutes les requêtes.
 
-**Table prefix rules**:
-- Between 3 and 10 characters.
-- Letters only (no digits or special characters).
-- Automatically uppercased.
+**Règles du préfixe de table** :
+- Entre 3 et 10 caractères.
+- Lettres uniquement (pas de chiffres ni de caractères spéciaux).
+- Converti automatiquement en majuscules.
 
-**Tables created**:
+**Tables créées** :
 
 | Table | Description |
 |---|---|
-| `{PREFIX}_PROCESS_CONTEXT` | One row per process instance — state, variables (JSON), timestamps |
-| `{PREFIX}_HISTORIQUE_EXECUTION_NOEUD` | One row per node execution — audit trail with durations |
+| `{PREFIXE}_PROCESS_CONTEXT` | Une ligne par instance de processus — état, variables (JSON), horodatages |
+| `{PREFIXE}_HISTORIQUE_EXECUTION_NOEUD` | Une ligne par exécution de nœud — journal d'audit avec durées |
 
-Initialize the schema once per environment (e.g. during application startup):
+Initialisez le schéma une fois par environnement (ex. au démarrage de l'application) :
 
 ```csharp
-// Resolve from DI and call once
 var repo = serviceProvider.GetRequiredService<IProcessRepository>();
 if (repo is OracleProcessRepository oracleRepo)
     await oracleRepo.InitializeDatabaseAsync();
 ```
 
-Or apply `schema.sql` manually for environments where the app should not auto-create tables.
+Ou appliquez `schema.sql` manuellement pour les environnements où l'application ne doit pas créer les tables automatiquement.
 
 ---
 
-## 7. Operating processes at runtime
+## 7. Exploiter les processus à l'exécution
 
-All runtime interaction goes through `IFlowService`.
+Toutes les interactions à l'exécution passent par `IFlowService`.
 
 ```csharp
 public interface IFlowService
 {
-    Task<long>           CreateProcessInstanceAsync(string definitionName, Dictionary<string, object>? variables = null);
-    Task<Processus>      ObtenirAsync(long instanceProcessId);
-    Task                 TerminerEtapeAsync(long idInstanceNoeud, object contenu);
-    Task                 TerminerEtapeEnCoursAsync(long idInstanceProcessus, Dictionary<string, object>? contenu = null);
-    Task                 EnvoyerSignalAsync(long idInstanceProcessus, string signalName);
+    Task<long>                CreateProcessInstanceAsync(string definitionName, Dictionary<string, object>? variables = null);
+    Task<Processus>           ObtenirAsync(long instanceProcessId);
+    Task                      TerminerEtapeAsync(long idInstanceNoeud, object contenu);
+    Task                      TerminerEtapeEnCoursAsync(long idInstanceProcessus, Dictionary<string, object>? contenu = null);
+    Task                      EnvoyerSignalAsync(long idInstanceProcessus, string signalName);
     Task<IEnumerable<string>> ObtenirSignauxEnAttenteAsync(long idInstanceProcessus);
-    Task<InstanceNode>   ObtenirNoeudAsync(long idInstanceNoeud);
-    Task<List<Processus>> RechercherParVariableAsync(List<FiltreVariable> filtres);
-    Task<List<Processus>> ObtenirEnfantsAsync(long idInstanceParent);
-    Task<MigrationResult> MigrateAsync(long processId, ProcessDefinition targetDefinition, ProcessMigration migration);
+    Task<InstanceNode>        ObtenirNoeudAsync(long idInstanceNoeud);
+    Task<List<Processus>>     RechercherParVariableAsync(List<FiltreVariable> filtres);
+    Task<List<Processus>>     ObtenirEnfantsAsync(long idInstanceParent);
+    Task<MigrationResult>     MigrateAsync(long processId, ProcessDefinition targetDefinition, ProcessMigration migration);
 }
 ```
 
-### 7.1 Creating a process instance
+### 7.1 Créer une instance de processus
 
 ```csharp
-// Inject IFlowService via DI
+// IFlowService injecté via DI
 private readonly IFlowService _flowService;
 
-long processId = await _flowService.CreateProcessInstanceAsync("OrderProcess", new()
+long processId = await _flowService.CreateProcessInstanceAsync("ProcessusCommande", new()
 {
-    ["OrderId"]     = "ORD-001",
-    ["OrderAmount"] = 2500.00,
-    ["CustomerId"]  = "CUST-42"
+    ["CommandeId"]  = "CMD-001",
+    ["Montant"]     = 2500.00,
+    ["ClientId"]    = "CLI-42"
 });
 ```
 
-`CreateProcessInstanceAsync` starts execution immediately and runs nodes until a waiting node is reached or the process completes.
-The returned `long` is the unique process ID (from an Oracle sequence or the in-memory counter).
+`CreateProcessInstanceAsync` démarre l'exécution immédiatement et enchaîne les nœuds jusqu'à rencontrer un nœud d'attente ou la fin du processus.
+Le `long` retourné est l'identifiant unique de l'instance (issu d'une séquence Oracle ou du compteur en mémoire).
 
-### 7.2 Completing an interactive step
+### 7.2 Terminer une étape interactive
 
-Two methods are available:
+Deux méthodes sont disponibles :
 
-**By process ID** (most common):
+**Par identifiant de processus** (le plus courant) :
 
 ```csharp
 await _flowService.TerminerEtapeEnCoursAsync(processId, new()
 {
-    ["ManagerDecision"] = "approved",
-    ["Comment"]         = "All checks passed."
+    ["DecisionManager"] = "approuve",
+    ["Commentaire"]     = "Tous les contrôles sont passés."
 });
 ```
 
-**By node instance ID** (when you have stored the specific node record):
+**Par identifiant d'instance de nœud** (quand vous avez stocké l'enregistrement du nœud) :
 
 ```csharp
-await _flowService.TerminerEtapeAsync(nodeInstanceId, new Dictionary<string, object>
+await _flowService.TerminerEtapeAsync(idInstanceNoeud, new Dictionary<string, object>
 {
-    ["ManagerDecision"] = "approved"
+    ["DecisionManager"] = "approuve"
 });
 ```
 
-Both methods:
-1. Merge the provided dictionary into `instance.Variables`.
-2. Call `OnLeaveAsync` on the current node handler (closes the task if `IGestionTache` is registered).
-3. Resume execution from the next node.
+Les deux méthodes :
+1. Fusionnent le dictionnaire fourni dans `instance.Variables`.
+2. Appellent `OnLeaveAsync` sur le handler du nœud courant (ferme la tâche si `IGestionTache` est enregistré).
+3. Reprennent l'exécution à partir du nœud suivant.
 
-### 7.3 Sending a signal
-
-```csharp
-await _flowService.EnvoyerSignalAsync(processId, "PaymentReceived");
-```
-
-If the process is in `WaitingSignal` and the signal name matches the expected signal, execution resumes immediately.
-
-To discover which signals a process is waiting for:
+### 7.3 Envoyer un signal
 
 ```csharp
-IEnumerable<string> signals = await _flowService.ObtenirSignauxEnAttenteAsync(processId);
-// e.g. ["PaymentReceived"]
+await _flowService.EnvoyerSignalAsync(processId, "PaiementRecu");
 ```
 
-### 7.4 Querying process state
+Si le processus est en `WaitingSignal` et que le nom du signal correspond au signal attendu, l'exécution reprend immédiatement.
+
+Pour découvrir quels signaux un processus attend :
 
 ```csharp
-Processus process = await _flowService.ObtenirAsync(processId);
-
-Console.WriteLine(process.Status);         // Running, WaitingInteraction, Completed, ...
-Console.WriteLine(process.CurrentNodeId);  // Name of the current node
-Console.WriteLine(process.AggregateId);    // Domain aggregate link
+IEnumerable<string> signaux = await _flowService.ObtenirSignauxEnAttenteAsync(processId);
+// ex. ["PaiementRecu"]
 ```
 
-`Processus` is a read-only DTO — it does not expose internal engine state.
+### 7.4 Consulter l'état d'un processus
+
+```csharp
+Processus processus = await _flowService.ObtenirAsync(processId);
+
+Console.WriteLine(processus.Status);         // Running, WaitingInteraction, Completed, ...
+Console.WriteLine(processus.CurrentNodeId);  // Nom du nœud courant
+Console.WriteLine(processus.AggregateId);    // Lien vers l'agrégat métier
+```
+
+`Processus` est un DTO en lecture seule — il n'expose pas l'état interne du moteur.
 
 ```csharp
 public class Processus
@@ -860,269 +854,269 @@ public class Processus
 }
 ```
 
-### 7.5 Searching by variable
+### 7.5 Rechercher par variable
 
-Use `RechercherParVariableAsync` to find process instances by their variable values. All filters are combined with AND logic.
+Utilisez `RechercherParVariableAsync` pour trouver des instances de processus selon leurs valeurs de variables. Tous les filtres sont combinés avec une logique ET.
 
 ```csharp
 using SimpleBPM;
 
-// Single condition (equality)
-var results = await _flowService.RechercherParVariableAsync(new()
+// Condition unique (égalité)
+var resultats = await _flowService.RechercherParVariableAsync(new()
 {
-    new FiltreVariable("CustomerId", "CUST-42", OperateurFiltre.Egal, TypeDonnee.Texte)
+    new FiltreVariable("ClientId", "CLI-42", OperateurFiltre.Egal, TypeDonnee.Texte)
 });
 
-// Multiple conditions
-var results = await _flowService.RechercherParVariableAsync(new()
+// Plusieurs conditions
+var resultats = await _flowService.RechercherParVariableAsync(new()
 {
-    new FiltreVariable("OrderAmount",    1_000, OperateurFiltre.SuperieurOuEgal, TypeDonnee.Nombre),
-    new FiltreVariable("OrderStatus",  "Open",  OperateurFiltre.Egal,            TypeDonnee.Texte),
-    new FiltreVariable("CreatedAt",    DateTime.Today.AddDays(-7), OperateurFiltre.Superieur, TypeDonnee.Date)
+    new FiltreVariable("Montant",     1_000, OperateurFiltre.SuperieurOuEgal, TypeDonnee.Nombre),
+    new FiltreVariable("Statut",    "Ouvert", OperateurFiltre.Egal,           TypeDonnee.Texte),
+    new FiltreVariable("CreeLe",    DateTime.Today.AddDays(-7), OperateurFiltre.Superieur, TypeDonnee.Date)
 });
 ```
 
-The same operators and data types from `DecisionNode` apply here.
+Les mêmes opérateurs et types de données que pour `DecisionNode` sont disponibles.
 
 ---
 
-## 8. Monitoring
+## 8. Surveillance
 
-For dashboards, admin panels, or reporting services that need read-only access to process state, use `IProcessMonitor` instead of `IFlowService`.
+Pour les tableaux de bord, panneaux d'administration ou services de reporting nécessitant un accès en lecture seule à l'état des processus, utilisez `IProcessMonitor` plutôt que `IFlowService`.
 
 ```csharp
-// Register (Microsoft DI)
-services.AddProcessMonitoring();   // no engine, no IBpmMediateur needed
+// Enregistrement (Microsoft DI)
+services.AddProcessMonitoring();   // aucun moteur, aucun IBpmMediateur requis
 
-// or in an Autofac dashboard module:
+// ou dans un module Autofac de tableau de bord :
 builder.RegisterModule(new ProcessMonitoringAutofacModule());
 ```
 
 ```csharp
 public interface IProcessMonitor
 {
-    List<ProcessDefinition>           GetDefinitions();
-    Task<List<Processus>>             GetAllInstancesAsync();
-    Task<List<Processus>>             GetRootInstancesAsync();
-    Task<List<Processus>>             GetAllDescendantsAsync(long processId);
-    Task<List<Processus>>             GetInstancesByStatusAsync(ProcessStatus status);
-    Task<Processus>                   GetInstanceAsync(long processId);
-    Task<List<NodeInstance>>          GetExecutionHistoryAsync(long processId);
+    List<ProcessDefinition>              GetDefinitions();
+    Task<List<Processus>>                GetAllInstancesAsync();
+    Task<List<Processus>>                GetRootInstancesAsync();
+    Task<List<Processus>>                GetAllDescendantsAsync(long processId);
+    Task<List<Processus>>                GetInstancesByStatusAsync(ProcessStatus status);
+    Task<Processus>                      GetInstanceAsync(long processId);
+    Task<List<NodeInstance>>             GetExecutionHistoryAsync(long processId);
     Task<Dictionary<ProcessStatus, int>> GetStatusSummaryAsync();
 }
 ```
 
-Example — dashboard showing all waiting processes:
+Exemple — tableau de bord affichant tous les processus en attente :
 
 ```csharp
-var waiting = await _monitor.GetInstancesByStatusAsync(ProcessStatus.WaitingInteraction);
-foreach (var p in waiting)
+var enAttente = await _monitor.GetInstancesByStatusAsync(ProcessStatus.WaitingInteraction);
+foreach (var p in enAttente)
 {
-    Console.WriteLine($"{p.DefinitionName} #{p.Id} — waiting at: {p.CurrentNodeId}");
+    Console.WriteLine($"{p.DefinitionName} #{p.Id} — en attente sur : {p.CurrentNodeId}");
 }
 
-// Status counts for a summary widget
-var summary = await _monitor.GetStatusSummaryAsync();
+// Comptage par statut pour un widget de synthèse
+var synthese = await _monitor.GetStatusSummaryAsync();
 // { Running: 5, WaitingInteraction: 12, Completed: 348, Failed: 2 }
 ```
 
 ---
 
-## 9. Version migration
+## 9. Migration de version
 
-When you release a new version of a process definition, instances that are currently paused (waiting) can be migrated without data loss.
+Lors de la publication d'une nouvelle version d'une définition de processus, les instances actuellement en pause (en attente) peuvent être migrées sans perte de données.
 
-Only instances in `WaitingInteraction`, `WaitingSignal`, or `WaitingDate` can be migrated — running instances cannot be interrupted.
+Seules les instances dans les états `WaitingInteraction`, `WaitingSignal` ou `WaitingDate` peuvent être migrées — les instances en cours d'exécution ne peuvent pas être interrompues.
 
-### Define a migration
+### Définir une migration
 
 ```csharp
 var migration = new ProcessMigration("1.0", "2.0")
-    .MapNode("Review", "DetailedReview")           // renamed node
-    .SetVariable("MigratedFromV1", true)           // add new variable
-    .RenameVariable("OldStatus", "ReviewStatus")   // rename variable
-    .RemoveVariable("DeprecatedFlag");              // remove obsolete variable
+    .MapNode("Revue", "RevueDetaillee")            // nœud renommé
+    .SetVariable("MigreDepuisV1", true)            // ajouter une nouvelle variable
+    .RenameVariable("AncienStatut", "StatutRevue") // renommer une variable
+    .RemoveVariable("DrapeauObsolete");             // supprimer une variable obsolète
 ```
 
-Or load from JSON:
+Ou chargez depuis JSON :
 
 ```json
 {
   "fromVersion": "1.0",
   "toVersion":   "2.0",
   "nodeMappings": {
-    "Review": "DetailedReview"
+    "Revue": "RevueDetaillee"
   },
   "variableTransforms": [
-    { "type": "set",    "name": "MigratedFromV1",  "value": true },
-    { "type": "rename", "name": "OldStatus",        "newName": "ReviewStatus" },
-    { "type": "remove", "name": "DeprecatedFlag" }
+    { "type": "set",    "name": "MigreDepuisV1",  "value": true },
+    { "type": "rename", "name": "AncienStatut",    "newName": "StatutRevue" },
+    { "type": "remove", "name": "DrapeauObsolete" }
   ]
 }
 ```
 
 ```csharp
-var migration = ProcessMigrationLoader.FromJsonFile("migrations/v1_to_v2.json");
+var migration = ProcessMigrationLoader.FromJsonFile("migrations/v1_vers_v2.json");
 ```
 
-### Apply the migration
+### Appliquer la migration
 
 ```csharp
-var v2Definition = OrderProcessDefinitions.CreateOrderProcessV2();
+var definitionV2 = ProcessusCommandeDefinitions.CreerProcessusCommandeV2();
 
-MigrationResult result = await _flowService.MigrateAsync(processId, v2Definition, migration);
+MigrationResult resultat = await _flowService.MigrateAsync(processId, definitionV2, migration);
 
-if (result.Success)
-    Console.WriteLine($"Migrated from {result.PreviousVersion} to {result.NewVersion}");
+if (resultat.Success)
+    Console.WriteLine($"Migré de {resultat.PreviousVersion} vers {resultat.NewVersion}");
 else
-    Console.WriteLine($"Migration failed: {result.ErrorMessage}");
+    Console.WriteLine($"Échec de la migration : {resultat.ErrorMessage}");
 ```
 
-**Variable transformation types**:
+**Types de transformations de variables** :
 
-| Type | Effect |
+| Type | Effet |
 |---|---|
-| `set` | Creates or overwrites a variable with the given value |
-| `rename` | Renames a variable key (value preserved) |
-| `remove` | Deletes a variable |
+| `set` | Crée ou écrase une variable avec la valeur donnée |
+| `rename` | Renomme une clé de variable (valeur conservée) |
+| `remove` | Supprime une variable |
 
 ---
 
-## 10. Complete example — loan approval workflow
+## 10. Exemple complet — workflow d'approbation de prêt
 
-This section shows a realistic end-to-end integration based on the `SimpleBPM.ExampleClient` project.
+Cette section présente une intégration réaliste de bout en bout, basée sur le projet `SimpleBPM.ExampleClient`.
 
-### Process definition
+### Définition du processus
 
 ```csharp
 using SimpleBPM;
 using SimpleBPM.Definition;
 
-public static class LoanProcessDefinitions
+public static class ProcessusPretDefinitions
 {
-    public static ProcessDefinition CreateLoanApprovalProcess()
+    public static ProcessDefinition CreerProcessusApprobationPret()
     {
-        var verificationSub = ProcessBuilder.Create("VerificationProcess", "1.0")
-            .Business("VerifyIdentity",   "Verify identity documents")
-            .Business("VerifyIncome",     "Verify income statements")
-            .Business("VerifyEmployment", "Verify employment status")
+        var sousProcessusVerification = ProcessBuilder.Create("ProcessusVerification", "1.0")
+            .Business("VerifierIdentite",   "Vérifier les pièces d'identité")
+            .Business("VerifierRevenus",    "Vérifier les justificatifs de revenus")
+            .Business("VerifierEmploi",     "Vérifier la situation professionnelle")
             .Build();
 
-        return ProcessBuilder.Create("LoanApproval", "1.0")
-            // Validate the application and attach required documents list
-            .Business("ValidateApplication", "Validate Loan Application")
-                .WithParameter("RequiredDocuments", "ID,Income,Employment")
+        return ProcessBuilder.Create("ApprobationPret", "1.0")
+            // Valider la demande et attacher la liste des pièces requises
+            .Business("ValiderDemande", "Valider la demande de prêt")
+                .WithParameter("PiecesRequises", "CI,Revenus,Emploi")
 
-            // Run a sub-process for applicant verification with variable mapping
-            .SubProcess("Verification", verificationSub,
-                inputMapping:  new() { ["ApplicantId"] = "ApplicantId" },
-                outputMapping: new() { ["VerificationPassed"] = "IsVerified" },
-                displayName: "Applicant Verification")
+            // Exécuter un sous-processus de vérification du demandeur avec mapping de variables
+            .SubProcess("Verification", sousProcessusVerification,
+                inputMapping:  new() { ["IdDemandeur"] = "IdDemandeur" },
+                outputMapping: new() { ["VerificationReussie"] = "EstVerifie" },
+                displayName: "Vérification du demandeur")
 
-            // Check credit score
-            .Business("CheckCredit", "Check Credit Score")
+            // Vérifier le score de crédit
+            .Business("VerifierCredit", "Vérifier le score de crédit")
 
-            // Route based on credit decision (returned by CreditDecisionHandler)
-            .Decision("CreditDecision", "Credit Decision", routes => routes
-                .When("approved", "CalculateTerms")
-                .When("rejected",  "RejectLoan"))
+            // Router selon la décision de crédit (retournée par DecisionCreditHandler)
+            .Decision("DecisionCredit", "Décision de crédit", routes => routes
+                .When("approuve", "CalculerConditions")
+                .When("rejete",   "RejeterDemande"))
 
-            // Approved branch
-            .Business("CalculateTerms", "Calculate Loan Terms")
-                .Then("ManualReview")       // skip auto-chain past the rejected branch
-            .Business("RejectLoan", "Reject Loan Application")
-                .End("LoanRejected", "Loan Application Rejected")  // branch terminates here
+            // Branche approuvée
+            .Business("CalculerConditions", "Calculer les conditions du prêt")
+                .Then("RevueManuelle")        // éviter le chaînage auto vers la branche rejetée
+            .Business("RejeterDemande", "Rejeter la demande de prêt")
+                .End("PretRejete", "Demande de prêt rejetée")   // la branche se termine ici
 
-            // Interactive step — pause and wait for underwriter
-            .Interactive("ManualReview", "Underwriter Review")
+            // Étape interactive — pause et attente de l'analyste
+            .Interactive("RevueManuelle", "Revue analyste")
 
-            // Wait for the applicant to sign documents
-            .WaitForSignal("WaitDocumentSigning", "Wait for Document Signing")
+            // Attendre la signature des documents par le demandeur
+            .WaitForSignal("AttenteSignatureDocuments", "Attente de la signature des documents")
 
-            // Disburse and close
-            .Business("DisburseFunds", "Disburse Loan Funds")
-                .End("LoanApproved", "Loan Approved and Disbursed")
+            // Décaisser et clôturer
+            .Business("DecaisserFonds", "Décaisser les fonds")
+                .End("PretApprouve", "Prêt approuvé et décaissé")
 
             .Build();
     }
 }
 ```
 
-### Command handlers
+### Handlers de commandes
 
 ```csharp
-// ValidateApplicationHandler.cs
-public class ValidateApplicationHandler : ICommandHandler
+// ValiderDemandeHandler.cs
+public class ValiderDemandeHandler : ICommandHandler
 {
-    public string CommandName => "ValidateApplication";
+    public string CommandName => "ValiderDemande";
 
     public Task HandleAsync(long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
-        var required = parameters?["RequiredDocuments"]?.ToString() ?? "";
-        Console.WriteLine($"[ValidateApplication] Required docs: {required}");
+        var pieces = parameters?["PiecesRequises"]?.ToString() ?? "";
+        Console.WriteLine($"[ValiderDemande] Pièces requises : {pieces}");
         return Task.CompletedTask;
     }
 }
 
-// DisburseFundsHandler.cs
-public class DisburseFundsHandler : ICommandHandler
+// DecaisserFondsHandler.cs
+public class DecaisserFondsHandler : ICommandHandler
 {
-    private readonly IPaymentGateway _gateway;
+    private readonly IPasserelleDecaissement _passerelle;
 
-    public DisburseFundsHandler(IPaymentGateway gateway) => _gateway = gateway;
+    public DecaisserFondsHandler(IPasserelleDecaissement passerelle) => _passerelle = passerelle;
 
-    public string CommandName => "DisburseFunds";
+    public string CommandName => "DecaisserFonds";
 
     public async Task HandleAsync(long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
-        await _gateway.DisburseAsync(processId);
+        await _passerelle.DecaisserAsync(processId);
     }
 }
 ```
 
-### Query handler
+### Handler de décision
 
 ```csharp
-// CreditDecisionHandler.cs
-public class CreditDecisionHandler : IQueryHandler
+// DecisionCreditHandler.cs
+public class DecisionCreditHandler : IQueryHandler
 {
-    private readonly ICreditBureau _bureau;
+    private readonly IBureauCredit _bureau;
 
-    public CreditDecisionHandler(ICreditBureau bureau) => _bureau = bureau;
+    public DecisionCreditHandler(IBureauCredit bureau) => _bureau = bureau;
 
-    public string QueryName => "CreditDecision";
+    public string QueryName => "DecisionCredit";
 
     public async Task<string> HandleAsync(long processId, long? aggregateId,
         Dictionary<string, object>? parameters = null)
     {
-        int score = await _bureau.GetScoreAsync(aggregateId);
-        return score >= 650 ? "approved" : "rejected";
+        int score = await _bureau.ObtenirScoreAsync(aggregateId);
+        return score >= 650 ? "approuve" : "rejete";
     }
 }
 ```
 
-### Task manager
+### Gestionnaire de tâches
 
 ```csharp
-public class LoanTaskManager : IGestionTache
+public class GestionTachePret : IGestionTache
 {
-    private readonly ITaskStore _store;
+    private readonly IDepotTaches _depot;
 
-    public LoanTaskManager(ITaskStore store) => _store = store;
+    public GestionTachePret(IDepotTaches depot) => _depot = depot;
 
     public Task CreerTacheAsync(long processId, long? aggregateId,
         string definitionName, string nodeName)
-        => _store.CreateAsync(processId, nodeName, "Underwriter");
+        => _depot.CreerAsync(processId, nodeName, "Analyste");
 
     public Task FermerTacheAsync(long processId, long? aggregateId,
         string definitionName, string nodeName)
-        => _store.CloseAsync(processId, nodeName);
+        => _depot.FermerAsync(processId, nodeName);
 }
 ```
 
-### DI setup (Autofac)
+### Configuration DI (Autofac)
 
 ```csharp
 var containerBuilder = new ContainerBuilder();
@@ -1130,67 +1124,67 @@ var containerBuilder = new ContainerBuilder();
 containerBuilder.RegisterModule(new SimpleBPMAutofacModule(module =>
 {
     module.ScanHandlers(Assembly.GetExecutingAssembly());
-    module.UseTaskManager<LoanTaskManager>();
-    module.AddProcess(LoanProcessDefinitions.CreateLoanApprovalProcess());
-    // module.UseOracle("LN");   // uncomment for Oracle
+    module.UseTaskManager<GestionTachePret>();
+    module.AddProcess(ProcessusPretDefinitions.CreerProcessusApprobationPret());
+    // module.UseOracle("PT");   // décommenter pour Oracle
 }));
 
-containerBuilder.RegisterType<FakeCreditBureau>().As<ICreditBureau>().SingleInstance();
-containerBuilder.RegisterType<FakePaymentGateway>().As<IPaymentGateway>().SingleInstance();
+containerBuilder.RegisterType<BureauCreditFactice>().As<IBureauCredit>().SingleInstance();
+containerBuilder.RegisterType<PasserelleDecaissementFactice>().As<IPasserelleDecaissement>().SingleInstance();
 
 var container = containerBuilder.Build();
 ```
 
-### Runtime usage
+### Utilisation à l'exécution
 
 ```csharp
 await using var scope = container.BeginLifetimeScope();
 var flowService = scope.Resolve<IFlowService>();
 
-// 1. Start the workflow
-long processId = await flowService.CreateProcessInstanceAsync("LoanApproval", new()
+// 1. Démarrer le workflow
+long processId = await flowService.CreateProcessInstanceAsync("ApprobationPret", new()
 {
-    ["ApplicantId"] = "APP-12345",
-    ["LoanAmount"]  = 50_000.00,
-    ["LoanTerm"]    = 36
+    ["IdDemandeur"] = "DEM-12345",
+    ["MontantPret"] = 50_000.00,
+    ["DureePret"]   = 36
 });
 
-var process = await flowService.ObtenirAsync(processId);
-Console.WriteLine($"Status: {process.Status}");   // WaitingInteraction
+var processus = await flowService.ObtenirAsync(processId);
+Console.WriteLine($"Statut : {processus.Status}");   // WaitingInteraction
 
-// 2. Underwriter completes the interactive review
+// 2. L'analyste complète la revue manuelle
 await flowService.TerminerEtapeEnCoursAsync(processId, new()
 {
-    ["UnderwriterDecision"] = "approved",
-    ["ReviewNotes"]         = "All documents verified."
+    ["DecisionAnalyste"] = "approuve",
+    ["Notes"]            = "Tous les documents vérifiés."
 });
 
-process = await flowService.ObtenirAsync(processId);
-Console.WriteLine($"Status: {process.Status}");   // WaitingSignal
+processus = await flowService.ObtenirAsync(processId);
+Console.WriteLine($"Statut : {processus.Status}");   // WaitingSignal
 
-// 3. Applicant signs documents — external system sends signal
-var pending = await flowService.ObtenirSignauxEnAttenteAsync(processId);
-// pending == ["WaitDocumentSigning"]
+// 3. Le demandeur signe les documents — le système externe envoie le signal
+var signaux = await flowService.ObtenirSignauxEnAttenteAsync(processId);
+// signaux == ["AttenteSignatureDocuments"]
 
-await flowService.EnvoyerSignalAsync(processId, "WaitDocumentSigning");
+await flowService.EnvoyerSignalAsync(processId, "AttenteSignatureDocuments");
 
-process = await flowService.ObtenirAsync(processId);
-Console.WriteLine($"Status: {process.Status}");   // Completed
+processus = await flowService.ObtenirAsync(processId);
+Console.WriteLine($"Statut : {processus.Status}");   // Completed
 ```
 
 ---
 
-## Quick reference
+## Référence rapide
 
-| Task | Method |
+| Action | Méthode |
 |---|---|
-| Start a process | `IFlowService.CreateProcessInstanceAsync` |
-| Complete interactive step | `IFlowService.TerminerEtapeEnCoursAsync` |
-| Complete step by node ID | `IFlowService.TerminerEtapeAsync` |
-| Send signal | `IFlowService.EnvoyerSignalAsync` |
-| Get process state | `IFlowService.ObtenirAsync` |
-| Get pending signals | `IFlowService.ObtenirSignauxEnAttenteAsync` |
-| Search by variable | `IFlowService.RechercherParVariableAsync` |
-| Get child processes | `IFlowService.ObtenirEnfantsAsync` |
-| Migrate to new version | `IFlowService.MigrateAsync` |
-| Monitor (read-only) | `IProcessMonitor.*` |
+| Démarrer un processus | `IFlowService.CreateProcessInstanceAsync` |
+| Terminer une étape interactive | `IFlowService.TerminerEtapeEnCoursAsync` |
+| Terminer une étape par ID de nœud | `IFlowService.TerminerEtapeAsync` |
+| Envoyer un signal | `IFlowService.EnvoyerSignalAsync` |
+| Consulter l'état d'un processus | `IFlowService.ObtenirAsync` |
+| Obtenir les signaux en attente | `IFlowService.ObtenirSignauxEnAttenteAsync` |
+| Rechercher par variable | `IFlowService.RechercherParVariableAsync` |
+| Obtenir les processus enfants | `IFlowService.ObtenirEnfantsAsync` |
+| Migrer vers une nouvelle version | `IFlowService.MigrateAsync` |
+| Surveiller (lecture seule) | `IProcessMonitor.*` |
