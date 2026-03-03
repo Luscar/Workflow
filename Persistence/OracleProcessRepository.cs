@@ -62,14 +62,14 @@ public class OracleProcessRepository : IProcessRepository
                     ID_NOEUD_PARN VARCHAR2(255),
                     ID_ENTI_AFFA NUMBER(10),
                     VAR_PROCS CLOB,
-                    DATE_ATTENTE TIMESTAMP,
-                    SIGNAL_ATTENTE VARCHAR2(255),
-                    DH_DEB TIMESTAMP,
-                    DH_EXEC TIMESTAMP,
-                    DH_COMP TIMESTAMP,
+                    DH_ATTEN DATE,
+                    SIGNL_ATTENTION VARCHAR2(255),
+                    DH_DEB DATE,
+                    DH_EXEC DATE,
+                    DH_COMPL DATE,
                     ID_NOEUD_COUR VARCHAR2(255),
-                    NOM_DEFIN VARCHAR2(255),
-                    VERSION_DEFIN VARCHAR2(50),
+                    ID_DEFIN VARCHAR2(255),
+                    VERSI_DEFIN VARCHAR2(50),
                     STAT_PROCS NUMBER(10),
                     CONSTRAINT CHK_{_config.TablePrefix}_STAT_PROCS CHECK (STAT_PROCS BETWEEN 0 AND 5)
                 )';
@@ -84,7 +84,7 @@ public class OracleProcessRepository : IProcessRepository
 
         var addDateAttenteColumnSql = $@"
             BEGIN
-                EXECUTE IMMEDIATE 'ALTER TABLE {_processContextTable} ADD (DATE_ATTENTE TIMESTAMP)';
+                EXECUTE IMMEDIATE 'ALTER TABLE {_processContextTable} ADD (DH_ATTEN DATE)';
             EXCEPTION
                 WHEN OTHERS THEN
                     IF SQLCODE = -1430 THEN
@@ -96,7 +96,7 @@ public class OracleProcessRepository : IProcessRepository
 
         var addSignalAttenteColumnSql = $@"
             BEGIN
-                EXECUTE IMMEDIATE 'ALTER TABLE {_processContextTable} ADD (SIGNAL_ATTENTE VARCHAR2(255))';
+                EXECUTE IMMEDIATE 'ALTER TABLE {_processContextTable} ADD (SIGNL_ATTENTION VARCHAR2(255))';
             EXCEPTION
                 WHEN OTHERS THEN
                     IF SQLCODE = -1430 THEN
@@ -157,7 +157,7 @@ public class OracleProcessRepository : IProcessRepository
     {
         var sql = $@"
             INSERT INTO {_processContextTable}
-            (NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DATE_ATTENTE, SIGNAL_ATTENTE, DH_DEB, DH_EXEC, DH_COMP, ID_NOEUD_COUR, NOM_DEFIN, VERSION_DEFIN, STAT_PROCS)
+            (NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS)
             VALUES
             (:NoSeqProcs, :NoSeqProcsParn, :IdNoeudParn, :IdEntiAffa, :VarProcs, :DateAttente, :SignalAttente, :DhDeb, :DhExec, :DhComp, :IdNoeudCour, :NomDefin, :VersionDefin, :StatProcs)";
 
@@ -185,7 +185,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetProcessInstanceAsync(long processId)
     {
         var sql = $@"
-            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DATE_ATTENTE, SIGNAL_ATTENTE, DH_DEB, DH_EXEC, DH_COMP, ID_NOEUD_COUR, NOM_DEFIN, VERSION_DEFIN, STAT_PROCS
+            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS
             FROM {_processContextTable}
             WHERE NO_SEQ_PROCS = :NoSeqProcs";
 
@@ -208,13 +208,13 @@ public class OracleProcessRepository : IProcessRepository
             UPDATE {_processContextTable}
             SET ID_ENTI_AFFA = :IdEntiAffa,
                 VAR_PROCS = :VarProcs,
-                DATE_ATTENTE = :DateAttente,
-                SIGNAL_ATTENTE = :SignalAttente,
+                DH_ATTEN = :DateAttente,
+                SIGNL_ATTENTION = :SignalAttente,
                 DH_EXEC = :DhExec,
-                DH_COMP = :DhComp,
+                DH_COMPL = :DhComp,
                 ID_NOEUD_COUR = :IdNoeudCour,
-                NOM_DEFIN = :NomDefin,
-                VERSION_DEFIN = :VersionDefin,
+                ID_DEFIN = :NomDefin,
+                VERSI_DEFIN = :VersionDefin,
                 STAT_PROCS = :StatProcs
             WHERE NO_SEQ_PROCS = :NoSeqProcs";
 
@@ -253,7 +253,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<List<ProcessInstance>> SearchByVariableAsync(List<FiltreVariable> filtres)
     {
         var sql = $@"
-            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DATE_ATTENTE, SIGNAL_ATTENTE, DH_DEB, DH_EXEC, DH_COMP, ID_NOEUD_COUR, NOM_DEFIN, VERSION_DEFIN, STAT_PROCS
+            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS
             FROM {_processContextTable}
             WHERE VAR_PROCS IS NOT NULL";
 
@@ -289,7 +289,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName)
     {
         var sql = $@"
-            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DATE_ATTENTE, SIGNAL_ATTENTE, DH_DEB, DH_EXEC, DH_COMP, ID_NOEUD_COUR, NOM_DEFIN, VERSION_DEFIN, STAT_PROCS
+            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS
             FROM {_processContextTable}
             WHERE NO_SEQ_PROCS_PARN = :NoSeqProcsParn AND ID_NOEUD_PARN = :IdNoeudParn";
 
@@ -306,7 +306,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId)
     {
         var sql = $@"
-            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DATE_ATTENTE, SIGNAL_ATTENTE, DH_DEB, DH_EXEC, DH_COMP, ID_NOEUD_COUR, NOM_DEFIN, VERSION_DEFIN, STAT_PROCS
+            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS
             FROM {_processContextTable}
             WHERE NO_SEQ_PROCS_PARN = :NoSeqProcsParn";
 
@@ -330,16 +330,16 @@ public class OracleProcessRepository : IProcessRepository
             ParentProcessId = result.NO_SEQ_PROCS_PARN,
             ParentNodeName = result.ID_NOEUD_PARN,
             AggregateId = result.ID_ENTI_AFFA,
-            DefinitionName = result.NOM_DEFIN,
-            DefinitionVersion = result.VERSION_DEFIN,
+            DefinitionName = result.ID_DEFIN,
+            DefinitionVersion = result.VERSI_DEFIN,
             Variables = string.IsNullOrEmpty(result.VAR_PROCS)
                 ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(result.VAR_PROCS) ?? new Dictionary<string, object>(),
-            WaitDate = result.DATE_ATTENTE,
-            ExpectedSignal = result.SIGNAL_ATTENTE,
+            WaitDate = result.DH_ATTEN,
+            ExpectedSignal = result.SIGNL_ATTENTION,
             StartedAt = result.DH_DEB,
             LastExecutedAt = result.DH_EXEC,
-            CompletedAt = result.DH_COMP,
+            CompletedAt = result.DH_COMPL,
             CurrentNodeName = result.ID_NOEUD_COUR,
             Status = (ProcessStatus)result.STAT_PROCS
         };
@@ -352,14 +352,14 @@ public class OracleProcessRepository : IProcessRepository
         public string? ID_NOEUD_PARN { get; set; }
         public long? ID_ENTI_AFFA { get; set; }
         public string VAR_PROCS { get; set; } = string.Empty;
-        public DateTime? DATE_ATTENTE { get; set; }
-        public string? SIGNAL_ATTENTE { get; set; }
+        public DateTime? DH_ATTEN { get; set; }
+        public string? SIGNL_ATTENTION { get; set; }
         public DateTime DH_DEB { get; set; }
         public DateTime? DH_EXEC { get; set; }
-        public DateTime? DH_COMP { get; set; }
+        public DateTime? DH_COMPL { get; set; }
         public string? ID_NOEUD_COUR { get; set; }
-        public string? NOM_DEFIN { get; set; }
-        public string? VERSION_DEFIN { get; set; }
+        public string? ID_DEFIN { get; set; }
+        public string? VERSI_DEFIN { get; set; }
         public int STAT_PROCS { get; set; }
     }
 }

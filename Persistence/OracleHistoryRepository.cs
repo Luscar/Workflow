@@ -29,12 +29,12 @@ public class OracleHistoryRepository
         var createTableSql = $@"
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE TABLE {_historyTable} (
-                    NO_SEQ_NOED NUMBER(10) PRIMARY KEY,
+                    NO_SEQ_NOEUD NUMBER(10) PRIMARY KEY,
                     NO_SEQ_PROCS NUMBER(10) NOT NULL,
                     ID_NOEUD VARCHAR2(255) NOT NULL,
                     TYPE_NOEUD NUMBER(10) NOT NULL,
-                    DH_DEB TIMESTAMP NOT NULL,
-                    DH_FIN TIMESTAMP NOT NULL,
+                    DH_DEB DATE NOT NULL,
+                    DH_FIN DATE NOT NULL,
                     IND_SUCCS NUMBER(1) NOT NULL,
                     MESS_ERR VARCHAR2(4000),
                     ID_NOEUD_SUIV VARCHAR2(255),
@@ -99,7 +99,7 @@ public class OracleHistoryRepository
     {
         var sql = $@"
             INSERT INTO {_historyTable}
-            (NO_SEQ_NOED, NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
+            (NO_SEQ_NOEUD, NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
             VALUES
             (:NoSeqNoed, :NoSeqProcs, :IdNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
 
@@ -125,7 +125,7 @@ public class OracleHistoryRepository
 
         var sql = $@"
             INSERT INTO {_historyTable}
-            (NO_SEQ_NOED, NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
+            (NO_SEQ_NOEUD, NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
             VALUES
             (:NoSeqNoed, :NoSeqProcs, :IdNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
 
@@ -187,7 +187,7 @@ public class OracleHistoryRepository
         var sql = $@"
             SELECT NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV
             FROM {_historyTable}
-            WHERE NO_SEQ_NOED = :NoSeqNoed";
+            WHERE NO_SEQ_NOEUD = :NoSeqNoed";
 
         var result = await _connection.QueryFirstOrDefaultAsync<NodeHistoryWithProcessDto>(sql, new { NoSeqNoed = historyId });
 
