@@ -86,7 +86,7 @@ Console.WriteLine($"Nombre d'étapes exécutées: {instance.ExecutionHistory.Cou
 Console.WriteLine("\n=== Historique d'exécution ===");
 foreach (var history in instance.ExecutionHistory)
 {
-    Console.WriteLine($"- {history.NodeName} ({history.NodeType}): {history.Duration.TotalMilliseconds:F0}ms - Succès: {history.Success}");
+    Console.WriteLine($"- {history.NodeId} ({history.NodeType}): {history.Duration.TotalMilliseconds:F0}ms - Succès: {history.Success}");
 }
 
 // Si le processus est en attente (à cause de l'approbation manuelle dans le sous-processus)
