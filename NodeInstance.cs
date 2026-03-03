@@ -2,7 +2,7 @@ namespace SimpleBPM;
 
 public class NodeInstance
 {
-    public string NodeId { get; set; }
+    public string IdNoeud { get; set; }
     public string NodeName { get; set; }
     public NodeType NodeType { get; set; }
     public DateTime StartedAt { get; set; }
@@ -14,7 +14,7 @@ public class NodeInstance
 
     public NodeInstance(string nodeId, string nodeName, NodeType nodeType)
     {
-        NodeId = nodeId;
+        IdNoeud = nodeId;
         NodeName = nodeName;
         NodeType = nodeType;
         StartedAt = DateTime.UtcNow;

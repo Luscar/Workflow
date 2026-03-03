@@ -11,7 +11,7 @@ public class NodeInstanceTests
         var history = new NodeInstance("step1", "Étape 1", NodeType.Business);
         var after = DateTime.UtcNow;
 
-        Assert.Equal("step1", history.NodeId);
+        Assert.Equal("step1", history.IdNoeud);
         Assert.Equal("Étape 1", history.NodeName);
         Assert.Equal(NodeType.Business, history.NodeType);
         Assert.InRange(history.StartedAt, before, after);

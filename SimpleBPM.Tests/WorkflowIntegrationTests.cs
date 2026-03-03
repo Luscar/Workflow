@@ -561,7 +561,7 @@ public class WorkflowIntegrationTests
 
         // Assert: history entry accurately reflects the executed node
         Assert.Equal(processId, nodeHistory.ProcessId);
-        Assert.Equal("ProcessOrder", nodeHistory.NodeId);
+        Assert.Equal("ProcessOrder", nodeHistory.IdNoeud);
         Assert.Equal("Process Order", nodeHistory.NodeName);
         Assert.Equal(NodeType.Business, nodeHistory.NodeType);
         Assert.True(nodeHistory.Success);

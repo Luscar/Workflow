@@ -107,7 +107,7 @@ public class OracleHistoryRepository
         {
             NoSeqNoed = await ObtenirSequenceAsync(),
             NoSeqProcs = processId,
-            IdNoeud = history.NodeId,
+            IdNoeud = history.IdNoeud,
             TypeNoeud = (int)history.NodeType,
             DhDeb = history.StartedAt,
             DhFin = history.CompletedAt,
@@ -136,7 +136,7 @@ public class OracleHistoryRepository
             {
                 NoSeqNoed = await ObtenirSequenceAsync(),
                 NoSeqProcs = processId,
-                IdNoeud = history.NodeId,
+                IdNoeud = history.IdNoeud,
                 TypeNoeud = (int)history.NodeType,
                 DhDeb = history.StartedAt,
                 DhFin = history.CompletedAt,

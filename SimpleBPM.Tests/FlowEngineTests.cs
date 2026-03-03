@@ -284,7 +284,7 @@ public class FlowEngineTests
         var result = await engine.ExecuteAsync(instance);
 
         Assert.Equal(ProcessStatus.Completed, result.Status);
-        Assert.True(result.ExecutionHistory.Any(h => h.NodeId == "HighValue"));
+        Assert.True(result.ExecutionHistory.Any(h => h.IdNoeud == "HighValue"));
     }
 
     [Fact]
@@ -317,7 +317,7 @@ public class FlowEngineTests
         var result = await engine.ExecuteAsync(instance);
 
         Assert.Equal(ProcessStatus.Completed, result.Status);
-        Assert.True(result.ExecutionHistory.Any(h => h.NodeId == "LowValue"));
+        Assert.True(result.ExecutionHistory.Any(h => h.IdNoeud == "LowValue"));
     }
 
     [Fact]
@@ -472,8 +472,8 @@ public class FlowEngineTests
         var result = await engine.ExecuteAsync(instance);
 
         Assert.Equal(2, result.ExecutionHistory.Count);
-        Assert.Equal("Step1", result.ExecutionHistory[0].NodeId);
-        Assert.Equal("Step2", result.ExecutionHistory[1].NodeId);
+        Assert.Equal("Step1", result.ExecutionHistory[0].IdNoeud);
+        Assert.Equal("Step2", result.ExecutionHistory[1].IdNoeud);
         Assert.All(result.ExecutionHistory, h => Assert.True(h.Success));
     }
 
