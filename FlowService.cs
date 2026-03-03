@@ -72,10 +72,9 @@ public class FlowService : IFlowService
 
         return new InstanceNode
         {
-            Id = idInstanceNoeud,
+            NoSeqNoeud = idInstanceNoeud,
             ProcessId = result.ProcessId,
             NodeId = result.History.NodeId,
-            NodeName = result.History.NodeName,
             NodeType = result.History.NodeType,
             Success = result.History.Success,
             ErrorMessage = result.History.ErrorMessage,

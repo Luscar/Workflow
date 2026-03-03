@@ -2,10 +2,9 @@ namespace SimpleBPM;
 
 public class InstanceNode
 {
-    public long Id { get; set; }
+    public long NoSeqNoeud { get; set; }
     public long ProcessId { get; set; }
     public string NodeId { get; set; } = string.Empty;
-    public string NodeName { get; set; } = string.Empty;
     public NodeType NodeType { get; set; }
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }

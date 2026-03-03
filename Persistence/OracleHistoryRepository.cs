@@ -52,8 +52,6 @@ public class OracleHistoryRepository
                     END IF;
             END;";
 
-        await _connection.ExecuteAsync(createTableSql);
-
         var createIndex01Sql = $@"
             BEGIN
                 EXECUTE IMMEDIATE 'CREATE INDEX IX_{_config.TablePrefix}_01_HISTORIQUE_EXECUTION_NOEUD ON {_historyTable}(NO_SEQ_PROCS)';
@@ -90,6 +88,7 @@ public class OracleHistoryRepository
                     END IF;
             END;";
 
+        await _connection.ExecuteAsync(createTableSql);
         await _connection.ExecuteAsync(createIndex01Sql);
         await _connection.ExecuteAsync(createIndex02Sql);
         await _connection.ExecuteAsync(createIndex03Sql);
@@ -101,11 +100,12 @@ public class OracleHistoryRepository
             INSERT INTO {_historyTable}
             (NO_SEQ_NOEUD, NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
             VALUES
-            (:NoSeqNoed, :NoSeqProcs, :IdNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
+            (:NoSeqNoeud, :NoSeqProcs, :IdNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
 
+        var noSeqNoeud = await ObtenirSequenceAsync();
         var parameters = new
         {
-            NoSeqNoed = await ObtenirSequenceAsync(),
+            NoSeqNoeud = noSeqNoeud,
             NoSeqProcs = processId,
             IdNoeud = history.NodeId,
             TypeNoeud = (int)history.NodeType,
@@ -117,6 +117,7 @@ public class OracleHistoryRepository
         };
 
         await _connection.ExecuteAsync(sql, parameters);
+        history.NoSeqNoeud = noSeqNoeud;
     }
 
     public async Task SaveHistoryBatchAsync(long processId, List<NodeInstance> histories)
@@ -127,14 +128,15 @@ public class OracleHistoryRepository
             INSERT INTO {_historyTable}
             (NO_SEQ_NOEUD, NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
             VALUES
-            (:NoSeqNoed, :NoSeqProcs, :IdNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
+            (:NoSeqNoeud, :NoSeqProcs, :IdNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
 
         var parametersList = new List<object>();
         foreach (var history in histories)
         {
+            var noSeqNoeud = await ObtenirSequenceAsync();
             parametersList.Add(new
             {
-                NoSeqNoed = await ObtenirSequenceAsync(),
+                NoSeqNoeud = noSeqNoeud,
                 NoSeqProcs = processId,
                 IdNoeud = history.NodeId,
                 TypeNoeud = (int)history.NodeType,
@@ -144,6 +146,7 @@ public class OracleHistoryRepository
                 MessErr = history.ErrorMessage,
                 IdNoeudSuiv = history.NextNodeId
             });
+            history.NoSeqNoeud = noSeqNoeud;
         }
 
         await _connection.ExecuteAsync(sql, parametersList);
@@ -152,7 +155,7 @@ public class OracleHistoryRepository
     public async Task<List<NodeInstance>> GetHistoryAsync(long processId)
     {
         var sql = $@"
-            SELECT ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV
+            SELECT NO_SEQ_NOEUD, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV
             FROM {_historyTable}
             WHERE NO_SEQ_PROCS = :NoSeqProcs
             ORDER BY DH_DEB";
@@ -162,18 +165,12 @@ public class OracleHistoryRepository
         var histories = new List<NodeInstance>();
         foreach (var result in results)
         {
-            var history = new NodeInstance(
-                result.ID_NOEUD,
-                result.ID_NOEUD,
-                (NodeType)result.TYPE_NOEUD
-            );
-
-            history.StartedAt = result.DH_DEB;
-            history.Complete(
-                result.IND_SUCCS == 1,
-                result.MESS_ERR,
-                result.ID_NOEUD_SUIV
-            );
+            var history = new NodeInstance(result.ID_NOEUD, (NodeType)result.TYPE_NOEUD)
+            {
+                NoSeqNoeud = result.NO_SEQ_NOEUD,
+                StartedAt = result.DH_DEB
+            };
+            history.Complete(result.IND_SUCCS == 1, result.MESS_ERR, result.ID_NOEUD_SUIV);
             history.CompletedAt = result.DH_FIN;
 
             histories.Add(history);
@@ -187,25 +184,19 @@ public class OracleHistoryRepository
         var sql = $@"
             SELECT NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV
             FROM {_historyTable}
-            WHERE NO_SEQ_NOEUD = :NoSeqNoed";
+            WHERE NO_SEQ_NOEUD = :NoSeqNoeud";
 
-        var result = await _connection.QueryFirstOrDefaultAsync<NodeHistoryWithProcessDto>(sql, new { NoSeqNoed = historyId });
+        var result = await _connection.QueryFirstOrDefaultAsync<NodeHistoryWithProcessDto>(sql, new { NoSeqNoeud = historyId });
 
         if (result == null)
             return null;
 
-        var history = new NodeInstance(
-            result.ID_NOEUD,
-            result.ID_NOEUD,
-            (NodeType)result.TYPE_NOEUD
-        );
-
-        history.StartedAt = result.DH_DEB;
-        history.Complete(
-            result.IND_SUCCS == 1,
-            result.MESS_ERR,
-            result.ID_NOEUD_SUIV
-        );
+        var history = new NodeInstance(result.ID_NOEUD, (NodeType)result.TYPE_NOEUD)
+        {
+            NoSeqNoeud = historyId,
+            StartedAt = result.DH_DEB
+        };
+        history.Complete(result.IND_SUCCS == 1, result.MESS_ERR, result.ID_NOEUD_SUIV);
         history.CompletedAt = result.DH_FIN;
 
         return (history, result.NO_SEQ_PROCS);
@@ -225,6 +216,7 @@ public class OracleHistoryRepository
 
     private class NodeInstanceDto
     {
+        public long NO_SEQ_NOEUD { get; set; }
         public string ID_NOEUD { get; set; } = string.Empty;
         public int TYPE_NOEUD { get; set; }
         public DateTime DH_DEB { get; set; }

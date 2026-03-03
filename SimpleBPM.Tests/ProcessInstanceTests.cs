@@ -67,11 +67,11 @@ public class ProcessInstanceTests
     public void CompletedStepsCount_CountsSuccessfulEntries()
     {
         var instance = new ProcessInstance(1);
-        var h1 = new NodeInstance("n1", "Node 1", NodeType.Business);
+        var h1 = new NodeInstance("n1", NodeType.Business);
         h1.Complete(true);
-        var h2 = new NodeInstance("n2", "Node 2", NodeType.Business);
+        var h2 = new NodeInstance("n2", NodeType.Business);
         h2.Complete(false, "Error");
-        var h3 = new NodeInstance("n3", "Node 3", NodeType.Business);
+        var h3 = new NodeInstance("n3", NodeType.Business);
         h3.Complete(true);
 
         instance.ExecutionHistory.Add(h1);
@@ -85,9 +85,9 @@ public class ProcessInstanceTests
     public void FailedStepsCount_CountsFailedEntries()
     {
         var instance = new ProcessInstance(1);
-        var h1 = new NodeInstance("n1", "Node 1", NodeType.Business);
+        var h1 = new NodeInstance("n1", NodeType.Business);
         h1.Complete(true);
-        var h2 = new NodeInstance("n2", "Node 2", NodeType.Business);
+        var h2 = new NodeInstance("n2", NodeType.Business);
         h2.Complete(false, "Error");
 
         instance.ExecutionHistory.Add(h1);

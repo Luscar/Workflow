@@ -126,7 +126,7 @@ Console.WriteLine($"Étapes exécutées: {instance.ExecutionHistory.Count}");
 
 foreach (var history in instance.ExecutionHistory)
 {
-    Console.WriteLine($"  - {history.NodeName}: {(history.Success ? "OK" : "ERREUR")}");
+    Console.WriteLine($"  - {history.NodeId}: {(history.Success ? "OK" : "ERREUR")}");
 }
 
 // ============================================================

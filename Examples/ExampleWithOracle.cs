@@ -72,7 +72,7 @@ Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNo
 Console.WriteLine("\n=== Historique d'exécution ===");
 foreach (var history in instance.ExecutionHistory)
 {
-    Console.WriteLine($"Nœud: {history.NodeName} ({history.NodeType})");
+    Console.WriteLine($"Nœud: {history.NodeId} ({history.NodeType})");
     Console.WriteLine($"  Début: {history.StartedAt:yyyy-MM-dd HH:mm:ss.fff}");
     Console.WriteLine($"  Fin: {history.CompletedAt:yyyy-MM-dd HH:mm:ss.fff}");
     Console.WriteLine($"  Durée: {history.Duration.TotalMilliseconds:F2} ms");

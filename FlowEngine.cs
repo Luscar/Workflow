@@ -124,7 +124,7 @@ public class FlowEngine
             }
 
             // Créer l'entrée d'historique
-            var historyEntry = new NodeInstance(node.Name, node.DisplayName, node.Type);
+            var historyEntry = new NodeInstance(node.Name, node.Type);
 
             var result = await handler.HandleAsync(node, instance);
 
