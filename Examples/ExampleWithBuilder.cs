@@ -121,7 +121,7 @@ var instance = new ProcessInstance(789, "aggregate-123");
 instance = await engine.ExecuteAsync(instance);
 
 Console.WriteLine($"Statut: {instance.Status}");
-Console.WriteLine($"Nœud courant: {instance.CurrentNodeName}");
+Console.WriteLine($"Nœud courant: {instance.CurrentNodeId}");
 Console.WriteLine($"Étapes exécutées: {instance.ExecutionHistory.Count}");
 
 foreach (var history in instance.ExecutionHistory)

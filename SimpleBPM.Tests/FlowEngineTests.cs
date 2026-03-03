@@ -32,7 +32,7 @@ public class FlowEngineTests
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeName = node.NextNodeIds.FirstOrDefault()
+                    NextNodeId = node.NextNodeIds.FirstOrDefault()
                 });
             });
         return handler;
@@ -49,7 +49,7 @@ public class FlowEngineTests
         var result = await engine.ExecuteAsync(instance);
 
         Assert.Equal(ProcessStatus.Completed, result.Status);
-        Assert.Null(result.CurrentNodeName);
+        Assert.Null(result.CurrentNodeId);
         Assert.NotNull(result.CompletedAt);
         Assert.Equal(2, result.ExecutionHistory.Count);
     }
@@ -142,7 +142,7 @@ public class FlowEngineTests
         var result = await engine.ExecuteAsync(instance);
 
         Assert.Equal(ProcessStatus.WaitingInteraction, result.Status);
-        Assert.Equal("Final", result.CurrentNodeName);
+        Assert.Equal("Final", result.CurrentNodeId);
     }
 
     [Fact]

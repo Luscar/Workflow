@@ -42,7 +42,7 @@ public class SubProcessNodeHandler : INodeHandler
                 )
                 {
                     ParentProcessId = instance.ProcessId,
-                    ParentNodeName = node.Name
+                    ParentNodeId = node.Name
                 };
 
                 // Copier les variables d'entrée via le mapping explicite
@@ -74,7 +74,7 @@ public class SubProcessNodeHandler : INodeHandler
                 return new NodeExecutionResult
                 {
                     IsCompleted = false,
-                    ErrorMessage = $"Le sous-processus a échoué au nœud {subInstance.CurrentNodeName}"
+                    ErrorMessage = $"Le sous-processus a échoué au nœud {subInstance.CurrentNodeId}"
                 };
             }
 
@@ -87,7 +87,7 @@ public class SubProcessNodeHandler : INodeHandler
                 {
                     IsCompleted = true,
                     RequiresStop = true,
-                    NextNodeName = node.NextNodeIds.FirstOrDefault()
+                    NextNodeId = node.NextNodeIds.FirstOrDefault()
                 };
             }
 
@@ -111,7 +111,7 @@ public class SubProcessNodeHandler : INodeHandler
             {
                 IsCompleted = true,
                 RequiresStop = false,
-                NextNodeName = node.NextNodeIds.FirstOrDefault()
+                NextNodeId = node.NextNodeIds.FirstOrDefault()
             };
         }
         catch (Exception ex)

@@ -13,9 +13,9 @@ public class ProcessMigration
         ToVersion = toVersion;
     }
 
-    public ProcessMigration MapNode(string fromNodeName, string toNodeName)
+    public ProcessMigration MapNode(string fromNodeId, string toNodeId)
     {
-        NodeMappings[fromNodeName] = toNodeName;
+        NodeMappings[fromNodeId] = toNodeId;
         return this;
     }
 
@@ -37,9 +37,9 @@ public class ProcessMigration
         return this;
     }
 
-    internal string ResolveNodeName(string currentNodeName)
+    internal string ResolveNodeId(string currentNodeId)
     {
-        return NodeMappings.TryGetValue(currentNodeName, out var mapped) ? mapped : currentNodeName;
+        return NodeMappings.TryGetValue(currentNodeId, out var mapped) ? mapped : currentNodeId;
     }
 
     internal void ApplyVariableTransforms(Dictionary<string, object> variables)

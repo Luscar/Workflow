@@ -18,7 +18,7 @@ public class InteractiveNodeHandler : INodeHandler
     public async Task<NodeExecutionResult> HandleAsync(NodeDefinition node, ProcessInstance instance)
     {
         instance.Status = ProcessStatus.WaitingInteraction;
-        instance.CurrentNodeName = node.Name;
+        instance.CurrentNodeId = node.Name;
 
         if (_gestionTache != null)
         {
@@ -48,7 +48,7 @@ public class InteractiveNodeHandler : INodeHandler
         {
             IsCompleted = true,
             RequiresStop = true,
-            NextNodeName = node.NextNodeIds.FirstOrDefault()
+            NextNodeId = node.NextNodeIds.FirstOrDefault()
         };
     }
 

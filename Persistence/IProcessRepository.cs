@@ -9,7 +9,7 @@ public interface IProcessRepository
     Task DeleteProcessInstanceAsync(long processId);
     Task<List<ProcessInstance>> SearchByVariableAsync(List<FiltreVariable> filtres);
     Task<(NodeInstance History, long ProcessId)?> GetNodeHistoryByIdAsync(long historyId);
-    Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName);
+    Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId);
     Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId);
 
     /// <summary>

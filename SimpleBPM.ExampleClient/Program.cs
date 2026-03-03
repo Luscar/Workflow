@@ -51,7 +51,7 @@ var process = await flowService.ObtenirAsync(processId);
 Console.WriteLine();
 Console.WriteLine($"Process ID: {process.Id}");
 Console.WriteLine($"Status:     {process.Status}");
-Console.WriteLine($"Node:       {process.CurrentNodeName}");
+Console.WriteLine($"Node:       {process.CurrentNodeId}");
 Console.WriteLine();
 
 // --- Complete the interactive step (underwriter review) ---
@@ -69,7 +69,7 @@ if (process.Status == ProcessStatus.WaitingInteraction)
     process = await flowService.ObtenirAsync(processId);
     Console.WriteLine();
     Console.WriteLine($"Status: {process.Status}");
-    Console.WriteLine($"Node:   {process.CurrentNodeName}");
+    Console.WriteLine($"Node:   {process.CurrentNodeId}");
     Console.WriteLine();
 }
 
@@ -87,7 +87,7 @@ if (process.Status == ProcessStatus.WaitingSignal)
     process = await flowService.ObtenirAsync(processId);
     Console.WriteLine();
     Console.WriteLine($"Status: {process.Status}");
-    Console.WriteLine($"Node:   {process.CurrentNodeName ?? "(none)"}");
+    Console.WriteLine($"Node:   {process.CurrentNodeId ?? "(none)"}");
     Console.WriteLine();
 }
 

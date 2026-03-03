@@ -19,7 +19,7 @@ public class WaitForSignalNodeHandler : INodeHandler
         var signalNode = (WaitForSignalNode)node;
 
         instance.Status = ProcessStatus.WaitingSignal;
-        instance.CurrentNodeName = node.Name;
+        instance.CurrentNodeId = node.Name;
         instance.ExpectedSignal = signalNode.SignalName;
 
         if (_executor != null && !string.IsNullOrEmpty(node.OnEnterCommandName))
@@ -43,7 +43,7 @@ public class WaitForSignalNodeHandler : INodeHandler
         {
             IsCompleted = true,
             RequiresStop = true,
-            NextNodeName = node.NextNodeIds.FirstOrDefault()
+            NextNodeId = node.NextNodeIds.FirstOrDefault()
         };
     }
 }

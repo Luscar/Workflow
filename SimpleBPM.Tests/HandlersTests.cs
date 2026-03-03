@@ -22,7 +22,7 @@ public class BusinessNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.False(result.RequiresStop);
-        Assert.Equal("step2", result.NextNodeName);
+        Assert.Equal("step2", result.NextNodeId);
         await executor.Received(1).ExecuteCommandAsync("CreateOrder", 1, null, null);
     }
 
@@ -92,7 +92,7 @@ public class DecisionNodeHandlerTests
         var result = await handler.HandleAsync(node, instance);
 
         Assert.True(result.IsCompleted);
-        Assert.Equal("approved", result.NextNodeName);
+        Assert.Equal("approved", result.NextNodeId);
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class DecisionNodeHandlerTests
         var result = await handler.HandleAsync(node, instance);
 
         Assert.True(result.IsCompleted);
-        Assert.Equal("fallback", result.NextNodeName);
+        Assert.Equal("fallback", result.NextNodeId);
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public class DecisionNodeHandlerTests
         var result = await handler.HandleAsync(node, instance);
 
         Assert.True(result.IsCompleted);
-        Assert.Equal("processApproval", result.NextNodeName);
+        Assert.Equal("processApproval", result.NextNodeId);
     }
 
     [Fact]
@@ -204,9 +204,9 @@ public class InteractiveNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.True(result.RequiresStop);
-        Assert.Equal("next", result.NextNodeName);
+        Assert.Equal("next", result.NextNodeId);
         Assert.Equal(ProcessStatus.WaitingInteraction, instance.Status);
-        Assert.Equal("review", instance.CurrentNodeName);
+        Assert.Equal("review", instance.CurrentNodeId);
     }
 
     [Fact]
@@ -323,7 +323,7 @@ public class WaitForSignalNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.True(result.RequiresStop);
-        Assert.Equal("nextStep", result.NextNodeName);
+        Assert.Equal("nextStep", result.NextNodeId);
         Assert.Equal(ProcessStatus.WaitingSignal, instance.Status);
         Assert.Equal("approval-signal", instance.ExpectedSignal);
     }
@@ -424,7 +424,7 @@ public class WaitUntilDateNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.False(result.RequiresStop);
-        Assert.Equal("next", result.NextNodeName);
+        Assert.Equal("next", result.NextNodeId);
     }
 
     [Fact]
@@ -628,7 +628,7 @@ public class WaitUntilDateNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.False(result.RequiresStop);
-        Assert.Equal("next", result.NextNodeName);
+        Assert.Equal("next", result.NextNodeId);
     }
 
     [Fact]

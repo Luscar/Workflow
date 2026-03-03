@@ -13,7 +13,7 @@ public class ProcessusTests
             DefinitionVersion = "2.0",
             Status = ProcessStatus.Running,
             ErrorMessage = null,
-            CurrentNodeName = "step1"
+            CurrentNodeId = "step1"
         };
         instance.Variables["key1"] = "value1";
         instance.CompletedAt = new DateTime(2026, 3, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -26,7 +26,7 @@ public class ProcessusTests
         Assert.Equal("2.0", processus.DefinitionVersion);
         Assert.Equal(ProcessStatus.Running, processus.Status);
         Assert.Null(processus.ErrorMessage);
-        Assert.Equal("step1", processus.CurrentNodeName);
+        Assert.Equal("step1", processus.CurrentNodeId);
         Assert.Equal("value1", processus.Variables["key1"]);
         Assert.Equal(instance.StartedAt, processus.StartedAt);
         Assert.Equal(instance.CompletedAt, processus.CompletedAt);

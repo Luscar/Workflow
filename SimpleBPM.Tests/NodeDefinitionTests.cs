@@ -161,7 +161,7 @@ public class NodeDefinitionTests
 
         Assert.False(result.IsCompleted);
         Assert.False(result.RequiresStop);
-        Assert.Null(result.NextNodeName);
+        Assert.Null(result.NextNodeId);
         Assert.Null(result.ErrorMessage);
     }
 }

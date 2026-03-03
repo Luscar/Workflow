@@ -101,7 +101,7 @@ public class FlowEngine
             await _repository.SaveProcessInstanceAsync(instance);
         }
 
-        var currentNodeId = instance.CurrentNodeName ?? definition.StartNodeId;
+        var currentNodeId = instance.CurrentNodeId ?? definition.StartNodeId;
 
         while (!string.IsNullOrEmpty(currentNodeId))
         {
@@ -129,7 +129,7 @@ public class FlowEngine
             var result = await handler.HandleAsync(node, instance);
 
             // Compléter l'entrée d'historique
-            historyEntry.Complete(result.IsCompleted, result.ErrorMessage, result.NextNodeName);
+            historyEntry.Complete(result.IsCompleted, result.ErrorMessage, result.NextNodeId);
             instance.ExecutionHistory.Add(historyEntry);
 
             if (!result.IsCompleted)
@@ -142,16 +142,16 @@ public class FlowEngine
 
             if (result.RequiresStop)
             {
-                instance.CurrentNodeName = result.NextNodeName;
+                instance.CurrentNodeId = result.NextNodeId;
                 await _repository.UpdateProcessInstanceAsync(instance);
                 return instance;
             }
 
-            currentNodeId = result.NextNodeName;
+            currentNodeId = result.NextNodeId;
         }
 
         instance.Status = ProcessStatus.Completed;
-        instance.CurrentNodeName = null;
+        instance.CurrentNodeId = null;
         instance.CompletedAt = DateTime.UtcNow;
         await _repository.UpdateProcessInstanceAsync(instance);
         return instance;
@@ -165,7 +165,7 @@ public class FlowEngine
                 $"Impossible de continuer le processus '{instance.ProcessId}' : le statut est '{instance.Status}'");
         }
 
-        if (string.IsNullOrEmpty(instance.CurrentNodeName))
+        if (string.IsNullOrEmpty(instance.CurrentNodeId))
         {
             instance.Status = ProcessStatus.Failed;
             instance.ErrorMessage = "Impossible de continuer : aucun nœud courant défini sur l'instance";
@@ -174,7 +174,7 @@ public class FlowEngine
         }
 
         var definition = ResolveDefinition(instance);
-        var currentNode = definition.GetNode(instance.CurrentNodeName);
+        var currentNode = definition.GetNode(instance.CurrentNodeId);
 
         // Notifier le handler que l'on quitte ce nœud
         if (currentNode != null && _handlers.TryGetValue(currentNode.Type, out var currentHandler))
@@ -187,14 +187,14 @@ public class FlowEngine
         if (currentNode == null || currentNode.NextNodeIds.Count == 0)
         {
             instance.Status = ProcessStatus.Completed;
-            instance.CurrentNodeName = null;
+            instance.CurrentNodeId = null;
             instance.CompletedAt = DateTime.UtcNow;
             await _repository.UpdateProcessInstanceAsync(instance);
             return instance;
         }
 
         var nextNodeId = currentNode.NextNodeIds.FirstOrDefault();
-        instance.CurrentNodeName = nextNodeId;
+        instance.CurrentNodeId = nextNodeId;
 
         return await ExecuteInternalAsync(instance);
     }

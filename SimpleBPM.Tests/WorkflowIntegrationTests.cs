@@ -31,7 +31,7 @@ public class WorkflowIntegrationTests
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeName = node.NextNodeIds.FirstOrDefault()
+                    NextNodeId = node.NextNodeIds.FirstOrDefault()
                 });
             });
         return handler;
@@ -103,9 +103,9 @@ public class WorkflowIntegrationTests
                 ? (entry.History, entry.ProcessId)
                 : ((NodeInstance History, long ProcessId)?)null);
 
-        public Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName) =>
+        public Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId) =>
             Task.FromResult(_instances.Values.FirstOrDefault(i =>
-                i.ParentProcessId == parentProcessId && i.ParentNodeName == parentNodeName));
+                i.ParentProcessId == parentProcessId && i.ParentNodeId == parentNodeId));
 
         public Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId) =>
             Task.FromResult(_instances.Values
@@ -312,7 +312,7 @@ public class WorkflowIntegrationTests
     {
         // Arrange: two genuine user interaction phases.
         //
-        // Because FlowEngine sets CurrentNodeName to the *next* node after a pause,
+        // Because FlowEngine sets CurrentNodeId to the *next* node after a pause,
         // the node immediately after each interactive step acts as a bridge (its
         // HandleAsync is never called on resume; execution continues from its successor).
         // To produce two pause points the flow uses three interactive nodes:

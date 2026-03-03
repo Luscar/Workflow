@@ -79,7 +79,7 @@ Console.WriteLine("=== Démarrage du processus principal ===");
 instance = await engine.ExecuteAsync(instance);
 
 Console.WriteLine($"Statut: {instance.Status}");
-Console.WriteLine($"Nœud courant: {instance.CurrentNodeName}");
+Console.WriteLine($"Nœud courant: {instance.CurrentNodeId}");
 Console.WriteLine($"Nombre d'étapes exécutées: {instance.ExecutionHistory.Count}");
 
 // Afficher l'historique

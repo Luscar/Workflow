@@ -27,7 +27,7 @@ public class BusinessNodeHandler : INodeHandler
             {
                 IsCompleted = true,
                 RequiresStop = false,
-                NextNodeName = node.NextNodeIds.FirstOrDefault()
+                NextNodeId = node.NextNodeIds.FirstOrDefault()
             };
         }
         catch (Exception ex)

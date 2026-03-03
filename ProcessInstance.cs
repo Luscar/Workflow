@@ -4,7 +4,7 @@ public class ProcessInstance
 {
     public long ProcessId { get; set; }
     public long? ParentProcessId { get; set; }
-    public string? ParentNodeName { get; set; }
+    public string? ParentNodeId { get; set; }
     public long? AggregateId { get; set; }
     public string? DefinitionName { get; set; }
     public string? DefinitionVersion { get; set; }
@@ -14,7 +14,7 @@ public class ProcessInstance
     public DateTime StartedAt { get; set; }
     public DateTime? LastExecutedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
-    public string? CurrentNodeName { get; set; }
+    public string? CurrentNodeId { get; set; }
     public long? CurrentNodeId { get; set; }
     public ProcessStatus Status { get; set; }
     public string? ErrorMessage { get; set; }

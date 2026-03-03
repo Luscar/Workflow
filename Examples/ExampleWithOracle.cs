@@ -65,7 +65,7 @@ var engine = new FlowEngine(new[] { processDefinition }, repository, handlers);
 // Démarrer un nouveau processus
 var instance = new ProcessInstance(123, "aggregate-456");
 instance = await engine.ExecuteAsync(instance);
-Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeName}");
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
 // L'instance est automatiquement sauvegardée dans Oracle avec le préfixe ABC_PROCESS_CONTEXT
 
 // Historique d'exécution détaillé
