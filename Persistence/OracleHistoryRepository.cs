@@ -32,6 +32,7 @@ public class OracleHistoryRepository
                     NO_SEQ_NOEUD NUMBER(10) PRIMARY KEY,
                     NO_SEQ_PROCS NUMBER(10) NOT NULL,
                     ID_NOEUD VARCHAR2(255) NOT NULL,
+                    NOM_NOEUD VARCHAR2(500),
                     TYPE_NOEUD NUMBER(10) NOT NULL,
                     DH_DEB DATE NOT NULL,
                     DH_FIN DATE NOT NULL,
@@ -99,15 +100,16 @@ public class OracleHistoryRepository
     {
         var sql = $@"
             INSERT INTO {_historyTable}
-            (NO_SEQ_NOEUD, NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
+            (NO_SEQ_NOEUD, NO_SEQ_PROCS, ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
             VALUES
-            (:NoSeqNoed, :NoSeqProcs, :IdNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
+            (:NoSeqNoed, :NoSeqProcs, :IdNoeud, :NomNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
 
         var parameters = new
         {
             NoSeqNoed = await ObtenirSequenceAsync(),
             NoSeqProcs = processId,
             IdNoeud = history.NodeId,
+            NomNoeud = history.NodeName,
             TypeNoeud = (int)history.NodeType,
             DhDeb = history.StartedAt,
             DhFin = history.CompletedAt,
@@ -125,9 +127,9 @@ public class OracleHistoryRepository
 
         var sql = $@"
             INSERT INTO {_historyTable}
-            (NO_SEQ_NOEUD, NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
+            (NO_SEQ_NOEUD, NO_SEQ_PROCS, ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV)
             VALUES
-            (:NoSeqNoed, :NoSeqProcs, :IdNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
+            (:NoSeqNoed, :NoSeqProcs, :IdNoeud, :NomNoeud, :TypeNoeud, :DhDeb, :DhFin, :IndSuccs, :MessErr, :IdNoeudSuiv)";
 
         var parametersList = new List<object>();
         foreach (var history in histories)
@@ -137,6 +139,7 @@ public class OracleHistoryRepository
                 NoSeqNoed = await ObtenirSequenceAsync(),
                 NoSeqProcs = processId,
                 IdNoeud = history.NodeId,
+                NomNoeud = history.NodeName,
                 TypeNoeud = (int)history.NodeType,
                 DhDeb = history.StartedAt,
                 DhFin = history.CompletedAt,
@@ -152,7 +155,7 @@ public class OracleHistoryRepository
     public async Task<List<NodeInstance>> GetHistoryAsync(long processId)
     {
         var sql = $@"
-            SELECT ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV
+            SELECT ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV
             FROM {_historyTable}
             WHERE NO_SEQ_PROCS = :NoSeqProcs
             ORDER BY DH_DEB";
@@ -164,7 +167,7 @@ public class OracleHistoryRepository
         {
             var history = new NodeInstance(
                 result.ID_NOEUD,
-                result.ID_NOEUD,
+                result.NOM_NOEUD ?? result.ID_NOEUD,
                 (NodeType)result.TYPE_NOEUD
             );
 
@@ -185,7 +188,7 @@ public class OracleHistoryRepository
     public async Task<(NodeInstance History, long ProcessId)?> GetByIdAsync(long historyId)
     {
         var sql = $@"
-            SELECT NO_SEQ_PROCS, ID_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV
+            SELECT NO_SEQ_PROCS, ID_NOEUD, NOM_NOEUD, TYPE_NOEUD, DH_DEB, DH_FIN, IND_SUCCS, MESS_ERR, ID_NOEUD_SUIV
             FROM {_historyTable}
             WHERE NO_SEQ_NOEUD = :NoSeqNoed";
 
@@ -196,7 +199,7 @@ public class OracleHistoryRepository
 
         var history = new NodeInstance(
             result.ID_NOEUD,
-            result.ID_NOEUD,
+            result.NOM_NOEUD ?? result.ID_NOEUD,
             (NodeType)result.TYPE_NOEUD
         );
 
@@ -215,6 +218,7 @@ public class OracleHistoryRepository
     {
         public long NO_SEQ_PROCS { get; set; }
         public string ID_NOEUD { get; set; } = string.Empty;
+        public string? NOM_NOEUD { get; set; }
         public int TYPE_NOEUD { get; set; }
         public DateTime DH_DEB { get; set; }
         public DateTime DH_FIN { get; set; }
@@ -226,6 +230,7 @@ public class OracleHistoryRepository
     private class NodeInstanceDto
     {
         public string ID_NOEUD { get; set; } = string.Empty;
+        public string? NOM_NOEUD { get; set; }
         public int TYPE_NOEUD { get; set; }
         public DateTime DH_DEB { get; set; }
         public DateTime DH_FIN { get; set; }

@@ -71,6 +71,7 @@ public class OracleProcessRepository : IProcessRepository
                     ID_DEFIN VARCHAR2(255),
                     VERSI_DEFIN VARCHAR2(50),
                     STAT_PROCS NUMBER(10),
+                    MESS_ERR VARCHAR2(4000),
                     CONSTRAINT CHK_{_config.TablePrefix}_STAT_PROCS CHECK (STAT_PROCS BETWEEN 0 AND 5)
                 )';
             EXCEPTION
@@ -157,9 +158,9 @@ public class OracleProcessRepository : IProcessRepository
     {
         var sql = $@"
             INSERT INTO {_processContextTable}
-            (NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS)
+            (NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS, MESS_ERR)
             VALUES
-            (:NoSeqProcs, :NoSeqProcsParn, :IdNoeudParn, :IdEntiAffa, :VarProcs, :DateAttente, :SignalAttente, :DhDeb, :DhExec, :DhComp, :IdNoeudCour, :NomDefin, :VersionDefin, :StatProcs)";
+            (:NoSeqProcs, :NoSeqProcsParn, :IdNoeudParn, :IdEntiAffa, :VarProcs, :DateAttente, :SignalAttente, :DhDeb, :DhExec, :DhComp, :IdNoeudCour, :NomDefin, :VersionDefin, :StatProcs, :MessErr)";
 
         var parameters = new
         {
@@ -176,7 +177,8 @@ public class OracleProcessRepository : IProcessRepository
             IdNoeudCour = instance.CurrentNodeName,
             NomDefin = instance.DefinitionName,
             VersionDefin = instance.DefinitionVersion,
-            StatProcs = (int)instance.Status
+            StatProcs = (int)instance.Status,
+            MessErr = instance.ErrorMessage
         };
 
         await _connection.ExecuteAsync(sql, parameters);
@@ -185,7 +187,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetProcessInstanceAsync(long processId)
     {
         var sql = $@"
-            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS
+            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS, MESS_ERR
             FROM {_processContextTable}
             WHERE NO_SEQ_PROCS = :NoSeqProcs";
 
@@ -215,7 +217,8 @@ public class OracleProcessRepository : IProcessRepository
                 ID_NOEUD_COUR = :IdNoeudCour,
                 ID_DEFIN = :NomDefin,
                 VERSI_DEFIN = :VersionDefin,
-                STAT_PROCS = :StatProcs
+                STAT_PROCS = :StatProcs,
+                MESS_ERR = :MessErr
             WHERE NO_SEQ_PROCS = :NoSeqProcs";
 
         var parameters = new
@@ -230,6 +233,7 @@ public class OracleProcessRepository : IProcessRepository
             NomDefin = instance.DefinitionName,
             VersionDefin = instance.DefinitionVersion,
             StatProcs = (int)instance.Status,
+            MessErr = instance.ErrorMessage,
             NoSeqProcs = instance.ProcessId
         };
 
@@ -253,7 +257,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<List<ProcessInstance>> SearchByVariableAsync(List<FiltreVariable> filtres)
     {
         var sql = $@"
-            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS
+            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS, MESS_ERR
             FROM {_processContextTable}
             WHERE VAR_PROCS IS NOT NULL";
 
@@ -289,7 +293,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName)
     {
         var sql = $@"
-            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS
+            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS, MESS_ERR
             FROM {_processContextTable}
             WHERE NO_SEQ_PROCS_PARN = :NoSeqProcsParn AND ID_NOEUD_PARN = :IdNoeudParn";
 
@@ -306,7 +310,7 @@ public class OracleProcessRepository : IProcessRepository
     public async Task<List<ProcessInstance>> GetChildrenAsync(long parentProcessId)
     {
         var sql = $@"
-            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS
+            SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS, MESS_ERR
             FROM {_processContextTable}
             WHERE NO_SEQ_PROCS_PARN = :NoSeqProcsParn";
 
@@ -341,7 +345,8 @@ public class OracleProcessRepository : IProcessRepository
             LastExecutedAt = result.DH_EXEC,
             CompletedAt = result.DH_COMPL,
             CurrentNodeName = result.ID_NOEUD_COUR,
-            Status = (ProcessStatus)result.STAT_PROCS
+            Status = (ProcessStatus)result.STAT_PROCS,
+            ErrorMessage = result.MESS_ERR
         };
     }
 
@@ -361,5 +366,6 @@ public class OracleProcessRepository : IProcessRepository
         public string? ID_DEFIN { get; set; }
         public string? VERSI_DEFIN { get; set; }
         public int STAT_PROCS { get; set; }
+        public string? MESS_ERR { get; set; }
     }
 }
