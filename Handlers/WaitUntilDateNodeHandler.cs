@@ -72,12 +72,12 @@ public class WaitUntilDateNodeHandler : INodeHandler
             {
                 IsCompleted = true,
                 RequiresStop = false,
-                NextNodeName = node.NextNodeIds.FirstOrDefault()
+                NextNodeId = node.NextNodeIds.FirstOrDefault()
             };
         }
 
         instance.Status = ProcessStatus.WaitingDate;
-        instance.CurrentNodeName = node.Name;
+        instance.CurrentNodeId = node.Name;
 
         if (_executor != null && !string.IsNullOrEmpty(node.OnEnterCommandName))
         {
@@ -100,7 +100,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
         {
             IsCompleted = true,
             RequiresStop = true,
-            NextNodeName = node.NextNodeIds.FirstOrDefault()
+            NextNodeId = node.NextNodeIds.FirstOrDefault()
         };
     }
 }

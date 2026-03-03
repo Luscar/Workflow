@@ -116,7 +116,7 @@ public class SubProcessNodeHandlerTests
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeName = node.NextNodeIds.FirstOrDefault()
+                    NextNodeId = node.NextNodeIds.FirstOrDefault()
                 });
             });
         return handler;
@@ -168,7 +168,7 @@ public class SubProcessNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.False(result.RequiresStop);
-        Assert.Equal("NextParentNode", result.NextNodeName);
+        Assert.Equal("NextParentNode", result.NextNodeId);
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class SubProcessNodeHandlerTests
         Assert.NotNull(savedInstance);
         Assert.Equal(123L, savedInstance!.AggregateId);
         Assert.Equal(1L, savedInstance.ParentProcessId);
-        Assert.Equal("RunSub", savedInstance.ParentNodeName);
+        Assert.Equal("RunSub", savedInstance.ParentNodeId);
     }
 
     [Fact]
@@ -312,7 +312,7 @@ public class SubProcessNodeHandlerTests
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeName = node.NextNodeIds.FirstOrDefault()
+                    NextNodeId = node.NextNodeIds.FirstOrDefault()
                 });
             });
 
@@ -374,7 +374,7 @@ public class SubProcessNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.True(result.RequiresStop);
-        Assert.Equal("NextParentNode", result.NextNodeName);
+        Assert.Equal("NextParentNode", result.NextNodeId);
     }
 
     [Fact]
@@ -483,9 +483,9 @@ public class SubProcessNodeHandlerTests
         var existingChild = new ProcessInstance(100)
         {
             ParentProcessId = 1,
-            ParentNodeName = "RunSub",
+            ParentNodeId = "RunSub",
             Status = ProcessStatus.WaitingInteraction,
-            CurrentNodeName = "SubFinal",
+            CurrentNodeId = "SubFinal",
             DefinitionName = "SubProcess",
             DefinitionVersion = "1.0"
         };
@@ -518,7 +518,7 @@ public class SubProcessNodeHandlerTests
 
         Assert.True(result.IsCompleted);
         Assert.False(result.RequiresStop);
-        Assert.Equal("NextParent", result.NextNodeName);
+        Assert.Equal("NextParent", result.NextNodeId);
 
         // Verify child process was cleaned up
         await repository.Received(1).DeleteProcessInstanceAsync(100);
@@ -602,7 +602,7 @@ public class SubProcessNodeHandlerTests
         var result = await handler.HandleAsync(subNode, parentInstance);
 
         Assert.True(result.IsCompleted);
-        Assert.Null(result.NextNodeName);
+        Assert.Null(result.NextNodeId);
     }
 
     [Fact]
@@ -648,7 +648,7 @@ public class SubProcessIntegrationTests
                 {
                     IsCompleted = true,
                     RequiresStop = false,
-                    NextNodeName = node.NextNodeIds.FirstOrDefault()
+                    NextNodeId = node.NextNodeIds.FirstOrDefault()
                 });
             });
         return handler;

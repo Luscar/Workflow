@@ -122,10 +122,10 @@ public class ProcessInstanceTests
         var instance = new ProcessInstance(10)
         {
             ParentProcessId = 5,
-            ParentNodeName = "subNodeDefinition"
+            ParentNodeId = "subNodeDefinition"
         };
 
         Assert.Equal(5, instance.ParentProcessId);
-        Assert.Equal("subNodeDefinition", instance.ParentNodeName);
+        Assert.Equal("subNodeDefinition", instance.ParentNodeId);
     }
 }

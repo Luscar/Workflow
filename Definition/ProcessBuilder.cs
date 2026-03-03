@@ -219,12 +219,12 @@ public class ProcessBuilder
     /// <summary>
     /// Connecte le nœud courant au nœud spécifié
     /// </summary>
-    public ProcessBuilder Then(string nextNodeName)
+    public ProcessBuilder Then(string nextNodeId)
     {
         if (_lastNode == null)
             throw new InvalidOperationException("Aucun nœud courant depuis lequel se connecter");
 
-        _lastNode.NextNodeIds.Add(nextNodeName);
+        _lastNode.NextNodeIds.Add(nextNodeId);
         return this;
     }
 
@@ -316,9 +316,9 @@ public class DecisionRouteBuilder
         _node = node;
     }
 
-    public DecisionRouteBuilder When(string condition, string targetNodeName)
+    public DecisionRouteBuilder When(string condition, string targetNodeId)
     {
-        _node.AddRoute(condition, targetNodeName);
+        _node.AddRoute(condition, targetNodeId);
         return this;
     }
 }

@@ -66,12 +66,12 @@ var instance = new ProcessInstance(123, "aggregate-456");
 
 // Première exécution - s'arrêtera au premier nœud d'attente/interactif
 instance = await engine.ExecuteAsync(instance);
-Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeName}");
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
 
 // Simuler la réception d'un signal
 instance = await engine.SignalAsync(instance, "PaymentReceived");
-Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeName}");
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");
 
 // Continuer après interaction utilisateur
 instance = await engine.ContinueAsync(instance);
-Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeName}");
+Console.WriteLine($"Status: {instance.Status}, Current Node: {instance.CurrentNodeId}");

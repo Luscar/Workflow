@@ -165,7 +165,7 @@ public class OracleProcessRepository : IProcessRepository
         {
             NoSeqProcs = instance.ProcessId,
             NoSeqProcsParn = instance.ParentProcessId,
-            IdNoeudParn = instance.ParentNodeName,
+            IdNoeudParn = instance.ParentNodeId,
             IdEntiAffa = instance.AggregateId,
             VarProcs = System.Text.Json.JsonSerializer.Serialize(instance.Variables),
             DateAttente = instance.WaitDate,
@@ -173,7 +173,7 @@ public class OracleProcessRepository : IProcessRepository
             DhDeb = instance.StartedAt,
             DhExec = instance.LastExecutedAt,
             DhComp = instance.CompletedAt,
-            IdNoeudCour = instance.CurrentNodeName,
+            IdNoeudCour = instance.CurrentNodeId,
             NomDefin = instance.DefinitionName,
             VersionDefin = instance.DefinitionVersion,
             StatProcs = (int)instance.Status
@@ -226,7 +226,7 @@ public class OracleProcessRepository : IProcessRepository
             SignalAttente = instance.ExpectedSignal,
             DhExec = instance.LastExecutedAt,
             DhComp = instance.CompletedAt,
-            IdNoeudCour = instance.CurrentNodeName,
+            IdNoeudCour = instance.CurrentNodeId,
             NomDefin = instance.DefinitionName,
             VersionDefin = instance.DefinitionVersion,
             StatProcs = (int)instance.Status,
@@ -286,14 +286,14 @@ public class OracleProcessRepository : IProcessRepository
         return await _historyRepository.GetByIdAsync(historyId);
     }
 
-    public async Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName)
+    public async Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId)
     {
         var sql = $@"
             SELECT NO_SEQ_PROCS, NO_SEQ_PROCS_PARN, ID_NOEUD_PARN, ID_ENTI_AFFA, VAR_PROCS, DH_ATTEN, SIGNL_ATTENTION, DH_DEB, DH_EXEC, DH_COMPL, ID_NOEUD_COUR, ID_DEFIN, VERSI_DEFIN, STAT_PROCS
             FROM {_processContextTable}
             WHERE NO_SEQ_PROCS_PARN = :NoSeqProcsParn AND ID_NOEUD_PARN = :IdNoeudParn";
 
-        var result = await _connection.QueryFirstOrDefaultAsync<ProcessInstanceDto>(sql, new { NoSeqProcsParn = parentProcessId, IdNoeudParn = parentNodeName });
+        var result = await _connection.QueryFirstOrDefaultAsync<ProcessInstanceDto>(sql, new { NoSeqProcsParn = parentProcessId, IdNoeudParn = parentNodeId });
 
         if (result == null)
             return null;
@@ -328,7 +328,7 @@ public class OracleProcessRepository : IProcessRepository
         return new ProcessInstance(result.NO_SEQ_PROCS)
         {
             ParentProcessId = result.NO_SEQ_PROCS_PARN,
-            ParentNodeName = result.ID_NOEUD_PARN,
+            ParentNodeId = result.ID_NOEUD_PARN,
             AggregateId = result.ID_ENTI_AFFA,
             DefinitionName = result.ID_DEFIN,
             DefinitionVersion = result.VERSI_DEFIN,
@@ -340,7 +340,7 @@ public class OracleProcessRepository : IProcessRepository
             StartedAt = result.DH_DEB,
             LastExecutedAt = result.DH_EXEC,
             CompletedAt = result.DH_COMPL,
-            CurrentNodeName = result.ID_NOEUD_COUR,
+            CurrentNodeId = result.ID_NOEUD_COUR,
             Status = (ProcessStatus)result.STAT_PROCS
         };
     }

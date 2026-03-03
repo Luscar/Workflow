@@ -56,10 +56,10 @@ public class InMemoryProcessRepository : IProcessRepository
         return Task.FromResult<(NodeInstance, long)?>(null);
     }
 
-    public Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeName)
+    public Task<ProcessInstance?> GetChildProcessAsync(long parentProcessId, string parentNodeId)
     {
         var child = _processes.Values
-            .FirstOrDefault(p => p.ParentProcessId == parentProcessId && p.ParentNodeName == parentNodeName);
+            .FirstOrDefault(p => p.ParentProcessId == parentProcessId && p.ParentNodeId == parentNodeId);
         return Task.FromResult(child);
     }
 
