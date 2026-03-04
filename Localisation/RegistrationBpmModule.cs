@@ -8,11 +8,10 @@ namespace SimpleBPM.Localisation;
 
 /// <summary>
 /// Module Autofac qui enregistre tous les services SimpleBPM (moteur d'exécution,
-/// node handlers, monitoring). Utilise le même builder fluent que l'extension
-/// <c>AddSimpleBPM(options => ...)</c> pour la configuration.
+/// node handlers, monitoring). Configure via une API fluente directement sur le module.
 /// <example>
 /// <code>
-/// builder.RegisterModule(new SimpleBPMAutofacModule(module =>
+/// builder.RegisterModule(new RegistrationBpmModule(module =>
 /// {
 ///     module.ScanHandlers(Assembly.GetExecutingAssembly());
 ///     module.UseTaskManager&lt;LoanTaskManager&gt;();
@@ -21,7 +20,7 @@ namespace SimpleBPM.Localisation;
 /// </code>
 /// </example>
 /// </summary>
-public sealed class SimpleBPMAutofacModule : Module
+public sealed class RegistrationBpmModule : Module
 {
     private readonly List<Assembly> _handlerAssemblies = new();
     private readonly List<ProcessDefinition> _processDefinitions = new();
@@ -29,9 +28,9 @@ public sealed class SimpleBPMAutofacModule : Module
     private Type? _taskManagerType;
     private bool _useDefinitionBank;
 
-    public SimpleBPMAutofacModule() { }
+    public RegistrationBpmModule() { }
 
-    public SimpleBPMAutofacModule(Action<SimpleBPMAutofacModule> configure)
+    public RegistrationBpmModule(Action<RegistrationBpmModule> configure)
     {
         configure(this);
     }
@@ -40,7 +39,7 @@ public sealed class SimpleBPMAutofacModule : Module
     /// Scans the given assemblies for <see cref="IBpmCommandHandler"/> and
     /// <see cref="IBpmQueryHandler"/> implementations and registers them automatically.
     /// </summary>
-    public SimpleBPMAutofacModule ScanHandlers(params Assembly[] assemblies)
+    public RegistrationBpmModule ScanHandlers(params Assembly[] assemblies)
     {
         _handlerAssemblies.AddRange(assemblies);
         return this;
@@ -49,7 +48,7 @@ public sealed class SimpleBPMAutofacModule : Module
     /// <summary>
     /// Registers a custom <see cref="IGestionTache"/> implementation for task management.
     /// </summary>
-    public SimpleBPMAutofacModule UseTaskManager<TManager>() where TManager : class, IGestionTache
+    public RegistrationBpmModule UseTaskManager<TManager>() where TManager : class, IGestionTache
     {
         _taskManagerType = typeof(TManager);
         return this;
@@ -58,7 +57,7 @@ public sealed class SimpleBPMAutofacModule : Module
     /// <summary>
     /// Adds a process definition to the container.
     /// </summary>
-    public SimpleBPMAutofacModule AddProcess(ProcessDefinition definition)
+    public RegistrationBpmModule AddProcess(ProcessDefinition definition)
     {
         _processDefinitions.Add(definition);
         return this;
@@ -68,7 +67,7 @@ public sealed class SimpleBPMAutofacModule : Module
     /// Configures SimpleBPM to use Oracle persistence with the given table prefix.
     /// When not called, in-memory storage is used.
     /// </summary>
-    public SimpleBPMAutofacModule UseOracle(string tablePrefix)
+    public RegistrationBpmModule UseOracle(string tablePrefix)
     {
         _oracleTablePrefix = tablePrefix;
         return this;
@@ -79,7 +78,7 @@ public sealed class SimpleBPMAutofacModule : Module
     /// de <see cref="ProcessDefinition"/> via <see cref="IDefinitionRepository"/>.
     /// Utilise Oracle si <see cref="UseOracle"/> est appelé, sinon stockage en mémoire.
     /// </summary>
-    public SimpleBPMAutofacModule UseDefinitionBank()
+    public RegistrationBpmModule UseDefinitionBank()
     {
         _useDefinitionBank = true;
         return this;

@@ -699,7 +699,7 @@ using SimpleBPM.Localisation;
 
 var builder = new ContainerBuilder();
 
-builder.RegisterModule(new SimpleBPMAutofacModule(module =>
+builder.RegisterModule(new RegistrationBpmModule(module =>
 {
     module.ScanHandlers(Assembly.GetExecutingAssembly());
     module.UseTaskManager<MaGestionTache>();
@@ -765,7 +765,7 @@ services.AddSimpleBPM(options =>
 **Autofac :**
 
 ```csharp
-builder.RegisterModule(new SimpleBPMAutofacModule(module =>
+builder.RegisterModule(new RegistrationBpmModule(module =>
 {
     module.ScanHandlers(Assembly.GetExecutingAssembly());
     module.UseOracle("CMD");
@@ -1192,7 +1192,7 @@ public class GestionTachePret : IGestionTache
 ```csharp
 var containerBuilder = new ContainerBuilder();
 
-containerBuilder.RegisterModule(new SimpleBPMAutofacModule(module =>
+containerBuilder.RegisterModule(new RegistrationBpmModule(module =>
 {
     module.ScanHandlers(Assembly.GetExecutingAssembly());
     module.UseTaskManager<GestionTachePret>();
