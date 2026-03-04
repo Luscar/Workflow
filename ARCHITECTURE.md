@@ -99,7 +99,7 @@ SimpleBPM.sln
 │   ├── ProcessInstance.cs            # État d'exécution d'un processus
 │   ├── NodeDefinition.cs             # Classe de base des nœuds + types de résultat
 │   ├── Processus.cs                  # DTO externe (vue en lecture seule d'une instance)
-│   ├── InstanceNode.cs               # DTO externe d'une entrée d'historique
+│   ├── NoeudProcessus.cs               # DTO externe d'une entrée d'historique
 │   └── NodeInstance.cs               # Entrée d'historique interne
 ├── SimpleBPM.ExampleClient/          # Exemple complet (workflow d'approbation de prêt)
 │   ├── CommandHandlers/
@@ -463,7 +463,7 @@ public interface IProcessMonitor
 }
 ```
 
-`Processus` et `InstanceNode` sont des DTOs externes en lecture seule exposés aux consommateurs — les clients ne manipulent jamais `ProcessInstance` directement.
+`Processus` et `NoeudProcessus` sont des DTOs externes en lecture seule exposés aux consommateurs — les clients ne manipulent jamais `ProcessInstance` directement.
 
 ---
 

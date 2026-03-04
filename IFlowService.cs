@@ -7,7 +7,7 @@ public interface IFlowService
     Task<List<Processus>> RechercherParVariableAsync(List<FiltreVariable> filtres);
     Task<List<Processus>> ObtenirEnfantsAsync(long idInstanceParent);
     Task<IEnumerable<string>> ObtenirSignauxEnAttenteAsync(long idInstanceProcessus);
-    Task<InstanceNode> ObtenirNoeudAsync(long idInstanceNoeud);
+    Task<NoeudProcessus> ObtenirNoeudAsync(long idInstanceNoeud);
     Task TerminerEtapeAsync(long idInstanceNoeud, object contenu);
     Task TerminerEtapeEnCoursAsync(long idInstanceProcessus, Dictionary<string, object>? contenu = null);
     Task EnvoyerSignalAsync(long idInstanceProcessus, string signalName);

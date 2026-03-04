@@ -67,12 +67,12 @@ public class FlowService : IFlowService
         return Enumerable.Empty<string>();
     }
 
-    public async Task<InstanceNode> ObtenirNoeudAsync(long idInstanceNoeud)
+    public async Task<NoeudProcessus> ObtenirNoeudAsync(long idInstanceNoeud)
     {
         var result = await _repository.GetNodeHistoryByIdAsync(idInstanceNoeud)
             ?? throw new InvalidOperationException($"Instance de nœud '{idInstanceNoeud}' introuvable");
 
-        return new InstanceNode
+        return new NoeudProcessus
         {
             NoSeqNoeud = idInstanceNoeud,
             ProcessId = result.ProcessId,

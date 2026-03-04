@@ -825,7 +825,7 @@ public interface IFlowService
     Task                      TerminerEtapeEnCoursAsync(long idInstanceProcessus, Dictionary<string, object>? contenu = null);
     Task                      EnvoyerSignalAsync(long idInstanceProcessus, string signalName);
     Task<IEnumerable<string>> ObtenirSignauxEnAttenteAsync(long idInstanceProcessus);
-    Task<InstanceNode>        ObtenirNoeudAsync(long idInstanceNoeud);
+    Task<NoeudProcessus>        ObtenirNoeudAsync(long idInstanceNoeud);
     Task<List<Processus>>     RechercherParVariableAsync(List<FiltreVariable> filtres);
     Task<List<Processus>>     ObtenirEnfantsAsync(long idInstanceParent);
     Task<MigrationResult>     MigrateAsync(long processId, ProcessDefinition targetDefinition, ProcessMigration migration);
