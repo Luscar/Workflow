@@ -8,8 +8,7 @@ namespace SimpleBPM.Localisation;
 
 /// <summary>
 /// Module Autofac qui enregistre tous les services SimpleBPM (moteur d'exécution,
-/// node handlers, monitoring). Utilise le même builder fluent que l'extension
-/// <c>AddSimpleBPM(options => ...)</c> pour la configuration.
+/// node handlers, monitoring). Configure via une API fluente directement sur le module.
 /// <example>
 /// <code>
 /// builder.RegisterModule(new SimpleBPMAutofacModule(module =>
