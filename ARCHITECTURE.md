@@ -60,11 +60,9 @@ SimpleBPM.sln
 │   │   ├── WaitUntilDateNodeHandler.cs
 │   │   ├── SubProcessNodeHandler.cs
 │   │   └── EndNodeHandler.cs
-│   ├── Localisation/                 # Enregistrement DI
-│   │   ├── ServiceCollectionExtensions.cs   # Microsoft.Extensions.DI
-│   │   ├── SimpleBPMBuilder.cs              # Builder d'options fluide
-│   │   ├── SimpleBPMAutofacModule.cs        # Module Autofac
-│   │   └── ProcessMonitoringAutofacModule.cs
+│   ├── Localisation/                 # Enregistrement DI (Autofac)
+│   │   ├── RegistrationBpmModule.cs         # Module principal (exécution complète)
+│   │   └── ProcessMonitoringAutofacModule.cs # Module lecture seule (monitoring)
 │   ├── Migration/                    # Migration de version
 │   │   ├── ProcessMigration.cs
 │   │   ├── ProcessMigrationLoader.cs
@@ -421,7 +419,7 @@ services.AddSimpleBPM(options =>
 ### Module Autofac
 
 ```csharp
-builder.RegisterModule(new SimpleBPMAutofacModule(module =>
+builder.RegisterModule(new RegistrationBpmModule(module =>
 {
     module.ScanHandlers(Assembly.GetExecutingAssembly());
     module.UseTaskManager<MyGestionTache>();

@@ -12,7 +12,7 @@ using SimpleBPM.Localisation;
 //   1. Implement IBpmCommandHandler / IBpmQueryHandler for business logic
 //   2. Implement IGestionTache for task management (optional)
 //   3. Define processes using the fluent ProcessBuilder API
-//   4. Register everything via a single SimpleBPMAutofacModule
+//   4. Register everything via a single RegistrationBpmModule
 //   5. Interact exclusively through IFlowService
 //
 // The client never references handlers or the engine directly.
@@ -24,7 +24,7 @@ Console.WriteLine();
 // --- Dependency Injection Setup (Autofac) ---
 var containerBuilder = new ContainerBuilder();
 
-containerBuilder.RegisterModule(new SimpleBPMAutofacModule(module =>
+containerBuilder.RegisterModule(new RegistrationBpmModule(module =>
 {
     module.ScanHandlers(Assembly.GetExecutingAssembly());
     module.UseTaskManager<LoanTaskManager>();
