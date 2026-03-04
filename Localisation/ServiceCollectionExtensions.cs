@@ -30,11 +30,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<INodeHandler, WaitForSignalNodeHandler>();
         services.AddSingleton<INodeHandler, WaitUntilDateNodeHandler>();
 
-        // Service principal
+        // Service principal (avec banque de définitions optionnelle)
         services.AddScoped<IFlowService>(sp => new FlowService(
             sp.GetServices<ProcessDefinition>(),
             sp.GetRequiredService<IProcessRepository>(),
-            sp.GetServices<INodeHandler>()
+            sp.GetServices<INodeHandler>(),
+            sp.GetService<IDefinitionRepository>()
         ));
 
         // Monitoring
@@ -64,8 +65,8 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Scanne les assemblies données pour toutes les implémentations de <see cref="ICommandHandler"/> et
-    /// <see cref="IQueryHandler"/> et les enregistre dans le conteneur DI.
+    /// Scanne les assemblies données pour toutes les implémentations de <see cref="IBpmCommandHandler"/> et
+    /// <see cref="IBpmQueryHandler"/> et les enregistre dans le conteneur DI.
     /// Enregistre également <see cref="BpmMediateur"/> comme <see cref="IBpmMediateur"/>,
     /// de sorte que le client n'a plus besoin d'implémenter <see cref="IBpmMediateur"/> directement.
     /// </summary>
@@ -77,17 +78,17 @@ public static class ServiceCollectionExtensions
         {
             var commandHandlerTypes = assembly.GetTypes()
                 .Where(t => t is { IsAbstract: false, IsInterface: false }
-                         && typeof(ICommandHandler).IsAssignableFrom(t));
+                         && typeof(IBpmCommandHandler).IsAssignableFrom(t));
 
             foreach (var type in commandHandlerTypes)
-                services.AddSingleton(typeof(ICommandHandler), type);
+                services.AddSingleton(typeof(IBpmCommandHandler), type);
 
             var queryHandlerTypes = assembly.GetTypes()
                 .Where(t => t is { IsAbstract: false, IsInterface: false }
-                         && typeof(IQueryHandler).IsAssignableFrom(t));
+                         && typeof(IBpmQueryHandler).IsAssignableFrom(t));
 
             foreach (var type in queryHandlerTypes)
-                services.AddSingleton(typeof(IQueryHandler), type);
+                services.AddSingleton(typeof(IBpmQueryHandler), type);
         }
 
         services.TryAddSingleton<IBpmMediateur, BpmMediateur>();
@@ -147,6 +148,15 @@ public static class ServiceCollectionExtensions
         {
             services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(builder.OracleTablePrefix));
             services.AddScoped<IProcessRepository, OracleProcessRepository>();
+        }
+
+        // 4. Banque de définitions
+        if (builder.UseDefinitionBankEnabled)
+        {
+            if (builder.OracleTablePrefix is not null)
+                services.AddScoped<IDefinitionRepository, OracleDefinitionRepository>();
+            else
+                services.TryAddSingleton<IDefinitionRepository, InMemoryDefinitionRepository>();
         }
 
         return services.AddSimpleBPM();

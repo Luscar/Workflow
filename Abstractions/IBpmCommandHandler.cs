@@ -6,7 +6,7 @@ namespace SimpleBPM.Abstractions;
 /// toutes les implémentations sont découvertes et enregistrées automatiquement
 /// via <see cref="Localisation.ServiceCollectionExtensions.AddCommandHandlers"/>.
 /// </summary>
-public interface ICommandHandler
+public interface IBpmCommandHandler
 {
     string CommandName { get; }
     Task HandleAsync(long processId, long? aggregateId, Dictionary<string, object>? parameters = null);

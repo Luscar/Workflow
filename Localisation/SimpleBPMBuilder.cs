@@ -14,6 +14,7 @@ public sealed class SimpleBPMBuilder
     internal readonly List<Assembly> HandlerAssemblies = new();
     internal readonly List<ProcessDefinition> ProcessDefinitions = new();
     internal string? OracleTablePrefix;
+    internal bool UseDefinitionBankEnabled;
 
     internal SimpleBPMBuilder(IServiceCollection services)
     {
@@ -21,8 +22,8 @@ public sealed class SimpleBPMBuilder
     }
 
     /// <summary>
-    /// Scanne les assemblies données pour les implémentations de <see cref="ICommandHandler"/> et
-    /// <see cref="IQueryHandler"/> et les enregistre automatiquement.
+    /// Scanne les assemblies données pour les implémentations de <see cref="IBpmCommandHandler"/> et
+    /// <see cref="IBpmQueryHandler"/> et les enregistre automatiquement.
     /// </summary>
     public SimpleBPMBuilder ScanHandlers(params Assembly[] assemblies)
     {
@@ -55,6 +56,17 @@ public sealed class SimpleBPMBuilder
     public SimpleBPMBuilder UseOracle(string tablePrefix)
     {
         OracleTablePrefix = tablePrefix;
+        return this;
+    }
+
+    /// <summary>
+    /// Active la banque de définitions pour sauvegarder et gérer les versions
+    /// de <see cref="ProcessDefinition"/> via <see cref="Persistence.IDefinitionRepository"/>.
+    /// Utilise Oracle si <see cref="UseOracle"/> est appelé, sinon stockage en mémoire.
+    /// </summary>
+    public SimpleBPMBuilder UseDefinitionBank()
+    {
+        UseDefinitionBankEnabled = true;
         return this;
     }
 }

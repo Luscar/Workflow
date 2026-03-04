@@ -1,6 +1,6 @@
 namespace SimpleBPM;
 
-public class InstanceNode
+public class NoeudProcessus
 {
     public long NoSeqNoeud { get; set; }
     public long ProcessId { get; set; }

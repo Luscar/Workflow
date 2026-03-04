@@ -8,11 +8,13 @@ public class FlowService : IFlowService
 {
     private readonly FlowEngine _engine;
     private readonly IProcessRepository _repository;
+    private readonly IDefinitionRepository? _definitionRepository;
 
-    public FlowService(IEnumerable<ProcessDefinition> definitions, IProcessRepository repository, IEnumerable<INodeHandler> handlers)
+    public FlowService(IEnumerable<ProcessDefinition> definitions, IProcessRepository repository, IEnumerable<INodeHandler> handlers, IDefinitionRepository? definitionRepository = null)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _engine = new FlowEngine(definitions, repository, handlers);
+        _definitionRepository = definitionRepository;
+        _engine = new FlowEngine(definitions, repository, handlers, definitionRepository);
     }
 
     public async Task<Processus> ObtenirAsync(long instanceProcessId)
@@ -65,12 +67,12 @@ public class FlowService : IFlowService
         return Enumerable.Empty<string>();
     }
 
-    public async Task<InstanceNode> ObtenirNoeudAsync(long idInstanceNoeud)
+    public async Task<NoeudProcessus> ObtenirNoeudAsync(long idInstanceNoeud)
     {
         var result = await _repository.GetNodeHistoryByIdAsync(idInstanceNoeud)
             ?? throw new InvalidOperationException($"Instance de nœud '{idInstanceNoeud}' introuvable");
 
-        return new InstanceNode
+        return new NoeudProcessus
         {
             NoSeqNoeud = idInstanceNoeud,
             ProcessId = result.ProcessId,
@@ -136,5 +138,23 @@ public class FlowService : IFlowService
         }
 
         return result;
+    }
+
+    public async Task SauvegarderDefinitionAsync(ProcessDefinition definition)
+    {
+        if (_definitionRepository == null)
+            throw new InvalidOperationException(
+                "Aucune banque de définitions configurée. Appelez UseDefinitionBank() lors de l'enregistrement DI.");
+
+        await _definitionRepository.SaveDefinitionAsync(definition);
+    }
+
+    public async Task<List<ProcessDefinition>> ObtenirDefinitionsAsync()
+    {
+        if (_definitionRepository == null)
+            throw new InvalidOperationException(
+                "Aucune banque de définitions configurée. Appelez UseDefinitionBank() lors de l'enregistrement DI.");
+
+        return await _definitionRepository.GetAllDefinitionsAsync();
     }
 }

@@ -24,8 +24,8 @@ la configuration de l'injection de dépendances et l'exploitation des processus 
    - [Chaînage manuel avec Then et Break](#311-chaînage-manuel-avec-then-et-break)
 4. [Définir un processus — JSON](#4-définir-un-processus--json)
 5. [Implémenter la logique métier](#5-implémenter-la-logique-métier)
-   - [ICommandHandler](#51-icommandhandler)
-   - [IQueryHandler](#52-iqueryhandler)
+   - [IBpmCommandHandler](#51-ibpmcommandhandler)
+   - [IBpmQueryHandler](#52-ibomqueryhandler)
    - [IBpmMediateur (approche directe)](#53-ibpmmediateur-approche-directe)
    - [IGestionTache (gestion de tâches optionnelle)](#54-igestiontache-gestion-de-tâches-optionnelle)
 6. [Configuration de l'injection de dépendances](#6-configuration-de-linjection-de-dépendances)
@@ -33,6 +33,7 @@ la configuration de l'injection de dépendances et l'exploitation des processus 
    - [Microsoft DI — étape par étape](#62-microsoft-di--étape-par-étape)
    - [Module Autofac](#63-module-autofac)
    - [Persistance Oracle](#64-persistance-oracle)
+   - [Banque de définitions](#65-banque-de-définitions)
 7. [Exploiter les processus à l'exécution](#7-exploiter-les-processus-à-lexécution)
    - [Créer une instance de processus](#71-créer-une-instance-de-processus)
    - [Terminer une étape interactive](#72-terminer-une-étape-interactive)
@@ -104,7 +105,7 @@ ProcessBuilder.Create("ProcessusCommande")
     .Build();
 ```
 
-La chaîne passée en premier argument est *à la fois* le nom du nœud *et* le nom de la commande dispatchée vers `ICommandHandler`.
+La chaîne passée en premier argument est *à la fois* le nom du nœud *et* le nom de la commande dispatchée vers `IBpmCommandHandler`.
 
 Si la commande lève une exception, le nœud marque le processus comme `Failed` avec le message de l'exception.
 
@@ -130,7 +131,7 @@ ProcessBuilder.Create("ProcessusPret")
     .Build();
 ```
 
-Les appels `.When(resultat, idNoeudCible)` sur `DecisionRouteBuilder` associent une *chaîne de résultat* à un *nom de nœud*. Cette chaîne est retournée par `IQueryHandler.HandleAsync`.
+Les appels `.When(resultat, idNoeudCible)` sur `DecisionRouteBuilder` associent une *chaîne de résultat* à un *nom de nœud*. Cette chaîne est retournée par `IBpmQueryHandler.HandleAsync`.
 
 #### Mode B — Conditions sur variables (sans handler)
 
@@ -317,7 +318,7 @@ Il n'est *pas* nécessaire d'ajouter un `EndNode` pour la fin naturelle d'un pro
 
 ### 3.9 Paramètres de nœud
 
-Chaque nœud peut porter un `Dictionary<string, object>` statique de paramètres. Ceux-ci sont transmis tels quels à `IBpmMediateur` (et donc à `ICommandHandler` / `IQueryHandler`) lors de l'exécution.
+Chaque nœud peut porter un `Dictionary<string, object>` statique de paramètres. Ceux-ci sont transmis tels quels à `IBpmMediateur` (et donc à `IBpmCommandHandler` / `IBpmQueryHandler`) lors de l'exécution.
 
 ```csharp
 ProcessBuilder.Create("ProcessusNotification")
@@ -338,7 +339,7 @@ ProcessBuilder.Create("ProcessusNotification")
 Réception des paramètres dans un handler :
 
 ```csharp
-public class EnvoyerEmailHandler : ICommandHandler
+public class EnvoyerEmailHandler : IBpmCommandHandler
 {
     public string CommandName => "EnvoyerEmail";
 
@@ -483,14 +484,14 @@ string json = ProcessJsonLoader.ToJson(processus);
 
 ## 5. Implémenter la logique métier
 
-### 5.1 ICommandHandler
+### 5.1 IBpmCommandHandler
 
-Implémentez un `ICommandHandler` par commande métier. La propriété `CommandName` doit correspondre au nom du nœud (ou à la commande passée à `.Business(...)`) dans la définition du processus.
+Implémentez un `IBpmCommandHandler` par commande métier. La propriété `CommandName` doit correspondre au nom du nœud (ou à la commande passée à `.Business(...)`) dans la définition du processus.
 
 ```csharp
 using SimpleBPM.Abstractions;
 
-public class ValiderCommandeHandler : ICommandHandler
+public class ValiderCommandeHandler : IBpmCommandHandler
 {
     private readonly ICommandeRepository _commandes;
 
@@ -517,12 +518,12 @@ Règles importantes :
 - Lever une exception marque le nœud (et le processus) comme `Failed`.
 - `processId` identifie le workflow en cours ; `aggregateId` est l'identifiant optionnel de l'agrégat métier passé à la création.
 
-### 5.2 IQueryHandler
+### 5.2 IBpmQueryHandler
 
-`IQueryHandler` est utilisé pour les requêtes externes des `DecisionNode`. Le handler doit retourner une chaîne qui correspond à l'une des routes définies sur le nœud de décision.
+`IBpmQueryHandler` est utilisé pour les requêtes externes des `DecisionNode`. Le handler doit retourner une chaîne qui correspond à l'une des routes définies sur le nœud de décision.
 
 ```csharp
-public class DecisionCreditHandler : IQueryHandler
+public class DecisionCreditHandler : IBpmQueryHandler
 {
     private readonly IServiceCredit _credit;
 
@@ -635,7 +636,7 @@ using SimpleBPM.Localisation;
 // Program.cs
 services.AddSimpleBPM(options =>
 {
-    // Découverte automatique de tous les ICommandHandler et IQueryHandler de l'assembly
+    // Découverte automatique de tous les IBpmCommandHandler et IBpmQueryHandler de l'assembly
     options.ScanHandlers(Assembly.GetExecutingAssembly());
 
     // Optionnel : enregistrer un gestionnaire de tâches
@@ -743,6 +744,72 @@ if (repo is OracleProcessRepository oracleRepo)
 
 Ou appliquez `schema.sql` manuellement pour les environnements où l'application ne doit pas créer les tables automatiquement.
 
+### 6.5 Banque de définitions
+
+La **banque de définitions** permet de sauvegarder des `ProcessDefinition` en base de données (Oracle ou en mémoire) afin de centraliser et versionner les définitions de processus indépendamment du code applicatif.
+
+#### Activation
+
+**Microsoft DI :**
+
+```csharp
+services.AddSimpleBPM(options =>
+{
+    options.ScanHandlers(Assembly.GetExecutingAssembly());
+    options.UseOracle("CMD");
+    options.UseDefinitionBank();   // active IDefinitionRepository (Oracle si UseOracle, sinon mémoire)
+    options.AddProcess(MonProcessus.Creer());
+});
+```
+
+**Autofac :**
+
+```csharp
+builder.RegisterModule(new SimpleBPMAutofacModule(module =>
+{
+    module.ScanHandlers(Assembly.GetExecutingAssembly());
+    module.UseOracle("CMD");
+    module.UseDefinitionBank();
+    module.AddProcess(MonProcessus.Creer());
+}));
+```
+
+#### Sauvegarder et charger des définitions
+
+```csharp
+var flowService = scope.Resolve<IFlowService>();
+
+// Sauvegarder une définition dans la banque
+var definition = ProcessBuilder.Create("MonProcessus", "2.0")
+    .Business("Etape1", "Première étape")
+    .Build();
+
+await flowService.SauvegarderDefinitionAsync(definition);
+
+// Charger toutes les définitions disponibles dans la banque
+List<ProcessDefinition> definitions = await flowService.ObtenirDefinitionsAsync();
+```
+
+#### Table Oracle
+
+Lorsque `UseOracle` est combiné avec `UseDefinitionBank`, une table supplémentaire est créée :
+
+| Table | Description |
+|---|---|
+| `{PREFIXE}_DEFINITION_BANQUE` | Une ligne par version de définition — contenu JSON sérialisé |
+
+```sql
+-- Initialisez via InitializeDatabaseAsync() ou manuellement via schema.sql
+```
+
+#### Résolution automatique depuis la banque
+
+Lorsque la banque est activée, le moteur cherche les définitions dans l'ordre suivant :
+1. **En mémoire** (définitions enregistrées via `AddProcess` dans le DI).
+2. **Dans la banque** (`IDefinitionRepository`) si la définition n'est pas trouvée en mémoire.
+
+Cela permet de déployer de nouvelles versions de processus sans redémarrer l'application.
+
 ---
 
 ## 7. Exploiter les processus à l'exécution
@@ -758,10 +825,14 @@ public interface IFlowService
     Task                      TerminerEtapeEnCoursAsync(long idInstanceProcessus, Dictionary<string, object>? contenu = null);
     Task                      EnvoyerSignalAsync(long idInstanceProcessus, string signalName);
     Task<IEnumerable<string>> ObtenirSignauxEnAttenteAsync(long idInstanceProcessus);
-    Task<InstanceNode>        ObtenirNoeudAsync(long idInstanceNoeud);
+    Task<NoeudProcessus>        ObtenirNoeudAsync(long idInstanceNoeud);
     Task<List<Processus>>     RechercherParVariableAsync(List<FiltreVariable> filtres);
     Task<List<Processus>>     ObtenirEnfantsAsync(long idInstanceParent);
     Task<MigrationResult>     MigrateAsync(long processId, ProcessDefinition targetDefinition, ProcessMigration migration);
+
+    // Banque de définitions (requiert UseDefinitionBank())
+    Task                      SauvegarderDefinitionAsync(ProcessDefinition definition);
+    Task<List<ProcessDefinition>> ObtenirDefinitionsAsync();
 }
 ```
 
@@ -1046,7 +1117,7 @@ public static class ProcessusPretDefinitions
 
 ```csharp
 // ValiderDemandeHandler.cs
-public class ValiderDemandeHandler : ICommandHandler
+public class ValiderDemandeHandler : IBpmCommandHandler
 {
     public string CommandName => "ValiderDemande";
 
@@ -1060,7 +1131,7 @@ public class ValiderDemandeHandler : ICommandHandler
 }
 
 // DecaisserFondsHandler.cs
-public class DecaisserFondsHandler : ICommandHandler
+public class DecaisserFondsHandler : IBpmCommandHandler
 {
     private readonly IPasserelleDecaissement _passerelle;
 
@@ -1080,7 +1151,7 @@ public class DecaisserFondsHandler : ICommandHandler
 
 ```csharp
 // DecisionCreditHandler.cs
-public class DecisionCreditHandler : IQueryHandler
+public class DecisionCreditHandler : IBpmQueryHandler
 {
     private readonly IBureauCredit _bureau;
 
@@ -1187,4 +1258,6 @@ Console.WriteLine($"Statut : {processus.Status}");   // Completed
 | Rechercher par variable | `IFlowService.RechercherParVariableAsync` |
 | Obtenir les processus enfants | `IFlowService.ObtenirEnfantsAsync` |
 | Migrer vers une nouvelle version | `IFlowService.MigrateAsync` |
+| Sauvegarder une définition dans la banque | `IFlowService.SauvegarderDefinitionAsync` |
+| Charger toutes les définitions de la banque | `IFlowService.ObtenirDefinitionsAsync` |
 | Surveiller (lecture seule) | `IProcessMonitor.*` |
