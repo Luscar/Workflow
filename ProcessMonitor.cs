@@ -4,17 +4,39 @@ namespace SimpleBPM;
 
 public class ProcessMonitor : IProcessMonitor
 {
-    private readonly IEnumerable<ProcessDefinition> _definitions;
+    private readonly List<ProcessDefinition> _definitions;
     private readonly IProcessRepository _repository;
+    private readonly IDefinitionRepository? _definitionRepository;
 
-    public ProcessMonitor(IEnumerable<ProcessDefinition> definitions, IProcessRepository repository)
+    public ProcessMonitor(
+        IEnumerable<ProcessDefinition> definitions,
+        IProcessRepository repository,
+        IDefinitionRepository? definitionRepository = null)
     {
-        _definitions = definitions ?? throw new ArgumentNullException(nameof(definitions));
+        _definitions = (definitions ?? throw new ArgumentNullException(nameof(definitions))).ToList();
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _definitionRepository = definitionRepository;
     }
 
     public List<ProcessDefinition> GetDefinitions() =>
         _definitions.ToList();
+
+    public async Task<List<ProcessDefinition>> GetDefinitionsAsync()
+    {
+        var definitions = new Dictionary<(string Name, string Version), ProcessDefinition>();
+
+        if (_definitionRepository != null)
+        {
+            var dbDefs = await _definitionRepository.GetAllDefinitionsAsync();
+            foreach (var def in dbDefs)
+                definitions[(def.Name, def.Version)] = def;
+        }
+
+        foreach (var def in _definitions)
+            definitions[(def.Name, def.Version)] = def;
+
+        return definitions.Values.ToList();
+    }
 
     public async Task<List<Processus>> GetAllInstancesAsync()
     {

@@ -6,9 +6,14 @@ namespace SimpleBPM;
 public interface IProcessMonitor
 {
     /// <summary>
-    /// Retourne toutes les définitions de processus enregistrées.
+    /// Retourne toutes les définitions de processus enregistrées (en mémoire uniquement).
     /// </summary>
     List<ProcessDefinition> GetDefinitions();
+
+    /// <summary>
+    /// Retourne toutes les définitions de processus disponibles, incluant celles persistées en banque.
+    /// </summary>
+    Task<List<ProcessDefinition>> GetDefinitionsAsync();
 
     /// <summary>
     /// Retourne toutes les instances de processus.

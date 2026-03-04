@@ -10,12 +10,15 @@ public class OracleProcessRepository : IProcessRepository
     private readonly string _processContextTable;
     private readonly OracleHistoryRepository _historyRepository;
 
+    private readonly OracleDefinitionRepository _definitionRepository;
+
     public OracleProcessRepository(OracleConfiguration config, IDbConnection connection)
     {
         _config = config;
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         _processContextTable = _config.GetTableName("PROCESS_CONTEXT");
         _historyRepository = new OracleHistoryRepository(config, connection);
+        _definitionRepository = new OracleDefinitionRepository(config, connection);
     }
 
     public async Task<long> ObtenirSequenceAsync(string nomSequence)
@@ -151,6 +154,7 @@ public class OracleProcessRepository : IProcessRepository
         await _connection.ExecuteAsync(createIndex03Sql);
 
         await _historyRepository.InitializeDatabaseAsync();
+        await _definitionRepository.InitializeDatabaseAsync();
     }
 
     public async Task SaveProcessInstanceAsync(ProcessInstance instance)

@@ -123,11 +123,20 @@ public sealed class SimpleBPMAutofacModule : Module
             builder.RegisterType<OracleProcessRepository>()
                 .As<IProcessRepository>()
                 .InstancePerLifetimeScope();
+
+            builder.RegisterType<OracleDefinitionRepository>()
+                .As<IDefinitionRepository>()
+                .InstancePerLifetimeScope();
         }
 
         builder.RegisterType<InMemoryProcessRepository>()
             .As<IProcessRepository>()
             .IfNotRegistered(typeof(IProcessRepository))
+            .SingleInstance();
+
+        builder.RegisterType<InMemoryDefinitionRepository>()
+            .As<IDefinitionRepository>()
+            .IfNotRegistered(typeof(IDefinitionRepository))
             .SingleInstance();
 
         // 5. Node handlers

@@ -17,8 +17,9 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddSimpleBPM(this IServiceCollection services)
     {
-        // Repository en mémoire par défaut si aucun n'est enregistré
+        // Repositories en mémoire par défaut si aucun n'est enregistré
         services.TryAddSingleton<IProcessRepository, InMemoryProcessRepository>();
+        services.TryAddSingleton<IDefinitionRepository, InMemoryDefinitionRepository>();
 
         // Node handlers (sauf SubProcessNodeHandler qui est auto-enregistré par le moteur)
         services.AddSingleton<INodeHandler>(sp =>
@@ -34,13 +35,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IFlowService>(sp => new FlowService(
             sp.GetServices<ProcessDefinition>(),
             sp.GetRequiredService<IProcessRepository>(),
-            sp.GetServices<INodeHandler>()
+            sp.GetServices<INodeHandler>(),
+            sp.GetService<IDefinitionRepository>()
         ));
 
         // Monitoring
         services.AddScoped<IProcessMonitor>(sp => new ProcessMonitor(
             sp.GetServices<ProcessDefinition>(),
-            sp.GetRequiredService<IProcessRepository>()
+            sp.GetRequiredService<IProcessRepository>(),
+            sp.GetService<IDefinitionRepository>()
         ));
 
         return services;
@@ -54,10 +57,12 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddProcessMonitoring(this IServiceCollection services)
     {
         services.TryAddSingleton<IProcessRepository, InMemoryProcessRepository>();
+        services.TryAddSingleton<IDefinitionRepository, InMemoryDefinitionRepository>();
 
         services.AddScoped<IProcessMonitor>(sp => new ProcessMonitor(
             sp.GetServices<ProcessDefinition>(),
-            sp.GetRequiredService<IProcessRepository>()
+            sp.GetRequiredService<IProcessRepository>(),
+            sp.GetService<IDefinitionRepository>()
         ));
 
         return services;
@@ -109,6 +114,7 @@ public static class ServiceCollectionExtensions
         // Infrastructure Oracle
         services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(tablePrefix));
         services.AddScoped<IProcessRepository, OracleProcessRepository>();
+        services.AddScoped<IDefinitionRepository, OracleDefinitionRepository>();
 
         return services.AddSimpleBPM();
     }
@@ -147,6 +153,7 @@ public static class ServiceCollectionExtensions
         {
             services.AddScoped<OracleConfiguration>(_ => new OracleConfiguration(builder.OracleTablePrefix));
             services.AddScoped<IProcessRepository, OracleProcessRepository>();
+            services.AddScoped<IDefinitionRepository, OracleDefinitionRepository>();
         }
 
         return services.AddSimpleBPM();

@@ -7,12 +7,18 @@ public class FlowEngine
 {
     private readonly Dictionary<string, List<ProcessDefinition>> _definitions;
     private readonly IProcessRepository _repository;
+    private readonly IDefinitionRepository? _definitionRepository;
     private readonly Dictionary<NodeType, INodeHandler> _handlers;
 
-    public FlowEngine(IEnumerable<ProcessDefinition> definitions, IProcessRepository? repository = null, IEnumerable<INodeHandler>? handlers = null)
+    public FlowEngine(
+        IEnumerable<ProcessDefinition> definitions,
+        IProcessRepository? repository = null,
+        IEnumerable<INodeHandler>? handlers = null,
+        IDefinitionRepository? definitionRepository = null)
     {
         _definitions = new Dictionary<string, List<ProcessDefinition>>();
         _repository = repository ?? NullProcessRepository.Instance;
+        _definitionRepository = definitionRepository;
         _handlers = new Dictionary<NodeType, INodeHandler>();
 
         foreach (var def in definitions)
@@ -90,7 +96,7 @@ public class FlowEngine
 
     private async Task<ProcessInstance> ExecuteInternalAsync(ProcessInstance instance)
     {
-        var definition = ResolveDefinition(instance);
+        var definition = await ResolveDefinitionAsync(instance);
         instance.DefinitionName ??= definition.Name;
         instance.DefinitionVersion ??= definition.Version;
         instance.LastExecutedAt = DateTime.UtcNow;
@@ -173,7 +179,7 @@ public class FlowEngine
             return instance;
         }
 
-        var definition = ResolveDefinition(instance);
+        var definition = await ResolveDefinitionAsync(instance);
         var currentNode = definition.GetNode(instance.CurrentNodeId);
 
         // Notifier le handler que l'on quitte ce nœud
@@ -234,6 +240,27 @@ public class FlowEngine
             ?? throw new InvalidOperationException($"Aucune définition trouvée pour '{name}' version '{version}'");
     }
 
+    internal async Task<ProcessDefinition> GetDefinitionAsync(string name, string version)
+    {
+        if (_definitions.TryGetValue(name, out var versions))
+        {
+            var cached = versions.FirstOrDefault(d => d.Version == version);
+            if (cached != null) return cached;
+        }
+
+        if (_definitionRepository != null)
+        {
+            var def = await _definitionRepository.GetDefinitionAsync(name, version);
+            if (def != null)
+            {
+                CacheDefinition(def);
+                return def;
+            }
+        }
+
+        throw new InvalidOperationException($"Aucune définition trouvée pour '{name}' version '{version}'");
+    }
+
     internal ProcessDefinition GetLatestDefinition(string name)
     {
         if (!_definitions.TryGetValue(name, out var versions) || versions.Count == 0)
@@ -244,15 +271,54 @@ public class FlowEngine
             .First();
     }
 
-    private ProcessDefinition ResolveDefinition(ProcessInstance instance)
+    internal async Task<ProcessDefinition> GetLatestDefinitionAsync(string name)
+    {
+        if (_definitions.TryGetValue(name, out var versions) && versions.Count > 0)
+        {
+            return versions
+                .OrderByDescending(d => Version.TryParse(d.Version, out var v) ? v : new Version(0, 0))
+                .First();
+        }
+
+        if (_definitionRepository != null)
+        {
+            var dbVersions = await _definitionRepository.GetDefinitionVersionsAsync(name);
+            if (dbVersions.Count > 0)
+            {
+                var latestVersion = dbVersions
+                    .OrderByDescending(v => Version.TryParse(v, out var parsed) ? parsed : new Version(0, 0))
+                    .First();
+
+                var def = await _definitionRepository.GetDefinitionAsync(name, latestVersion);
+                if (def != null)
+                {
+                    CacheDefinition(def);
+                    return def;
+                }
+            }
+        }
+
+        throw new InvalidOperationException($"Aucune définition trouvée pour '{name}'");
+    }
+
+    private void CacheDefinition(ProcessDefinition def)
+    {
+        if (!_definitions.ContainsKey(def.Name))
+            _definitions[def.Name] = new List<ProcessDefinition>();
+
+        if (!_definitions[def.Name].Any(d => d.Version == def.Version))
+            _definitions[def.Name].Add(def);
+    }
+
+    private async Task<ProcessDefinition> ResolveDefinitionAsync(ProcessInstance instance)
     {
         if (!string.IsNullOrEmpty(instance.DefinitionName) && !string.IsNullOrEmpty(instance.DefinitionVersion))
-            return GetDefinition(instance.DefinitionName, instance.DefinitionVersion);
+            return await GetDefinitionAsync(instance.DefinitionName, instance.DefinitionVersion);
 
         if (!string.IsNullOrEmpty(instance.DefinitionName))
-            return GetLatestDefinition(instance.DefinitionName);
+            return await GetLatestDefinitionAsync(instance.DefinitionName);
 
-        if (_definitions.Count == 1)
+        if (_definitions.Count == 1 && _definitionRepository == null)
             return _definitions.Values.First()
                 .OrderByDescending(d => Version.TryParse(d.Version, out var v) ? v : new Version(0, 0))
                 .First();

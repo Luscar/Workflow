@@ -8,11 +8,19 @@ public class FlowService : IFlowService
 {
     private readonly FlowEngine _engine;
     private readonly IProcessRepository _repository;
+    private readonly IDefinitionRepository? _definitionRepository;
+    private readonly List<ProcessDefinition> _inMemoryDefinitions;
 
-    public FlowService(IEnumerable<ProcessDefinition> definitions, IProcessRepository repository, IEnumerable<INodeHandler> handlers)
+    public FlowService(
+        IEnumerable<ProcessDefinition> definitions,
+        IProcessRepository repository,
+        IEnumerable<INodeHandler> handlers,
+        IDefinitionRepository? definitionRepository = null)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _engine = new FlowEngine(definitions, repository, handlers);
+        _definitionRepository = definitionRepository;
+        _inMemoryDefinitions = definitions.ToList();
+        _engine = new FlowEngine(_inMemoryDefinitions, repository, handlers, definitionRepository);
     }
 
     public async Task<Processus> ObtenirAsync(long instanceProcessId)
@@ -127,7 +135,7 @@ public class FlowService : IFlowService
         var instance = await _repository.GetProcessInstanceAsync(processId)
             ?? throw new InvalidOperationException($"Processus '{processId}' introuvable");
 
-        var sourceDefinition = _engine.GetDefinition(instance.DefinitionName!, instance.DefinitionVersion!);
+        var sourceDefinition = await _engine.GetDefinitionAsync(instance.DefinitionName!, instance.DefinitionVersion!);
         var result = ProcessMigrationRunner.Migrate(instance, sourceDefinition, targetDefinition, migration);
 
         if (result.Success)
@@ -136,5 +144,33 @@ public class FlowService : IFlowService
         }
 
         return result;
+    }
+
+    public async Task SaveDefinitionAsync(ProcessDefinition definition)
+    {
+        if (_definitionRepository == null)
+            throw new InvalidOperationException(
+                "Aucun repository de définitions configuré. Utilisez UseOracle() ou enregistrez un IDefinitionRepository.");
+
+        await _definitionRepository.SaveDefinitionAsync(definition);
+    }
+
+    public async Task<List<ProcessDefinition>> GetDefinitionsAsync()
+    {
+        var definitions = new Dictionary<(string Name, string Version), ProcessDefinition>();
+
+        // Charger d'abord depuis la banque
+        if (_definitionRepository != null)
+        {
+            var dbDefs = await _definitionRepository.GetAllDefinitionsAsync();
+            foreach (var def in dbDefs)
+                definitions[(def.Name, def.Version)] = def;
+        }
+
+        // Les définitions en mémoire prennent la priorité
+        foreach (var def in _inMemoryDefinitions)
+            definitions[(def.Name, def.Version)] = def;
+
+        return definitions.Values.ToList();
     }
 }

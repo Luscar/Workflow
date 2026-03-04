@@ -23,6 +23,11 @@ public sealed class ProcessMonitoringAutofacModule : Module
             .IfNotRegistered(typeof(IProcessRepository))
             .SingleInstance();
 
+        builder.RegisterType<InMemoryDefinitionRepository>()
+            .As<IDefinitionRepository>()
+            .IfNotRegistered(typeof(IDefinitionRepository))
+            .SingleInstance();
+
         builder.RegisterType<ProcessMonitor>()
             .As<IProcessMonitor>()
             .InstancePerLifetimeScope();
