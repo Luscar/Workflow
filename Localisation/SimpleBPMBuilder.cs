@@ -21,8 +21,8 @@ public sealed class SimpleBPMBuilder
     }
 
     /// <summary>
-    /// Scanne les assemblies données pour les implémentations de <see cref="ICommandHandler"/> et
-    /// <see cref="IQueryHandler"/> et les enregistre automatiquement.
+    /// Scanne les assemblies données pour les implémentations de <see cref="IBpmCommandHandler"/> et
+    /// <see cref="IBpmQueryHandler"/> et les enregistre automatiquement.
     /// </summary>
     public SimpleBPMBuilder ScanHandlers(params Assembly[] assemblies)
     {

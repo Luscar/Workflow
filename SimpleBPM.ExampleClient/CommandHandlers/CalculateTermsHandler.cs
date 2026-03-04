@@ -2,7 +2,7 @@ using SimpleBPM.Abstractions;
 
 namespace SimpleBPM.ExampleClient.CommandHandlers;
 
-public class CalculateTermsHandler : ICommandHandler
+public class CalculateTermsHandler : IBpmCommandHandler
 {
     public string CommandName => "CalculateTerms";
 

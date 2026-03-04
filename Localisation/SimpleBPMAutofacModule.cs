@@ -36,8 +36,8 @@ public sealed class SimpleBPMAutofacModule : Module
     }
 
     /// <summary>
-    /// Scans the given assemblies for <see cref="ICommandHandler"/> and
-    /// <see cref="IQueryHandler"/> implementations and registers them automatically.
+    /// Scans the given assemblies for <see cref="IBpmCommandHandler"/> and
+    /// <see cref="IBpmQueryHandler"/> implementations and registers them automatically.
     /// </summary>
     public SimpleBPMAutofacModule ScanHandlers(params Assembly[] assemblies)
     {
@@ -81,13 +81,13 @@ public sealed class SimpleBPMAutofacModule : Module
             foreach (var assembly in _handlerAssemblies)
             {
                 builder.RegisterAssemblyTypes(assembly)
-                    .Where(t => typeof(ICommandHandler).IsAssignableFrom(t))
-                    .As<ICommandHandler>()
+                    .Where(t => typeof(IBpmCommandHandler).IsAssignableFrom(t))
+                    .As<IBpmCommandHandler>()
                     .SingleInstance();
 
                 builder.RegisterAssemblyTypes(assembly)
-                    .Where(t => typeof(IQueryHandler).IsAssignableFrom(t))
-                    .As<IQueryHandler>()
+                    .Where(t => typeof(IBpmQueryHandler).IsAssignableFrom(t))
+                    .As<IBpmQueryHandler>()
                     .SingleInstance();
             }
 
