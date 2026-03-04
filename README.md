@@ -383,8 +383,59 @@ services.AddSimpleBPM(tablePrefix: "BPM");
 
 ### Tables créées
 
+- `{PREFIX}_DEFINITION` : Stocke les définitions de processus versionnées (JSON)
 - `{PREFIX}_PROCESS_CONTEXT` : Stocke les instances d'exécution des processus
 - `{PREFIX}_HISTORIQUE_EXECUTION_NOEUD` : Historique détaillé de chaque étape
+
+## Persistance des définitions
+
+La librairie supporte la sauvegarde des définitions de processus en banque de données pour mieux gérer les versions. Cela permet de déployer une nouvelle définition sans redémarrer l'application, et de charger des définitions dynamiquement au runtime.
+
+### Sauvegarder une définition
+
+```csharp
+// Via IFlowService (injecté)
+await flowService.SaveDefinitionAsync(myProcessDefinition);
+```
+
+La définition est sérialisée en JSON et stockée dans `{PREFIX}_DEFINITION`. Si une définition avec le même nom et la même version existe déjà, elle est mise à jour.
+
+### Charger les définitions disponibles
+
+```csharp
+// Retourne toutes les définitions (banque + mémoire)
+// Les définitions en mémoire ont la priorité sur celles en banque
+var definitions = await flowService.GetDefinitionsAsync();
+
+// Via IProcessMonitor
+var definitions = await monitor.GetDefinitionsAsync();
+```
+
+### Résolution automatique par le moteur
+
+Quand une instance référence une définition (`DefinitionName` + `DefinitionVersion`) absente de la mémoire, `FlowEngine` la charge automatiquement depuis `IDefinitionRepository` et la met en cache :
+
+```csharp
+// L'instance stocke le nom et la version de la définition
+var instance = new ProcessInstance(id) { DefinitionName = "OrderProcess", DefinitionVersion = "2.0" };
+
+// Si "OrderProcess" v2.0 n'est pas en mémoire, le moteur la charge depuis la BD
+await flowService.ExecuteAsync(instance);
+```
+
+### Avec Dependency Injection
+
+`IDefinitionRepository` est enregistré automatiquement lors de la configuration :
+
+```csharp
+// Oracle : OracleDefinitionRepository est enregistré
+services.AddSimpleBPM(tablePrefix: "BPM");
+
+// En mémoire (défaut) : InMemoryDefinitionRepository est enregistré
+services.AddSimpleBPM();
+```
+
+L'interface `IDefinitionRepository` peut également être injectée directement pour des cas d'usage avancés (archivage, comparaison de versions, etc.).
 
 ## Utilisation
 
@@ -678,7 +729,7 @@ SimpleBPM.sln
 │   ├── Localisation/         # Enregistrement DI (extension AddSimpleBPM)
 │   ├── Migration/            # Migration de version (ProcessMigration, Runner, Result)
 │   ├── Nodes/                # Définitions des nœuds (données seulement)
-│   ├── Persistence/          # Repository Oracle et configuration
+│   ├── Persistence/          # Repositories Oracle/mémoire (processus + définitions)
 │   ├── BpmMediateur.cs        # Dispatcher vers ICommandHandler/IQueryHandler
 │   ├── ConditionDecision.cs  # Condition pour nœuds de décision avec opérateurs
 │   ├── FiltreVariable.cs     # Filtre pour recherche par variable avec opérateurs
@@ -706,7 +757,8 @@ SimpleBPM.sln
 │   ├── ProcessInstanceTests.cs
 │   ├── ProcessJsonLoaderTests.cs
 │   ├── ProcessNodeTests.cs
-│   └── ProcessusTests.cs
+│   ├── ProcessusTests.cs
+│   └── DefinitionRepositoryTests.cs
 └── schema.sql                 # Script SQL Oracle (création manuelle des tables)
 ```
 
@@ -726,6 +778,7 @@ Le projet `SimpleBPM.Tests` contient des tests unitaires xUnit couvrant l'ensemb
 - **HandlersTests** : Tous les handlers (Business, Decision, Interactive, WaitForSignal, WaitUntilDate, SubProcess)
 - **NodeExecutionHistoryTests** : Historique d'exécution, durée
 - **OracleConfigurationTests** : Validation du préfixe de tables
+- **DefinitionRepositoryTests** : CRUD en mémoire, fallback du moteur depuis la banque, méthodes `SaveDefinitionAsync` / `GetDefinitionsAsync` du service
 
 ## Script SQL
 

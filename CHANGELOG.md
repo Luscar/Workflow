@@ -5,6 +5,14 @@ Historique des modifications du projet SimpleBPM.
 ## Non publié
 
 ### Ajouté
+- **Persistance des définitions en banque** : nouvelle interface `IDefinitionRepository` avec implémentations Oracle (`OracleDefinitionRepository`) et en mémoire (`InMemoryDefinitionRepository`)
+- Table Oracle `{PREFIX}_DEFINITION` pour stocker les définitions versionnées en JSON (colonnes : `ID_DEFIN`, `VERSI_DEFIN`, `DEFIN_JSON`, `DH_CREAT`, `DH_MODIF`)
+- `IFlowService.SaveDefinitionAsync(definition)` : sauvegarde une définition en banque
+- `IFlowService.GetDefinitionsAsync()` : retourne toutes les définitions (banque + mémoire, les définitions en mémoire ont la priorité)
+- `IProcessMonitor.GetDefinitionsAsync()` : variante asynchrone qui inclut les définitions persistées en banque
+- `FlowEngine` charge automatiquement une définition depuis le repository si elle est absente en mémoire, avec mise en cache locale
+- `IDefinitionRepository` enregistré automatiquement dans tous les modules DI : `SimpleBPMAutofacModule`, `ProcessMonitoringAutofacModule`, `ServiceCollectionExtensions`
+- Tests `DefinitionRepositoryTests` : CRUD en mémoire, fallback du moteur, méthodes du service
 - Support des paramètres sur les nœuds (`ProcessNode.Parameters`) : dictionnaire `Dictionary<string, object>` transmis à `IBpmMediateur` lors de l'exécution
 - API fluide `WithParameter(key, value)` et `WithParameters(dict)` sur `ProcessBuilder`
 - Support des paramètres dans la sérialisation/désérialisation JSON (`ProcessJsonLoader`)
