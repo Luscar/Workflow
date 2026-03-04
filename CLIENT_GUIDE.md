@@ -25,7 +25,7 @@ la configuration de l'injection de dépendances et l'exploitation des processus 
 4. [Définir un processus — JSON](#4-définir-un-processus--json)
 5. [Implémenter la logique métier](#5-implémenter-la-logique-métier)
    - [IBpmCommandHandler](#51-ibpmcommandhandler)
-   - [IBomQueryHandler](#52-ibomqueryhandler)
+   - [IBpmQueryHandler](#52-ibomqueryhandler)
    - [IBpmMediateur (approche directe)](#53-ibpmmediateur-approche-directe)
    - [IGestionTache (gestion de tâches optionnelle)](#54-igestiontache-gestion-de-tâches-optionnelle)
 6. [Configuration de l'injection de dépendances](#6-configuration-de-linjection-de-dépendances)
@@ -131,7 +131,7 @@ ProcessBuilder.Create("ProcessusPret")
     .Build();
 ```
 
-Les appels `.When(resultat, idNoeudCible)` sur `DecisionRouteBuilder` associent une *chaîne de résultat* à un *nom de nœud*. Cette chaîne est retournée par `IBomQueryHandler.HandleAsync`.
+Les appels `.When(resultat, idNoeudCible)` sur `DecisionRouteBuilder` associent une *chaîne de résultat* à un *nom de nœud*. Cette chaîne est retournée par `IBpmQueryHandler.HandleAsync`.
 
 #### Mode B — Conditions sur variables (sans handler)
 
@@ -318,7 +318,7 @@ Il n'est *pas* nécessaire d'ajouter un `EndNode` pour la fin naturelle d'un pro
 
 ### 3.9 Paramètres de nœud
 
-Chaque nœud peut porter un `Dictionary<string, object>` statique de paramètres. Ceux-ci sont transmis tels quels à `IBpmMediateur` (et donc à `IBpmCommandHandler` / `IBomQueryHandler`) lors de l'exécution.
+Chaque nœud peut porter un `Dictionary<string, object>` statique de paramètres. Ceux-ci sont transmis tels quels à `IBpmMediateur` (et donc à `IBpmCommandHandler` / `IBpmQueryHandler`) lors de l'exécution.
 
 ```csharp
 ProcessBuilder.Create("ProcessusNotification")
@@ -518,12 +518,12 @@ Règles importantes :
 - Lever une exception marque le nœud (et le processus) comme `Failed`.
 - `processId` identifie le workflow en cours ; `aggregateId` est l'identifiant optionnel de l'agrégat métier passé à la création.
 
-### 5.2 IBomQueryHandler
+### 5.2 IBpmQueryHandler
 
-`IBomQueryHandler` est utilisé pour les requêtes externes des `DecisionNode`. Le handler doit retourner une chaîne qui correspond à l'une des routes définies sur le nœud de décision.
+`IBpmQueryHandler` est utilisé pour les requêtes externes des `DecisionNode`. Le handler doit retourner une chaîne qui correspond à l'une des routes définies sur le nœud de décision.
 
 ```csharp
-public class DecisionCreditHandler : IBomQueryHandler
+public class DecisionCreditHandler : IBpmQueryHandler
 {
     private readonly IServiceCredit _credit;
 
@@ -636,7 +636,7 @@ using SimpleBPM.Localisation;
 // Program.cs
 services.AddSimpleBPM(options =>
 {
-    // Découverte automatique de tous les IBpmCommandHandler et IBomQueryHandler de l'assembly
+    // Découverte automatique de tous les IBpmCommandHandler et IBpmQueryHandler de l'assembly
     options.ScanHandlers(Assembly.GetExecutingAssembly());
 
     // Optionnel : enregistrer un gestionnaire de tâches
@@ -1151,7 +1151,7 @@ public class DecaisserFondsHandler : IBpmCommandHandler
 
 ```csharp
 // DecisionCreditHandler.cs
-public class DecisionCreditHandler : IBomQueryHandler
+public class DecisionCreditHandler : IBpmQueryHandler
 {
     private readonly IBureauCredit _bureau;
 

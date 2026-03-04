@@ -4,17 +4,17 @@ namespace SimpleBPM;
 
 /// <summary>
 /// Implémentation de <see cref="IBpmMediateur"/> qui dispatche vers des instances individuelles
-/// de <see cref="IBpmCommandHandler"/> et <see cref="IBomQueryHandler"/>
+/// de <see cref="IBpmCommandHandler"/> et <see cref="IBpmQueryHandler"/>
 /// résolues depuis le conteneur DI.
 /// </summary>
 public class BpmMediateur : IBpmMediateur
 {
     private readonly Dictionary<string, IBpmCommandHandler> _commandHandlers;
-    private readonly Dictionary<string, IBomQueryHandler> _queryHandlers;
+    private readonly Dictionary<string, IBpmQueryHandler> _queryHandlers;
 
     public BpmMediateur(
         IEnumerable<IBpmCommandHandler> commandHandlers,
-        IEnumerable<IBomQueryHandler> queryHandlers)
+        IEnumerable<IBpmQueryHandler> queryHandlers)
     {
         _commandHandlers = commandHandlers.ToDictionary(h => h.CommandName);
         _queryHandlers = queryHandlers.ToDictionary(h => h.QueryName);
@@ -35,7 +35,7 @@ public class BpmMediateur : IBpmMediateur
     {
         if (!_queryHandlers.TryGetValue(decisionName, out var handler))
             throw new InvalidOperationException(
-                $"Aucun IBomQueryHandler enregistré pour la décision '{decisionName}'.");
+                $"Aucun IBpmQueryHandler enregistré pour la décision '{decisionName}'.");
 
         return handler.HandleAsync(processId, aggregateId, parameters);
     }

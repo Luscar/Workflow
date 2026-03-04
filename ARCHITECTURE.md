@@ -14,7 +14,7 @@ La librairie suit une **architecture en couches orientée handlers** : les défi
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Application cliente                                            │
-│  (implémentations IBpmCommandHandler / IBomQueryHandler, config DI)  │
+│  (implémentations IBpmCommandHandler / IBpmQueryHandler, config DI)  │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ IFlowService
 ┌───────────────────────────▼─────────────────────────────────────┐
@@ -46,7 +46,7 @@ SimpleBPM.sln
 │   ├── Abstractions/                 # Interfaces exposées au client
 │   │   ├── IBpmMediateur.cs          # Passerelle de dispatch
 │   │   ├── IBpmCommandHandler.cs        # Logique métier par commande
-│   │   ├── IBomQueryHandler.cs          # Logique de décision par requête
+│   │   ├── IBpmQueryHandler.cs          # Logique de décision par requête
 │   │   └── IGestionTache.cs          # Gestion de tâches (optionnel)
 │   ├── Definition/
 │   │   ├── ProcessBuilder.cs         # API fluide de construction
@@ -331,7 +331,7 @@ public interface IBpmMediateur
 }
 ```
 
-L'implémentation intégrée `BpmMediateur` (enregistrée automatiquement par `AddCommandHandlers`) maintient deux `Dictionary<string, ...>` construits au démarrage à partir des singletons `IBpmCommandHandler` et `IBomQueryHandler` enregistrés — offrant un dispatch en O(1) à l'exécution.
+L'implémentation intégrée `BpmMediateur` (enregistrée automatiquement par `AddCommandHandlers`) maintient deux `Dictionary<string, ...>` construits au démarrage à partir des singletons `IBpmCommandHandler` et `IBpmQueryHandler` enregistrés — offrant un dispatch en O(1) à l'exécution.
 
 Si aucun handler n'est trouvé pour une commande ou une décision donnée, `BpmMediateur` lève une `InvalidOperationException`.
 
@@ -410,7 +410,7 @@ SimpleBPM supporte Microsoft DI et Autofac.
 ```csharp
 services.AddSimpleBPM(options =>
 {
-    options.ScanHandlers(Assembly.GetExecutingAssembly());   // découvrir IBpmCommandHandler / IBomQueryHandler
+    options.ScanHandlers(Assembly.GetExecutingAssembly());   // découvrir IBpmCommandHandler / IBpmQueryHandler
     options.UseTaskManager<MyGestionTache>();                 // IGestionTache optionnel
     options.UseOracle("ABC");                                 // ou omettre pour la mémoire
     options.UseDefinitionBank();                              // activer la banque de définitions (optionnel)
@@ -505,7 +505,7 @@ FlowService alloue un nouveau ProcessInstance (ID issu d'une séquence DB)
 FlowEngine.ExecuteAsync(instance)
   │  boucle sur les nœuds :
   │    BusinessNode    → IBpmMediateur.ExecuteCommandAsync → IBpmCommandHandler
-  │    DecisionNode    → évalue les conditions OU IBpmMediateur.EvaluateDecisionAsync → IBomQueryHandler
+  │    DecisionNode    → évalue les conditions OU IBpmMediateur.EvaluateDecisionAsync → IBpmQueryHandler
   │    InteractiveNode → sauvegarde l'état, retourne WaitingInteraction
   │    WaitForSignal   → sauvegarde l'état, retourne WaitingSignal
   │    WaitUntilDate   → sauvegarde l'état, retourne WaitingDate

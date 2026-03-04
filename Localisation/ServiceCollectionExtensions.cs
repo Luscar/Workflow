@@ -66,7 +66,7 @@ public static class ServiceCollectionExtensions
 
     /// <summary>
     /// Scanne les assemblies données pour toutes les implémentations de <see cref="IBpmCommandHandler"/> et
-    /// <see cref="IBomQueryHandler"/> et les enregistre dans le conteneur DI.
+    /// <see cref="IBpmQueryHandler"/> et les enregistre dans le conteneur DI.
     /// Enregistre également <see cref="BpmMediateur"/> comme <see cref="IBpmMediateur"/>,
     /// de sorte que le client n'a plus besoin d'implémenter <see cref="IBpmMediateur"/> directement.
     /// </summary>
@@ -85,10 +85,10 @@ public static class ServiceCollectionExtensions
 
             var queryHandlerTypes = assembly.GetTypes()
                 .Where(t => t is { IsAbstract: false, IsInterface: false }
-                         && typeof(IBomQueryHandler).IsAssignableFrom(t));
+                         && typeof(IBpmQueryHandler).IsAssignableFrom(t));
 
             foreach (var type in queryHandlerTypes)
-                services.AddSingleton(typeof(IBomQueryHandler), type);
+                services.AddSingleton(typeof(IBpmQueryHandler), type);
         }
 
         services.TryAddSingleton<IBpmMediateur, BpmMediateur>();
