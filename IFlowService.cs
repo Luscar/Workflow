@@ -11,4 +11,16 @@ public interface IFlowService
     Task TerminerEtapeAsync(long idInstanceNoeud, object contenu);
     Task TerminerEtapeEnCoursAsync(long idInstanceProcessus, Dictionary<string, object>? contenu = null);
     Task EnvoyerSignalAsync(long idInstanceProcessus, string signalName);
+
+    /// <summary>
+    /// Sauvegarde une définition de processus dans la banque de définitions.
+    /// Requiert qu'une <see cref="Persistence.IDefinitionRepository"/> soit configurée.
+    /// </summary>
+    Task SauvegarderDefinitionAsync(ProcessDefinition definition);
+
+    /// <summary>
+    /// Retourne toutes les définitions disponibles dans la banque.
+    /// Requiert qu'une <see cref="Persistence.IDefinitionRepository"/> soit configurée.
+    /// </summary>
+    Task<List<ProcessDefinition>> ObtenirDefinitionsAsync();
 }

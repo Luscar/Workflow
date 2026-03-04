@@ -2,7 +2,7 @@ using SimpleBPM.Abstractions;
 
 namespace SimpleBPM.ExampleClient.CommandHandlers;
 
-public class VerifyEmploymentHandler : ICommandHandler
+public class VerifyEmploymentHandler : IBpmCommandHandler
 {
     public string CommandName => "VerifyEmployment";
 

@@ -2,7 +2,7 @@ using SimpleBPM.Abstractions;
 
 namespace SimpleBPM.ExampleClient.QueryHandlers;
 
-public class CreditDecisionHandler : IQueryHandler
+public class CreditDecisionHandler : IBomQueryHandler
 {
     public string QueryName => "CreditDecision";
 

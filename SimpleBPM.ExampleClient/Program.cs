@@ -9,7 +9,7 @@ using SimpleBPM.Localisation;
 // ============================================================
 //
 // This project demonstrates how to use SimpleBPM as a client:
-//   1. Implement ICommandHandler / IQueryHandler for business logic
+//   1. Implement IBpmCommandHandler / IBomQueryHandler for business logic
 //   2. Implement IGestionTache for task management (optional)
 //   3. Define processes using the fluent ProcessBuilder API
 //   4. Register everything via a single SimpleBPMAutofacModule

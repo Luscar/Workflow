@@ -2,7 +2,7 @@ using SimpleBPM.Abstractions;
 
 namespace SimpleBPM.ExampleClient.CommandHandlers;
 
-public class DisburseFundsHandler : ICommandHandler
+public class DisburseFundsHandler : IBpmCommandHandler
 {
     public string CommandName => "DisburseFunds";
 

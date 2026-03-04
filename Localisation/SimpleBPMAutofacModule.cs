@@ -27,6 +27,7 @@ public sealed class SimpleBPMAutofacModule : Module
     private readonly List<ProcessDefinition> _processDefinitions = new();
     private string? _oracleTablePrefix;
     private Type? _taskManagerType;
+    private bool _useDefinitionBank;
 
     public SimpleBPMAutofacModule() { }
 
@@ -36,8 +37,8 @@ public sealed class SimpleBPMAutofacModule : Module
     }
 
     /// <summary>
-    /// Scans the given assemblies for <see cref="ICommandHandler"/> and
-    /// <see cref="IQueryHandler"/> implementations and registers them automatically.
+    /// Scans the given assemblies for <see cref="IBpmCommandHandler"/> and
+    /// <see cref="IBomQueryHandler"/> implementations and registers them automatically.
     /// </summary>
     public SimpleBPMAutofacModule ScanHandlers(params Assembly[] assemblies)
     {
@@ -73,6 +74,17 @@ public sealed class SimpleBPMAutofacModule : Module
         return this;
     }
 
+    /// <summary>
+    /// Active la banque de définitions pour sauvegarder et gérer les versions
+    /// de <see cref="ProcessDefinition"/> via <see cref="IDefinitionRepository"/>.
+    /// Utilise Oracle si <see cref="UseOracle"/> est appelé, sinon stockage en mémoire.
+    /// </summary>
+    public SimpleBPMAutofacModule UseDefinitionBank()
+    {
+        _useDefinitionBank = true;
+        return this;
+    }
+
     protected override void Load(ContainerBuilder builder)
     {
         // 1. Command/query handler scanning
@@ -81,13 +93,13 @@ public sealed class SimpleBPMAutofacModule : Module
             foreach (var assembly in _handlerAssemblies)
             {
                 builder.RegisterAssemblyTypes(assembly)
-                    .Where(t => typeof(ICommandHandler).IsAssignableFrom(t))
-                    .As<ICommandHandler>()
+                    .Where(t => typeof(IBpmCommandHandler).IsAssignableFrom(t))
+                    .As<IBpmCommandHandler>()
                     .SingleInstance();
 
                 builder.RegisterAssemblyTypes(assembly)
-                    .Where(t => typeof(IQueryHandler).IsAssignableFrom(t))
-                    .As<IQueryHandler>()
+                    .Where(t => typeof(IBomQueryHandler).IsAssignableFrom(t))
+                    .As<IBomQueryHandler>()
                     .SingleInstance();
             }
 
@@ -129,6 +141,25 @@ public sealed class SimpleBPMAutofacModule : Module
             .As<IProcessRepository>()
             .IfNotRegistered(typeof(IProcessRepository))
             .SingleInstance();
+
+        // 4b. Banque de définitions
+        if (_useDefinitionBank)
+        {
+            if (_oracleTablePrefix is not null)
+            {
+                builder.RegisterType<OracleDefinitionRepository>()
+                    .As<IDefinitionRepository>()
+                    .IfNotRegistered(typeof(IDefinitionRepository))
+                    .InstancePerLifetimeScope();
+            }
+            else
+            {
+                builder.RegisterType<InMemoryDefinitionRepository>()
+                    .As<IDefinitionRepository>()
+                    .IfNotRegistered(typeof(IDefinitionRepository))
+                    .SingleInstance();
+            }
+        }
 
         // 5. Node handlers
         builder.RegisterType<BusinessNodeHandler>()

@@ -14,7 +14,7 @@ La librairie suit une **architecture en couches orientée handlers** : les défi
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Application cliente                                            │
-│  (implémentations ICommandHandler / IQueryHandler, config DI)  │
+│  (implémentations IBpmCommandHandler / IBomQueryHandler, config DI)  │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ IFlowService
 ┌───────────────────────────▼─────────────────────────────────────┐
@@ -45,8 +45,8 @@ SimpleBPM.sln
 ├── SimpleBPM/                        # Librairie principale
 │   ├── Abstractions/                 # Interfaces exposées au client
 │   │   ├── IBpmMediateur.cs          # Passerelle de dispatch
-│   │   ├── ICommandHandler.cs        # Logique métier par commande
-│   │   ├── IQueryHandler.cs          # Logique de décision par requête
+│   │   ├── IBpmCommandHandler.cs        # Logique métier par commande
+│   │   ├── IBomQueryHandler.cs          # Logique de décision par requête
 │   │   └── IGestionTache.cs          # Gestion de tâches (optionnel)
 │   ├── Definition/
 │   │   ├── ProcessBuilder.cs         # API fluide de construction
@@ -83,7 +83,10 @@ SimpleBPM.sln
 │   │   ├── InMemoryProcessRepository.cs
 │   │   ├── OracleProcessRepository.cs
 │   │   ├── OracleHistoryRepository.cs
-│   │   └── OracleConfiguration.cs
+│   │   ├── OracleConfiguration.cs
+│   │   ├── IDefinitionRepository.cs       # Banque de définitions
+│   │   ├── InMemoryDefinitionRepository.cs
+│   │   └── OracleDefinitionRepository.cs
 │   ├── BpmMediateur.cs               # Dispatcher O(1)
 │   ├── ConditionDecision.cs          # Évaluation de conditions sur variables
 │   ├── FiltreVariable.cs             # Filtre de recherche par variable
@@ -328,7 +331,7 @@ public interface IBpmMediateur
 }
 ```
 
-L'implémentation intégrée `BpmMediateur` (enregistrée automatiquement par `AddCommandHandlers`) maintient deux `Dictionary<string, ...>` construits au démarrage à partir des singletons `ICommandHandler` et `IQueryHandler` enregistrés — offrant un dispatch en O(1) à l'exécution.
+L'implémentation intégrée `BpmMediateur` (enregistrée automatiquement par `AddCommandHandlers`) maintient deux `Dictionary<string, ...>` construits au démarrage à partir des singletons `IBpmCommandHandler` et `IBomQueryHandler` enregistrés — offrant un dispatch en O(1) à l'exécution.
 
 Si aucun handler n'est trouvé pour une commande ou une décision donnée, `BpmMediateur` lève une `InvalidOperationException`.
 
@@ -362,6 +365,28 @@ Trois implémentations sont fournies :
 | `InMemoryProcessRepository` | Stockage en mémoire thread-safe avec `ConcurrentDictionary` — idéal pour les tests |
 | `OracleProcessRepository` | Stockage Oracle en production via Dapper ; nécessite une `IDbConnection` fournie par le client |
 
+### Banque de définitions — IDefinitionRepository
+
+`IDefinitionRepository` permet de sauvegarder et de gérer les versions de `ProcessDefinition` en base de données. Il est activé via `UseDefinitionBank()` dans la configuration DI.
+
+```csharp
+public interface IDefinitionRepository
+{
+    Task SaveDefinitionAsync(ProcessDefinition definition);
+    Task<ProcessDefinition?> GetDefinitionAsync(string name, string version);
+    Task<List<ProcessDefinition>> GetDefinitionsByNameAsync(string name);
+    Task<List<ProcessDefinition>> GetAllDefinitionsAsync();
+    Task DeleteDefinitionAsync(string name, string version);
+}
+```
+
+| Implémentation | Usage |
+|---|---|
+| `InMemoryDefinitionRepository` | Stockage en mémoire — idéal pour les tests |
+| `OracleDefinitionRepository` | Stockage Oracle — sérialise les définitions en JSON via `ProcessJsonLoader` |
+
+Lorsque la banque est activée, `FlowEngine` cherche les définitions en mémoire d'abord, puis dans la banque si introuvable — permettant de déployer de nouvelles versions sans redémarrage.
+
 ### Tables Oracle
 
 Le préfixe de table est validé (3 à 10 lettres majuscules) et appliqué à tous les noms de tables :
@@ -370,8 +395,9 @@ Le préfixe de table est validé (3 à 10 lettres majuscules) et appliqué à to
 |---|---|
 | `{PREFIXE}_PROCESS_CONTEXT` | Une ligne par instance de processus (état, variables en JSON, dates) |
 | `{PREFIXE}_HISTORIQUE_EXECUTION_NOEUD` | Une ligne par nœud exécuté (journal d'audit) |
+| `{PREFIXE}_DEFINITION_BANQUE` | Une ligne par version de définition de processus (contenu JSON) |
 
-Les séquences Oracle (`SEQ_PROCESSUS`, `{PREFIXE}_SEQ_HISTORIQUE`) génèrent toutes les clés primaires.
+Les séquences Oracle (`SEQ_PROCESSUS`, `{PREFIXE}_SEQ_HISTORIQUE`, `{PREFIXE}_SEQ_DEFINITION`) génèrent toutes les clés primaires.
 
 ---
 
@@ -384,9 +410,10 @@ SimpleBPM supporte Microsoft DI et Autofac.
 ```csharp
 services.AddSimpleBPM(options =>
 {
-    options.ScanHandlers(Assembly.GetExecutingAssembly());   // découvrir ICommandHandler / IQueryHandler
+    options.ScanHandlers(Assembly.GetExecutingAssembly());   // découvrir IBpmCommandHandler / IBomQueryHandler
     options.UseTaskManager<MyGestionTache>();                 // IGestionTache optionnel
     options.UseOracle("ABC");                                 // ou omettre pour la mémoire
+    options.UseDefinitionBank();                              // activer la banque de définitions (optionnel)
     options.AddProcess(MyProcessDefinitions.CreateProcess()); // enregistrer les définitions
 });
 ```
@@ -399,6 +426,7 @@ builder.RegisterModule(new SimpleBPMAutofacModule(module =>
     module.ScanHandlers(Assembly.GetExecutingAssembly());
     module.UseTaskManager<MyGestionTache>();
     module.UseOracle("ABC");
+    module.UseDefinitionBank();   // activer la banque de définitions (optionnel)
     module.AddProcess(MyProcessDefinitions.CreateProcess());
 }));
 ```
@@ -476,8 +504,8 @@ FlowService alloue un nouveau ProcessInstance (ID issu d'une séquence DB)
   ▼
 FlowEngine.ExecuteAsync(instance)
   │  boucle sur les nœuds :
-  │    BusinessNode    → IBpmMediateur.ExecuteCommandAsync → ICommandHandler
-  │    DecisionNode    → évalue les conditions OU IBpmMediateur.EvaluateDecisionAsync → IQueryHandler
+  │    BusinessNode    → IBpmMediateur.ExecuteCommandAsync → IBpmCommandHandler
+  │    DecisionNode    → évalue les conditions OU IBpmMediateur.EvaluateDecisionAsync → IBomQueryHandler
   │    InteractiveNode → sauvegarde l'état, retourne WaitingInteraction
   │    WaitForSignal   → sauvegarde l'état, retourne WaitingSignal
   │    WaitUntilDate   → sauvegarde l'état, retourne WaitingDate
