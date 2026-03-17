@@ -20,8 +20,9 @@ la configuration de l'injection de dépendances et l'exploitation des processus 
    - [SubProcessNode](#37-subprocessnode)
    - [EndNode](#38-endnode)
    - [Paramètres de nœud](#39-paramètres-de-nœud)
-   - [Commande OnEnter](#310-commande-onenter)
-   - [Chaînage manuel avec Then et Break](#311-chaînage-manuel-avec-then-et-break)
+   - [Liaison de paramètres à des variables](#310-liaison-de-paramètres-à-des-variables)
+   - [Commande OnEnter](#311-commande-onenter)
+   - [Chaînage manuel avec Then et Break](#312-chaînage-manuel-avec-then-et-break)
 4. [Définir un processus — JSON](#4-définir-un-processus--json)
 5. [Implémenter la logique métier](#5-implémenter-la-logique-métier)
    - [IBpmCommandHandler](#51-ibpmcommandhandler)
@@ -132,6 +133,43 @@ ProcessBuilder.Create("ProcessusPret")
 ```
 
 Les appels `.When(resultat, idNoeudCible)` sur `DecisionRouteBuilder` associent une *chaîne de résultat* à un *nom de nœud*. Cette chaîne est retournée par `IBpmQueryHandler.HandleAsync`.
+
+**Passer des paramètres à la query de décision**
+
+Comme pour les nœuds métier, vous pouvez passer des paramètres statiques ou des liaisons de variables à la query de décision (voir §3.9 et §3.10) :
+
+```csharp
+ProcessBuilder.Create("ProcessusPret")
+    .Business("VerifierCredit", "Vérifier le score de crédit")
+    .Decision("DecisionCredit", "Routage crédit", routes => routes
+        .When("approuve", "CalculerConditions")
+        .When("rejete",   "RejeterDemande"))
+        .WithParameter("TypeDossier", "PretImmo")       // valeur statique
+        .WithParameterFromVariable("Montant", "MontantDemande")  // valeur dynamique
+    .Business("CalculerConditions", "Calculer les conditions du prêt")
+        .Then("Decaisser")
+    .Business("RejeterDemande", "Envoyer la lettre de refus")
+        .End("Rejete", "Demande rejetée")
+    .Business("Decaisser", "Décaisser les fonds")
+    .Build();
+```
+
+Le handler de requête reçoit ces paramètres via l'argument `parameters` de `HandleAsync` :
+
+```csharp
+public class DecisionCreditHandler : IBpmQueryHandler
+{
+    public string QueryName => "DecisionCredit";
+
+    public Task<string> HandleAsync(long processId, long? aggregateId,
+        Dictionary<string, object>? parameters = null)
+    {
+        var typeDossier = parameters?["TypeDossier"]?.ToString();
+        var montant     = Convert.ToDouble(parameters?["Montant"] ?? 0);
+        return Task.FromResult(montant >= 50_000 ? "approuve" : "rejete");
+    }
+}
+```
 
 #### Mode B — Conditions sur variables (sans handler)
 
@@ -356,7 +394,57 @@ public class EnvoyerEmailHandler : IBpmCommandHandler
 
 ---
 
-### 3.10 Commande OnEnter
+### 3.10 Liaison de paramètres à des variables
+
+En plus des paramètres statiques, vous pouvez lier un paramètre à une **variable de l'instance** en cours d'exécution. La valeur est résolue dynamiquement à chaque exécution du nœud.
+
+Utilisez `WithParameterFromVariable(paramKey, variableName)` :
+
+```csharp
+ProcessBuilder.Create("ProcessusCommande")
+    .Business("EnvoyerFacture", "Envoyer la facture")
+        .WithParameter("Template", "FactureStandard")          // valeur statique
+        .WithParameterFromVariable("Email", "EmailClient")     // valeur issue de la variable "EmailClient"
+        .WithParameterFromVariable("Montant", "TotalCommande") // valeur issue de la variable "TotalCommande"
+    .Build();
+```
+
+Au moment de l'exécution, le moteur construit le dictionnaire de paramètres final en fusionnant :
+1. les paramètres statiques (`WithParameter` / `WithParameters`),
+2. les liaisons de variables (`WithParameterFromVariable`) — les clés statiques éventuellement en conflit sont **écrasées** par la valeur de la variable.
+
+Si la variable référencée est absente de l'instance, la clé correspondante n'est pas ajoutée au dictionnaire.
+
+**Liaison de paramètres sur la commande OnEnter**
+
+La même mécanique s'applique aux paramètres de la commande `OnEnter` via `WithOnEnterCommandParameterFromVariable` :
+
+```csharp
+ProcessBuilder.Create("ProcessusApprobation")
+    .Interactive("ApprobationManager", "Approbation du manager")
+        .WithOnEnterCommand("NotifierManager")
+        .WithOnEnterCommandParameter("Canal", "email")                    // statique
+        .WithOnEnterCommandParameterFromVariable("NomDemandeur", "Nom")  // dynamique
+    .Business("Archiver", "Archiver")
+    .Build();
+```
+
+**Liaison de paramètres sur la query de date (`WaitUntilDateQuery`)**
+
+Pour les nœuds `WaitUntilDateQuery`, utilisez `WithDateQueryParameterFromVariable` après l'appel à `.WaitUntilDateQuery(...)` :
+
+```csharp
+ProcessBuilder.Create("ProcessusLivraison")
+    .WaitUntilDateQuery("AttenteLivraison", "ObtenirDateLivraison",
+        queryParameters: new() { ["TypeTransport"] = "standard" })
+        .WithDateQueryParameterFromVariable("CodePostal", "AdresseCodePostal")
+    .Business("Livrer", "Effectuer la livraison")
+    .Build();
+```
+
+---
+
+### 3.11 Commande OnEnter
 
 Les nœuds bloquants (`Interactive`, `WaitForSignal`, `WaitUntilDate`) peuvent exécuter une commande *juste avant* de se mettre en pause. Utile pour envoyer des notifications ou journaliser.
 
@@ -378,7 +466,7 @@ Si la commande `OnEnter` lève une exception, le nœud échoue (statut `Failed`)
 
 ---
 
-### 3.11 Chaînage manuel avec Then et Break
+### 3.12 Chaînage manuel avec Then et Break
 
 Par défaut, le builder relie chaque nouveau nœud au précédent. Utilisez `.Then()` et `.Break()` pour un contrôle fin.
 

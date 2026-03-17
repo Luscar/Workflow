@@ -26,7 +26,7 @@ public class WaitForSignalNodeHandler : INodeHandler
         {
             try
             {
-                var parameters = node.OnEnterCommandParameters.Count > 0 ? node.OnEnterCommandParameters : null;
+                var parameters = node.ResolveOnEnterCommandParameters(instance.Variables);
                 await _executor.ExecuteCommandAsync(node.OnEnterCommandName, instance.ProcessId, instance.AggregateId, parameters);
             }
             catch (Exception ex)
