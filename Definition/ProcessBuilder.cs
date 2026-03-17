@@ -17,13 +17,21 @@ public class ProcessBuilder
     public static ProcessBuilder Create(string processName, string version = "1.0") => new(processName, version);
 
     /// <summary>
-    /// Ajoute un nœud métier (commande)
+    /// Ajoute un nœud métier (commande).
+    /// Le <paramref name="nodeName"/> identifie le nœud de façon unique dans le graphe de processus.
+    /// Le <paramref name="commandName"/> désigne la commande à exécuter (peut être partagée entre plusieurs nœuds).
+    /// </summary>
+    public ProcessBuilder Business(string nodeName, string commandName, string? displayName = null)
+    {
+        var node = new BusinessNode(commandName) { Name = nodeName, DisplayName = displayName ?? nodeName };
+        return AddNode(nodeName, node);
+    }
+
+    /// <summary>
+    /// Ajoute un nœud métier dont le nom de nœud est identique au nom de commande.
     /// </summary>
     public ProcessBuilder Business(string commandName, string? displayName = null)
-    {
-        var node = new BusinessNode(commandName) { Name = commandName, DisplayName = displayName ?? commandName };
-        return AddNode(commandName, node);
-    }
+        => Business(commandName, commandName, displayName);
 
     /// <summary>
     /// Ajoute un nœud de décision avec ses routes

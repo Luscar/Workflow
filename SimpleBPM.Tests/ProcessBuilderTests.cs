@@ -383,4 +383,33 @@ public class ProcessBuilderTests
         Assert.Equal(NodeType.End, def.GetNode("EndRejected")!.Type);
         Assert.Equal(NodeType.End, def.GetNode("EndApproved")!.Type);
     }
+
+    [Fact]
+    public void Business_NodeName_Distinct_From_CommandName_AllowsCommandReuse()
+    {
+        // Même commande "Validate" utilisée sur deux nœuds différents
+        var def = ProcessBuilder.Create("ReusedCommandProcess")
+            .Business("ValidateStep1", "Validate", "Validation étape 1")
+            .Business("ValidateStep2", "Validate", "Validation étape 2")
+            .Business("Complete")
+            .Build();
+
+        Assert.Equal(3, def.Nodes.Count);
+
+        var node1 = def.GetNode("ValidateStep1") as BusinessNode;
+        var node2 = def.GetNode("ValidateStep2") as BusinessNode;
+        var complete = def.GetNode("Complete");
+
+        Assert.NotNull(node1);
+        Assert.NotNull(node2);
+        Assert.NotNull(complete);
+
+        // Les deux nœuds pointent vers la même commande
+        Assert.Equal("Validate", node1!.CommandName);
+        Assert.Equal("Validate", node2!.CommandName);
+
+        // Le routage reste correct : Step1 → Step2 → Complete
+        Assert.Equal(new[] { "ValidateStep2" }, node1.NextNodeIds);
+        Assert.Equal(new[] { "Complete" }, node2.NextNodeIds);
+    }
 }

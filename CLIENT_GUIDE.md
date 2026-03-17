@@ -574,7 +574,7 @@ string json = ProcessJsonLoader.ToJson(processus);
 
 ### 5.1 IBpmCommandHandler
 
-Implémentez un `IBpmCommandHandler` par commande métier. La propriété `CommandName` doit correspondre au nom du nœud (ou à la commande passée à `.Business(...)`) dans la définition du processus.
+Implémentez un `IBpmCommandHandler` par commande métier. La propriété `CommandName` doit correspondre au `commandName` passé à `.Business(nodeName, commandName, ...)`. Plusieurs nœuds peuvent partager la même commande en utilisant des noms de nœuds distincts.
 
 ```csharp
 using SimpleBPM.Abstractions;
