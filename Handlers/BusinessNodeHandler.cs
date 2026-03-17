@@ -20,7 +20,7 @@ public class BusinessNodeHandler : INodeHandler
 
         try
         {
-            var parameters = businessNode.Parameters.Count > 0 ? businessNode.Parameters : null;
+            var parameters = businessNode.ResolveParameters(instance.Variables);
             await _executor.ExecuteCommandAsync(businessNode.CommandName, instance.ProcessId, instance.AggregateId, parameters);
 
             return new NodeExecutionResult

@@ -44,7 +44,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
             // Exécuter la query pour obtenir la date dynamiquement
             if (targetDate == null && !string.IsNullOrEmpty(waitNode.DateQueryName) && _executor != null)
             {
-                var parameters = waitNode.DateQueryParameters.Count > 0 ? waitNode.DateQueryParameters : null;
+                var parameters = waitNode.ResolveDateQueryParameters(instance.Variables);
                 var dateStr = await _executor.EvaluateDecisionAsync(waitNode.DateQueryName, instance.ProcessId, instance.AggregateId, parameters);
                 if (DateTime.TryParse(dateStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var queriedDate))
                     targetDate = queriedDate;
@@ -83,7 +83,7 @@ public class WaitUntilDateNodeHandler : INodeHandler
         {
             try
             {
-                var parameters = node.OnEnterCommandParameters.Count > 0 ? node.OnEnterCommandParameters : null;
+                var parameters = node.ResolveOnEnterCommandParameters(instance.Variables);
                 await _executor.ExecuteCommandAsync(node.OnEnterCommandName, instance.ProcessId, instance.AggregateId, parameters);
             }
             catch (Exception ex)

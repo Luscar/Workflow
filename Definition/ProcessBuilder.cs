@@ -103,6 +103,19 @@ public class ProcessBuilder
     }
 
     /// <summary>
+    /// Lie un paramètre de la query de date du dernier WaitUntilDateQuery à une variable de l'instance.
+    /// La valeur de la variable est résolue dynamiquement à l'exécution.
+    /// </summary>
+    public ProcessBuilder WithDateQueryParameterFromVariable(string key, string variableName)
+    {
+        if (_lastNode is not WaitUntilDateNode waitNode)
+            throw new InvalidOperationException("Le nœud courant n'est pas un WaitUntilDateNode");
+
+        waitNode.DateQueryParameterVariableBindings[key] = variableName;
+        return this;
+    }
+
+    /// <summary>
     /// Ajoute un sous-processus
     /// </summary>
     public ProcessBuilder SubProcess(string name, ProcessDefinition subProcessDefinition,
@@ -172,6 +185,19 @@ public class ProcessBuilder
     }
 
     /// <summary>
+    /// Lie un paramètre du nœud courant à une variable de l'instance en cours d'exécution.
+    /// La valeur de la variable est résolue dynamiquement à l'exécution.
+    /// </summary>
+    public ProcessBuilder WithParameterFromVariable(string key, string variableName)
+    {
+        if (_lastNode == null)
+            throw new InvalidOperationException("Aucun nœud courant sur lequel définir la liaison de paramètre");
+
+        _lastNode.ParameterVariableBindings[key] = variableName;
+        return this;
+    }
+
+    /// <summary>
     /// Définit la commande à exécuter lorsqu'un nœud bloquant est atteint
     /// </summary>
     public ProcessBuilder WithOnEnterCommand(string commandName)
@@ -192,6 +218,19 @@ public class ProcessBuilder
             throw new InvalidOperationException("Aucun nœud courant sur lequel définir le paramètre de commande OnEnter");
 
         _lastNode.OnEnterCommandParameters[key] = value;
+        return this;
+    }
+
+    /// <summary>
+    /// Lie un paramètre de la commande OnEnter du nœud courant à une variable de l'instance en cours d'exécution.
+    /// La valeur de la variable est résolue dynamiquement à l'exécution.
+    /// </summary>
+    public ProcessBuilder WithOnEnterCommandParameterFromVariable(string key, string variableName)
+    {
+        if (_lastNode == null)
+            throw new InvalidOperationException("Aucun nœud courant sur lequel définir la liaison de paramètre OnEnter");
+
+        _lastNode.OnEnterCommandParameterVariableBindings[key] = variableName;
         return this;
     }
 

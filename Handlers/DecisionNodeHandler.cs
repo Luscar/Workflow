@@ -82,7 +82,7 @@ public class DecisionNodeHandler : INodeHandler
             };
         }
 
-        var parameters = decisionNode.Parameters.Count > 0 ? decisionNode.Parameters : null;
+        var parameters = decisionNode.ResolveParameters(instance.Variables);
         var decisionResult = await _executor.EvaluateDecisionAsync(decisionNode.QueryName!, instance.ProcessId, instance.AggregateId, parameters);
 
         if (decisionNode.ConditionToNodeId.TryGetValue(decisionResult, out var nextNodeId))
