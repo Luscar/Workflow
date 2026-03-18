@@ -350,6 +350,54 @@ public class ProcessBuilderTests
     }
 
     [Fact]
+    public void Build_WithDecisionOnVariables_UsesConditions()
+    {
+        var def = ProcessBuilder.Create("DecisionProcess")
+            .Business("Prepare")
+            .Decision("CheckStatut", conditions =>
+            {
+                conditions.WhenVariable("statut", "approuve", OperateurFiltre.Egal, TypeDonnee.Texte, "Approve");
+                conditions.WhenVariable("statut", "refuse", OperateurFiltre.Egal, TypeDonnee.Texte, "Reject");
+                conditions.Default("Fallback");
+            })
+            .Business("Approve")
+            .Business("Reject")
+            .Business("Fallback")
+            .Build();
+
+        var decisionNode = def.GetNode("CheckStatut") as DecisionNode;
+        Assert.NotNull(decisionNode);
+        Assert.Null(decisionNode.QueryName);
+        Assert.Equal(2, decisionNode.Conditions.Count);
+        Assert.Equal("Approve", decisionNode.Conditions[0].NoeudCible);
+        Assert.Equal("Reject", decisionNode.Conditions[1].NoeudCible);
+        Assert.Equal("Fallback", decisionNode.NoeudParDefaut);
+    }
+
+    [Fact]
+    public void Build_WithDecisionOnVariables_WithDisplayName()
+    {
+        var def = ProcessBuilder.Create("DecisionProcess")
+            .Business("Prepare")
+            .Decision("CheckMontant", "Vérification du montant", conditions =>
+            {
+                conditions.WhenVariable("montant", 1000.0, OperateurFiltre.Superieur, TypeDonnee.Nombre, "GrosLot");
+                conditions.Default("PetitLot");
+            })
+            .Business("GrosLot")
+            .Business("PetitLot")
+            .Build();
+
+        var decisionNode = def.GetNode("CheckMontant") as DecisionNode;
+        Assert.NotNull(decisionNode);
+        Assert.Equal("Vérification du montant", decisionNode.DisplayName);
+        Assert.Null(decisionNode.QueryName);
+        Assert.Single(decisionNode.Conditions);
+        Assert.Equal("GrosLot", decisionNode.Conditions[0].NoeudCible);
+        Assert.Equal("PetitLot", decisionNode.NoeudParDefaut);
+    }
+
+    [Fact]
     public void Build_ThenPreventsAutoLink()
     {
         var def = ProcessBuilder.Create("Test")

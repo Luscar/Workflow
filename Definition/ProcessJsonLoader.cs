@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SimpleBPM;
 using SimpleBPM.Nodes;
 
 namespace SimpleBPM.Definition;
@@ -76,16 +77,38 @@ public static class ProcessJsonLoader
             }
 
             // Résoudre les routes pour DecisionNode
-            if (node is DecisionNode decisionNode && nodeDef.Routes != null)
+            if (node is DecisionNode decisionNode)
             {
-                foreach (var route in nodeDef.Routes)
+                if (nodeDef.Routes != null)
                 {
-                    if (!nodeNames.Contains(route.Value))
-                        throw new InvalidOperationException($"Nœud '{route.Value}' introuvable pour la route '{route.Key}'");
+                    foreach (var route in nodeDef.Routes)
+                    {
+                        if (!nodeNames.Contains(route.Value))
+                            throw new InvalidOperationException($"Nœud '{route.Value}' introuvable pour la route '{route.Key}'");
 
-                    decisionNode.ConditionToNodeId[route.Key] = route.Value;
-                    if (!decisionNode.NextNodeIds.Contains(route.Value))
-                        decisionNode.NextNodeIds.Add(route.Value);
+                        decisionNode.ConditionToNodeId[route.Key] = route.Value;
+                        if (!decisionNode.NextNodeIds.Contains(route.Value))
+                            decisionNode.NextNodeIds.Add(route.Value);
+                    }
+                }
+
+                if (nodeDef.Conditions != null)
+                {
+                    foreach (var cond in nodeDef.Conditions)
+                    {
+                        if (!nodeNames.Contains(cond.NoeudCible))
+                            throw new InvalidOperationException($"Nœud '{cond.NoeudCible}' introuvable pour la condition sur '{cond.NomVariable}'");
+
+                        decisionNode.AddCondition(cond.NomVariable, cond.Valeur, cond.Operateur, cond.TypeDonnee, cond.NoeudCible);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(nodeDef.DefaultNode))
+                {
+                    if (!nodeNames.Contains(nodeDef.DefaultNode))
+                        throw new InvalidOperationException($"Nœud par défaut '{nodeDef.DefaultNode}' introuvable");
+
+                    decisionNode.SetNoeudParDefaut(nodeDef.DefaultNode);
                 }
             }
 
@@ -204,7 +227,19 @@ public static class ProcessJsonLoader
                     break;
                 case DecisionNode dn:
                     nodeDef.Query = dn.QueryName;
-                    nodeDef.Routes = new Dictionary<string, string>(dn.ConditionToNodeId);
+                    if (dn.ConditionToNodeId.Count > 0)
+                        nodeDef.Routes = new Dictionary<string, string>(dn.ConditionToNodeId);
+                    if (dn.Conditions.Count > 0)
+                        nodeDef.Conditions = dn.Conditions.Select(c => new ConditionDecisionJson
+                        {
+                            NomVariable = c.NomVariable,
+                            Valeur = c.Valeur,
+                            Operateur = c.Operateur,
+                            TypeDonnee = c.TypeDonnee,
+                            NoeudCible = c.NoeudCible
+                        }).ToList();
+                    if (!string.IsNullOrEmpty(dn.NoeudParDefaut))
+                        nodeDef.DefaultNode = dn.NoeudParDefaut;
                     break;
                 case WaitForSignalNode wn:
                     nodeDef.Signal = wn.SignalName;
@@ -267,6 +302,8 @@ public class NodeJsonDefinition
     // Nœud de décision
     public string? Query { get; set; }
     public Dictionary<string, string>? Routes { get; set; }
+    public List<ConditionDecisionJson>? Conditions { get; set; }
+    public string? DefaultNode { get; set; }
 
     // Nœud WaitForSignal
     public string? Signal { get; set; }
@@ -287,4 +324,13 @@ public class NodeJsonDefinition
 
     // Connexions
     public List<string>? Next { get; set; }
+}
+
+public class ConditionDecisionJson
+{
+    public string NomVariable { get; set; } = string.Empty;
+    public object? Valeur { get; set; }
+    public OperateurFiltre Operateur { get; set; } = OperateurFiltre.Egal;
+    public TypeDonnee TypeDonnee { get; set; } = TypeDonnee.Texte;
+    public string NoeudCible { get; set; } = string.Empty;
 }

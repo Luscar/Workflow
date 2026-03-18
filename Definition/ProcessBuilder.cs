@@ -1,3 +1,4 @@
+using SimpleBPM;
 using SimpleBPM.Nodes;
 
 namespace SimpleBPM.Definition;
@@ -26,7 +27,7 @@ public class ProcessBuilder
     }
 
     /// <summary>
-    /// Ajoute un nœud de décision avec ses routes
+    /// Ajoute un nœud de décision basé sur une query externe
     /// </summary>
     public ProcessBuilder Decision(string queryName, string? displayName, Action<DecisionRouteBuilder> configureRoutes)
     {
@@ -37,10 +38,27 @@ public class ProcessBuilder
     }
 
     /// <summary>
-    /// Ajoute un nœud de décision avec ses routes
+    /// Ajoute un nœud de décision basé sur une query externe
     /// </summary>
     public ProcessBuilder Decision(string queryName, Action<DecisionRouteBuilder> configureRoutes)
         => Decision(queryName, null, configureRoutes);
+
+    /// <summary>
+    /// Ajoute un nœud de décision basé sur les variables du processus (sans query externe)
+    /// </summary>
+    public ProcessBuilder Decision(string name, string? displayName, Action<DecisionConditionBuilder> configureConditions)
+    {
+        var node = new DecisionNode { Name = name, DisplayName = displayName ?? name };
+        var conditionBuilder = new DecisionConditionBuilder(node);
+        configureConditions(conditionBuilder);
+        return AddNode(name, node);
+    }
+
+    /// <summary>
+    /// Ajoute un nœud de décision basé sur les variables du processus (sans query externe)
+    /// </summary>
+    public ProcessBuilder Decision(string name, Action<DecisionConditionBuilder> configureConditions)
+        => Decision(name, null, configureConditions);
 
     /// <summary>
     /// Ajoute un nœud interactif (attente utilisateur)
@@ -358,6 +376,28 @@ public class DecisionRouteBuilder
     public DecisionRouteBuilder When(string condition, string targetNodeId)
     {
         _node.AddRoute(condition, targetNodeId);
+        return this;
+    }
+}
+
+public class DecisionConditionBuilder
+{
+    private readonly DecisionNode _node;
+
+    internal DecisionConditionBuilder(DecisionNode node)
+    {
+        _node = node;
+    }
+
+    public DecisionConditionBuilder WhenVariable(string nomVariable, object? valeur, OperateurFiltre operateur, TypeDonnee typeDonnee, string targetNodeId)
+    {
+        _node.AddCondition(nomVariable, valeur, operateur, typeDonnee, targetNodeId);
+        return this;
+    }
+
+    public DecisionConditionBuilder Default(string targetNodeId)
+    {
+        _node.SetNoeudParDefaut(targetNodeId);
         return this;
     }
 }

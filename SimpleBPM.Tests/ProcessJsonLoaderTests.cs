@@ -309,4 +309,85 @@ public class ProcessJsonLoaderTests
 
         Assert.Throws<InvalidOperationException>(() => ProcessJsonLoader.FromJson(json));
     }
+
+    [Fact]
+    public void FromJson_WithDecisionConditions_LoadsCorrectly()
+    {
+        var json = """
+        {
+            "name": "Test",
+            "nodes": [
+                {
+                    "name": "Decide",
+                    "type": "Decision",
+                    "conditions": [
+                        { "nomVariable": "statut", "valeur": "approuve", "operateur": "Egal", "typeDonnee": "Texte", "noeudCible": "Approved" },
+                        { "nomVariable": "statut", "valeur": "refuse", "operateur": "Egal", "typeDonnee": "Texte", "noeudCible": "Rejected" }
+                    ],
+                    "defaultNode": "Fallback"
+                },
+                { "name": "Approved", "type": "End" },
+                { "name": "Rejected", "type": "End" },
+                { "name": "Fallback", "type": "End" }
+            ]
+        }
+        """;
+
+        var def = ProcessJsonLoader.FromJson(json);
+        var decisionNode = def.GetNode("Decide") as DecisionNode;
+
+        Assert.NotNull(decisionNode);
+        Assert.Null(decisionNode.QueryName);
+        Assert.Equal(2, decisionNode.Conditions.Count);
+        Assert.Equal("statut", decisionNode.Conditions[0].NomVariable);
+        Assert.Equal("Approved", decisionNode.Conditions[0].NoeudCible);
+        Assert.Equal("Fallback", decisionNode.NoeudParDefaut);
+    }
+
+    [Fact]
+    public void ToJson_WithDecisionConditions_RoundTrip()
+    {
+        var original = ProcessBuilder.Create("Test")
+            .Decision("CheckStatut", conditions =>
+            {
+                conditions.WhenVariable("statut", "approuve", OperateurFiltre.Egal, TypeDonnee.Texte, "Approved");
+                conditions.Default("Rejected");
+            })
+            .End("Approved")
+            .Break()
+            .End("Rejected")
+            .Build();
+
+        var json = ProcessJsonLoader.ToJson(original);
+        var restored = ProcessJsonLoader.FromJson(json);
+
+        var decisionNode = restored.GetNode("CheckStatut") as DecisionNode;
+        Assert.NotNull(decisionNode);
+        Assert.Null(decisionNode.QueryName);
+        Assert.Single(decisionNode.Conditions);
+        Assert.Equal("statut", decisionNode.Conditions[0].NomVariable);
+        Assert.Equal("Approved", decisionNode.Conditions[0].NoeudCible);
+        Assert.Equal("Rejected", decisionNode.NoeudParDefaut);
+    }
+
+    [Fact]
+    public void FromJson_InvalidDecisionConditionNode_Throws()
+    {
+        var json = """
+        {
+            "name": "Test",
+            "nodes": [
+                {
+                    "name": "Decide",
+                    "type": "Decision",
+                    "conditions": [
+                        { "nomVariable": "x", "valeur": "y", "operateur": "Egal", "typeDonnee": "Texte", "noeudCible": "NonExistent" }
+                    ]
+                }
+            ]
+        }
+        """;
+
+        Assert.Throws<InvalidOperationException>(() => ProcessJsonLoader.FromJson(json));
+    }
 }
