@@ -329,7 +329,7 @@ public interface IBpmMediateur
 }
 ```
 
-L'implémentation intégrée `BpmMediateur` (enregistrée automatiquement par `AddCommandHandlers`) maintient deux `Dictionary<string, ...>` construits au démarrage à partir des singletons `IBpmCommandHandler` et `IBpmQueryHandler` enregistrés — offrant un dispatch en O(1) à l'exécution.
+L'implémentation intégrée `BpmMediateur` (enregistrée automatiquement par `RegistrationBpmModule.ScanHandlers`) maintient deux `Dictionary<string, ...>` construits au démarrage à partir des singletons `IBpmCommandHandler` et `IBpmQueryHandler` enregistrés — offrant un dispatch en O(1) à l'exécution.
 
 Si aucun handler n'est trouvé pour une commande ou une décision donnée, `BpmMediateur` lève une `InvalidOperationException`.
 
@@ -399,43 +399,28 @@ Les séquences Oracle (`SEQ_PROCESSUS`, `{PREFIXE}_SEQ_HISTORIQUE`, `{PREFIXE}_S
 
 ---
 
-## Options d'enregistrement DI
+## Enregistrement DI — Autofac
 
-SimpleBPM supporte Microsoft DI et Autofac.
+SimpleBPM utilise **Autofac** comme conteneur DI standard.
 
-### Microsoft DI — builder unifié (recommandé)
-
-```csharp
-services.AddSimpleBPM(options =>
-{
-    options.ScanHandlers(Assembly.GetExecutingAssembly());   // découvrir IBpmCommandHandler / IBpmQueryHandler
-    options.UseTaskManager<MyGestionTache>();                 // IGestionTache optionnel
-    options.UseOracle("ABC");                                 // ou omettre pour la mémoire
-    options.UseDefinitionBank();                              // activer la banque de définitions (optionnel)
-    options.AddProcess(MyProcessDefinitions.CreateProcess()); // enregistrer les définitions
-});
-```
-
-### Module Autofac
+### Module principal (exécution complète)
 
 ```csharp
 builder.RegisterModule(new RegistrationBpmModule(module =>
 {
-    module.ScanHandlers(Assembly.GetExecutingAssembly());
-    module.UseTaskManager<MyGestionTache>();
-    module.UseOracle("ABC");
-    module.UseDefinitionBank();   // activer la banque de définitions (optionnel)
-    module.AddProcess(MyProcessDefinitions.CreateProcess());
+    module.ScanHandlers(Assembly.GetExecutingAssembly());    // découvrir IBpmCommandHandler / IBpmQueryHandler
+    module.UseTaskManager<MyGestionTache>();                  // IGestionTache optionnel
+    module.UseOracle("ABC");                                  // ou omettre pour le stockage en mémoire
+    module.UseDefinitionBank();                               // activer la banque de définitions (optionnel)
+    module.AddProcess(MyProcessDefinitions.CreateProcess());  // enregistrer les définitions
 }));
 ```
 
-### Surveillance seule (tableau de bord en lecture seule)
+### Module monitoring (lecture seule)
+
+Pour les tableaux de bord ou services de reporting sans moteur d'exécution :
 
 ```csharp
-// Microsoft DI
-services.AddProcessMonitoring();
-
-// Autofac
 builder.RegisterModule(new ProcessMonitoringAutofacModule());
 ```
 

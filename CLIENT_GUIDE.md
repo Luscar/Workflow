@@ -30,11 +30,9 @@ la configuration de l'injection de dépendances et l'exploitation des processus 
    - [IBpmMediateur (approche directe)](#53-ibpmmediateur-approche-directe)
    - [IGestionTache (gestion de tâches optionnelle)](#54-igestiontache-gestion-de-tâches-optionnelle)
 6. [Configuration de l'injection de dépendances](#6-configuration-de-linjection-de-dépendances)
-   - [Microsoft DI — builder unifié](#61-microsoft-di--builder-unifié-recommandé)
-   - [Microsoft DI — étape par étape](#62-microsoft-di--étape-par-étape)
-   - [Module Autofac](#63-module-autofac)
-   - [Persistance Oracle](#64-persistance-oracle)
-   - [Banque de définitions](#65-banque-de-définitions)
+   - [RegistrationBpmModule](#61-registrationbpmmodule)
+   - [Persistance Oracle](#62-persistance-oracle)
+   - [Banque de définitions](#63-banque-de-définitions)
 7. [Exploiter les processus à l'exécution](#7-exploiter-les-processus-à-lexécution)
    - [Créer une instance de processus](#71-créer-une-instance-de-processus)
    - [Terminer une étape interactive](#72-terminer-une-étape-interactive)
@@ -635,7 +633,7 @@ Si la chaîne retournée ne correspond à aucune route définie, le moteur marqu
 
 ### 5.3 IBpmMediateur (approche directe)
 
-Si vous préférez une classe médiateur centralisée plutôt que des handlers individuels, implémentez `IBpmMediateur` directement. Cette approche est mutuellement exclusive avec `AddCommandHandlers` — choisissez l'une ou l'autre.
+Si vous préférez une classe médiateur centralisée plutôt que des handlers individuels, implémentez `IBpmMediateur` directement. Cette approche est mutuellement exclusive avec `ScanHandlers` — choisissez l'une ou l'autre.
 
 ```csharp
 public class MonBpmMediateur : IBpmMediateur
@@ -666,10 +664,12 @@ public class MonBpmMediateur : IBpmMediateur
 }
 ```
 
-Enregistrement :
+Enregistrement (Autofac) :
 
 ```csharp
-services.AddSingleton<IBpmMediateur, MonBpmMediateur>();
+builder.RegisterType<MonBpmMediateur>()
+    .As<IBpmMediateur>()
+    .SingleInstance();
 ```
 
 ### 5.4 IGestionTache (gestion de tâches optionnelle)
@@ -715,73 +715,12 @@ Le cycle de vie est automatique :
 
 ## 6. Configuration de l'injection de dépendances
 
-### 6.1 Microsoft DI — builder unifié (recommandé)
+SimpleBPM utilise **Autofac** comme conteneur DI standard via `RegistrationBpmModule`.
+
+### 6.1 RegistrationBpmModule
 
 ```csharp
 using System.Reflection;
-using SimpleBPM.Localisation;
-
-// Program.cs
-services.AddSimpleBPM(options =>
-{
-    // Découverte automatique de tous les IBpmCommandHandler et IBpmQueryHandler de l'assembly
-    options.ScanHandlers(Assembly.GetExecutingAssembly());
-
-    // Optionnel : enregistrer un gestionnaire de tâches
-    options.UseTaskManager<MaGestionTache>();
-
-    // Persistance Oracle (omettre pour le stockage en mémoire)
-    options.UseOracle("CMD");   // préfixe : 3 à 10 lettres majuscules
-
-    // Enregistrer les définitions de processus
-    options.AddProcess(ProcessusCommandeDefinitions.CreerProcessusCommande());
-    options.AddProcess(ProcessusCommandeDefinitions.CreerProcessusRemboursement());
-});
-```
-
-Puis enregistrez la connexion Oracle :
-
-```csharp
-services.AddScoped<IDbConnection>(sp =>
-{
-    var conn = new OracleConnection(configuration.GetConnectionString("Oracle"));
-    conn.Open();
-    return conn;
-});
-```
-
-### 6.2 Microsoft DI — étape par étape
-
-Pour un contrôle plus fin :
-
-```csharp
-// 1. Enregistrer les handlers de commandes / requêtes (découverte automatique)
-services.AddCommandHandlers(Assembly.GetExecutingAssembly());
-
-// 2. Services optionnels
-services.AddSingleton<IGestionTache, MaGestionTache>();
-
-// 3. Connexion Oracle (gérée par le client)
-services.AddScoped<IDbConnection>(sp =>
-{
-    var conn = new OracleConnection(connectionString);
-    conn.Open();
-    return conn;
-});
-
-// 4. Définitions de processus (chacune en singleton)
-services.AddSingleton(ProcessusCommandeDefinitions.CreerProcessusCommande());
-services.AddSingleton(ProcessusCommandeDefinitions.CreerProcessusRemboursement());
-
-// 5. SimpleBPM principal (backend Oracle)
-services.AddSimpleBPM(tablePrefix: "CMD");
-// ou en mémoire :
-// services.AddSimpleBPM();
-```
-
-### 6.3 Module Autofac
-
-```csharp
 using Autofac;
 using SimpleBPM.Localisation;
 
@@ -789,13 +728,21 @@ var builder = new ContainerBuilder();
 
 builder.RegisterModule(new RegistrationBpmModule(module =>
 {
+    // Découverte automatique de tous les IBpmCommandHandler et IBpmQueryHandler de l'assembly
     module.ScanHandlers(Assembly.GetExecutingAssembly());
+
+    // Optionnel : gestionnaire de tâches
     module.UseTaskManager<MaGestionTache>();
-    module.UseOracle("CMD");
+
+    // Persistance Oracle (omettre pour le stockage en mémoire)
+    module.UseOracle("CMD");   // préfixe : 3 à 10 lettres majuscules
+
+    // Enregistrer les définitions de processus
     module.AddProcess(ProcessusCommandeDefinitions.CreerProcessusCommande());
+    module.AddProcess(ProcessusCommandeDefinitions.CreerProcessusRemboursement());
 }));
 
-// Connexion Oracle — enregistrée séparément
+// Connexion Oracle — enregistrée séparément (InstancePerLifetimeScope)
 builder.Register(ctx =>
 {
     var conn = new OracleConnection(connectionString);
@@ -806,7 +753,23 @@ builder.Register(ctx =>
 var container = builder.Build();
 ```
 
-### 6.4 Persistance Oracle
+#### Intégration ASP.NET Core (Blazor, Web API…)
+
+```csharp
+// Program.cs
+builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
+builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
+{
+    containerBuilder.RegisterModule(new RegistrationBpmModule(module =>
+    {
+        module.ScanHandlers(Assembly.GetExecutingAssembly());
+        module.UseOracle("CMD");
+        module.AddProcess(ProcessusCommandeDefinitions.CreerProcessusCommande());
+    }));
+});
+```
+
+### 6.2 Persistance Oracle
 
 `OracleProcessRepository` nécessite une `IDbConnection` ouverte (injectée par scope). Il utilise Dapper pour toutes les requêtes.
 
@@ -832,32 +795,18 @@ if (repo is OracleProcessRepository oracleRepo)
 
 Ou appliquez `schema.sql` manuellement pour les environnements où l'application ne doit pas créer les tables automatiquement.
 
-### 6.5 Banque de définitions
+### 6.3 Banque de définitions
 
 La **banque de définitions** permet de sauvegarder des `ProcessDefinition` en base de données (Oracle ou en mémoire) afin de centraliser et versionner les définitions de processus indépendamment du code applicatif.
 
 #### Activation
-
-**Microsoft DI :**
-
-```csharp
-services.AddSimpleBPM(options =>
-{
-    options.ScanHandlers(Assembly.GetExecutingAssembly());
-    options.UseOracle("CMD");
-    options.UseDefinitionBank();   // active IDefinitionRepository (Oracle si UseOracle, sinon mémoire)
-    options.AddProcess(MonProcessus.Creer());
-});
-```
-
-**Autofac :**
 
 ```csharp
 builder.RegisterModule(new RegistrationBpmModule(module =>
 {
     module.ScanHandlers(Assembly.GetExecutingAssembly());
     module.UseOracle("CMD");
-    module.UseDefinitionBank();
+    module.UseDefinitionBank();   // active IDefinitionRepository (Oracle si UseOracle, sinon mémoire)
     module.AddProcess(MonProcessus.Creer());
 }));
 ```
@@ -893,7 +842,7 @@ Lorsque `UseOracle` est combiné avec `UseDefinitionBank`, une table supplément
 #### Résolution automatique depuis la banque
 
 Lorsque la banque est activée, le moteur cherche les définitions dans l'ordre suivant :
-1. **En mémoire** (définitions enregistrées via `AddProcess` dans le DI).
+1. **En mémoire** (définitions enregistrées via `module.AddProcess` dans `RegistrationBpmModule`).
 2. **Dans la banque** (`IDefinitionRepository`) si la définition n'est pas trouvée en mémoire.
 
 Cela permet de déployer de nouvelles versions de processus sans redémarrer l'application.
@@ -1044,10 +993,7 @@ Les mêmes opérateurs et types de données que pour `DecisionNode` sont disponi
 Pour les tableaux de bord, panneaux d'administration ou services de reporting nécessitant un accès en lecture seule à l'état des processus, utilisez `IProcessMonitor` plutôt que `IFlowService`.
 
 ```csharp
-// Enregistrement (Microsoft DI)
-services.AddProcessMonitoring();   // aucun moteur, aucun IBpmMediateur requis
-
-// ou dans un module Autofac de tableau de bord :
+// Autofac — module dédié, sans moteur d'exécution ni IBpmMediateur
 builder.RegisterModule(new ProcessMonitoringAutofacModule());
 ```
 
